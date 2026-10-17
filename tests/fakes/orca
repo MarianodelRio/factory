@@ -166,6 +166,10 @@ def main():
         body = load("agent-launch")
         body["result"]["operationId"] = flag(argv, "--retry-launch")
         answer(0, body)
+    if command in ("skills install", "skills update", "repo add"):
+        if "--json" in argv and command != "repo add":
+            answer(1, error("invalid_argument", "a real install rejects --json"))
+        answer(0, load("repo-add") if command == "repo add" else f"{command}: done (fake)")
     if command in DEFAULTS:
         answer(0, load(DEFAULTS[command]))
     answer(1, error("unknown_command", f"fake orca has no answer for '{command}'"))

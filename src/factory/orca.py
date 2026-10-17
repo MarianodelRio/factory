@@ -82,6 +82,15 @@ def run(args: list[str], cwd: Path | None = None) -> Any:
     return answer.get("result", answer)
 
 
+def run_plain(args: list[str], cwd: Path | None = None) -> str:
+    """Run an `orca` command that must not get `--json` (e.g. `skills install`)."""
+    require_local()
+    done = _exec(args, cwd)
+    if done.returncode != 0:
+        raise OrcaError(f"orca {' '.join(args[:2])} failed: {(done.stderr or done.stdout).strip()[:300]}")
+    return done.stdout.strip()
+
+
 def version() -> str:
     done = _exec(["--version"], None)
     if done.returncode != 0:

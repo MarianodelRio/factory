@@ -134,6 +134,16 @@ def task_recover(args: argparse.Namespace) -> Result:
     return tasks.recover(args.task, args.confirm, task_context())
 
 
+def init_command(args: argparse.Namespace) -> Result:
+    if args.restore:
+        return init.restore(paths.repo_root(), paths.state_dir(), args.restore), []
+    deletes = list(zip(args.delete, args.reason, strict=True))
+    if args.plan:
+        return init.plan_init(paths.repo_root(), paths.main_checkout(), deletes), []
+    return init.apply_init(paths.repo_root(), paths.main_checkout(), paths.state_dir(), args.apply, deletes,
+                           args.exclude)
+
+
 def doctor(args: argparse.Namespace) -> Result:
     return init.doctor(paths.repo_root(), paths.main_checkout()), []
 
@@ -179,6 +189,7 @@ HANDLERS: dict[str, Handler] = {
     "status": status,
     "memory check": memory_check,
     "doctor": doctor,
+    "init": init_command,
 }
 
 
@@ -199,11 +210,14 @@ def build_parser() -> Parser:
 
     command(groups, "doctor", "doctor", "analyze the repository without changing it")
 
-    init = command(groups, "init", "init", "prepare the repository for the Factory")
-    mode = init.add_mutually_exclusive_group(required=True)
+    init_cmd = command(groups, "init", "init", "prepare the repository for the Factory")
+    mode = init_cmd.add_mutually_exclusive_group(required=True)
     mode.add_argument("--plan", action="store_true", help="show the plan without applying it")
-    mode.add_argument("--apply", action="store_true", help="apply the plan")
+    mode.add_argument("--apply", metavar="PLAN_ID", help="apply exactly the confirmed plan")
     mode.add_argument("--restore", metavar="BACKUP", help="restore a backup")
+    init_cmd.add_argument("--delete", action="append", default=[], metavar="PATH", help="also delete this file")
+    init_cmd.add_argument("--reason", action="append", default=[], help="reason for each --delete")
+    init_cmd.add_argument("--exclude", action="append", default=[], metavar="PATH", help="leave this item out")
 
     design = groups.add_parser("design", help="register, show, approve or reject a change")
     design_cmds = design.add_subparsers(dest="action", required=True, metavar="<action>")
@@ -279,6 +293,8 @@ def build_parser() -> Parser:
 
 
 def _validate(args: argparse.Namespace) -> None:
+    if args.command == "init" and len(args.delete) != len(args.reason):
+        raise UsageError("factory init: each --delete needs its --reason")
     if args.command == "task verify" and (args.manual is None) != (args.evidence is None):
         raise UsageError("factory task verify: --manual and --evidence go together")
 

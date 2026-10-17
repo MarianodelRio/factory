@@ -279,7 +279,7 @@ Rules common to all:
    - **Respect**: what is left untouched and why.
 
    And the actions in Orca: register the repo, set its base branch (`orca repo set-base-ref`, with the detected default branch) and install or update its skills (global installation, stated clearly).
-3. The person **confirms once** or excludes items ("todo menos borrar X", or "everything except deleting X").
+3. The person **confirms once** or excludes items ("todo menos borrar X", or "everything except deleting X"). The plan has an id; applying it with a different repo state is refused, so exactly the confirmed plan is applied. The CLI proposes on its own only the deletions it can detect safely (Factory leftovers, empty docs); other deletions are proposed by the skill after reading the files, and code, tests, CI and secrets are always refused.
 4. **Applies**: saves a copy of everything it deletes or modifies in `.factory/state/backups/<YYYYMMDD-HHMMSS>/`, writes the files, generates the initial documentation from evidence (marking what it could not confirm) and validates that everything works.
 5. **Summarizes** what was done, what remains to be completed in `docs/` and how to start. It leaves the changes uncommitted: the person reviews the diff and makes the commit (or asks the agent to).
 
@@ -674,7 +674,7 @@ pr_on_done = "offer"        # offer | always | never
 artifacts = "en"            # language of everything publishable
 ```
 
-The base branch is the one the repo has in Orca (`worktreeBaseRef` in `orca repo show`, set by `/factory-init`); if it is not set, operations that need it stop and explain how to set it. Branch names are set by Orca. There are no fixed agents: they are chosen when invoking `/factory-implement`. The hashes of the installed templates (§3.2) are stored in a section managed by `/factory-init`.
+The base branch is the one the repo has in Orca (`worktreeBaseRef` in `orca repo show`, set by `/factory-init`); if it is not set, operations that need it stop and explain how to set it. Branch names are set by Orca. There are no fixed agents: they are chosen when invoking `/factory-implement`. The hashes of the installed templates (§3.2) are stored in the `[templates]` section, managed by `/factory-init`.
 
 ---
 
@@ -684,7 +684,9 @@ It is used by the skills; it is also available to the person. All output support
 
 ```bash
 factory doctor                                   # analysis without changes
-factory init --plan | --apply | --restore <backup>
+factory init --plan [--delete <path> --reason "..."]...      # the plan, with its plan id
+factory init --apply <plan-id> [--exclude <path>]...           # applies exactly the confirmed plan
+factory init --restore <backup>
 
 factory design register [<CHG>]                 # no id: reserve the next one; with id: validate
 factory design show <CHG>

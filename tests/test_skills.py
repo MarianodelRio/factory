@@ -6,7 +6,7 @@ import yaml
 
 SKILLS = ["factory-init", "factory-design", "factory-implement", "factory-status"]
 # Files that `factory init` copies into the skills when installing them (T-28).
-INSTALLED = {"references/design-template.md"} | {
+INSTALLED = {"references/design-template.md", "references/adr-template.md"} | {
     f"references/roles/{r}.md"
     for r in ("designer", "design_critic", "lead", "planner", "quality_reviewer", "conformance_reviewer")
 }
