@@ -63,7 +63,7 @@ Person (chat / agent terminal in Orca)
             |
    4 Factory skills  ── query Orca directly (guides, browser, search)
             |
-   factory CLI (Python, standard library)
+   factory CLI (Python, standard library + PyYAML)
      ├── Factory files (.factory/)
      ├── Orca client (operations that change state: workspaces, agents, cards)
      └── git / gh
@@ -72,13 +72,13 @@ Person (chat / agent terminal in Orca)
 - **Skills**: talk to the person, research, write and decide. They can use Orca directly to **query or interact** (load its guides with `orca skills get orca-cli`, browser, `orca search`), without copying its guides.
 - **CLI**: exact, repeatable operations. It validates, claims, records and answers the skills in `--json`. It does not call models. It is the **only one that writes** Factory state.
 - **Orca client**: part of the CLI and the only code that performs **Orca operations that change state** (create workspaces, launch agents, update cards). It always uses `--json` and checks that commands exist with `orca agent-context --json`.
-- **Requirements**: Git, Orca (minimum version in config), Python 3.11+, and at least Claude Code or Codex available in Orca. `gh` is optional (without it, PRs are not opened automatically).
+- **Requirements**: Git, Orca (minimum version in config), Python 3.11+ (installed with `uv tool install`, which brings its own Python), PyYAML as the only runtime dependency, and at least Claude Code or Codex available in Orca. `gh` is optional (without it, PRs are not opened automatically).
 
 ### 1.2 Factory repository
 
 ```text
 software-factory/
-├── pyproject.toml           # installs the `factory` command (pipx)
+├── pyproject.toml           # installs the `factory` command (uv tool install)
 ├── src/factory/
 │   ├── cli.py
 │   ├── init.py              # analysis, plan, apply, backups
@@ -697,7 +697,7 @@ factory task review <id> --type quality|conformance [--agent ...]
 factory task review <id> --record <file.json>
 factory task finish <id> --memory "<summary>|none"
 factory task publish <id>                        # push the branch and PR
-factory task recover <id>
+factory task recover <id> [--confirm]            # without --confirm it only inspects
 
 factory memory check
 factory status
