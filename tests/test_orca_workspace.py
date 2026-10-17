@@ -16,6 +16,7 @@ def test_create_workspace(repo, fake_orca):
     assert call[call.index("--name") + 1] == "CHG-0012-01"
     assert call[call.index("--base-branch") + 1] == "main"
     assert "--agent" not in call
+    assert "--no-parent" in call
 
 
 def test_create_workspace_failure(repo, fake_orca):
@@ -75,6 +76,22 @@ def test_lost_reply_is_retried_with_the_same_operation(repo, fake_orca):
     assert "--retry-launch" not in launches[0]
     assert launches[1][launches[1].index("--retry-launch") + 1] == "op-7"
     assert launches[1][:-3] == launches[0][:-1]  # same command, only --retry-launch added
+
+
+def test_structured_launch_has_no_terminal(repo, fake_orca):
+    body = load_fixture("agent-launch")
+    body["result"]["outcome"] = {"kind": "structured", "handle": None}
+    fake_orca.respond("agent launch", body)
+    launched = orca.launch_agent("repo::/w", "claude", "brief", None, None)
+    assert launched["terminal"] is None
+    assert launched["kind"] == "structured"
+
+
+def test_retry_answer_without_operation_id_keeps_the_resent_one(repo, fake_orca):
+    body = load_fixture("agent-launch")
+    del body["result"]["operationId"]
+    fake_orca.respond_sequence("agent launch", [lost("op-7"), {"exit": 0, "stdout": body}])
+    assert orca.launch_agent("repo::/w", "claude", "brief", None, None)["operation_id"] == "op-7"
 
 
 def test_operation_id_in_error_data(repo, fake_orca):

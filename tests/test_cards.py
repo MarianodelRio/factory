@@ -17,11 +17,11 @@ def value(call, flag):
 
 # One row per line of the table in design §7.5: state, detail, status, comment, unread.
 ROWS = [
-    ("in_progress", "Write the migration", "in-progress", "Write the migration", "--read"),
-    ("in_review", "Pending reviews: conformance", "in-review", "Pending reviews: conformance", "--read"),
-    ("done", orca.done_comment(3, 3, 123), "completed", "3/3 AC verified · PR #123", "--read"),
-    ("blocked", "paused", "in-progress", "paused", "--unread"),
-    ("interrupted", None, "in-progress", "Interrupted: use /factory-status", "--unread"),
+    ("in_progress", "Write the migration", "in-progress", "Write the migration", False),
+    ("in_review", "Pending reviews: conformance", "in-review", "Pending reviews: conformance", False),
+    ("done", orca.done_comment(3, 3, 123), "completed", "3/3 AC verified · PR #123", False),
+    ("blocked", "paused", "in-progress", "paused", True),
+    ("interrupted", None, "in-progress", "Interrupted: use /factory-status", True),
 ]
 
 
@@ -34,8 +34,8 @@ def test_card_follows_the_table(repo, fake_orca, state, detail, status, comment,
     assert value(call, "--display-name") == "CHG-0012-01 Add recurrence model"
     assert value(call, "--workspace-status") == status
     assert value(call, "--comment") == comment
-    assert unread in call
-    assert ({"--read", "--unread"} - {unread}).isdisjoint(call)
+    assert ("--unread" in call) is unread
+    assert "--read" not in call
 
 
 def test_done_comment_without_pr():
@@ -69,6 +69,18 @@ def test_orca_warnings_are_passed_on(repo, fake_orca):
     fake_orca.respond_fixture("worktree set", "worktree-set-unknown-status")
     warnings = orca.update_card(WS, "CHG-0012-01", "T", "in_progress", "next")
     assert any("Unknown workspace status" in w for w in warnings)
+
+
+def test_unknown_state_is_only_a_warning(repo, fake_orca):
+    assert orca.update_card(WS, "CHG-0012-01", "T", "pending", None)
+    assert fake_orca.calls() == []
+
+
+def test_remote_orca_is_never_called(repo, fake_orca, monkeypatch):
+    monkeypatch.setenv("ORCA_ENVIRONMENT", "build-server")
+    assert orca.update_card(WS, "CHG-0012-01", "T", "in_progress", "next")
+    assert orca.session_liveness("term_1") == "unknown"
+    assert fake_orca.calls() == []
 
 
 def test_fixture_is_valid():

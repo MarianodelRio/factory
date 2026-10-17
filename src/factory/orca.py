@@ -30,7 +30,7 @@ REQUIRED: dict[str, tuple[str, ...]] = {
     "status": (),
     "agent-context": (),
     "repo show": ("repo",),
-    "worktree create": ("repo", "name", "base-branch"),
+    "worktree create": ("repo", "name", "base-branch", "no-parent"),
     "worktree show": ("worktree",),
     "worktree set": ("worktree", "display-name", "comment", "workspace-status", "unread", "read"),
     "agent launch": ("agent", "worktree", "prompt", "model", "effort", "retry-launch"),
@@ -62,7 +62,9 @@ def _exec(args: list[str], cwd: Path | None) -> subprocess.CompletedProcess[str]
 
 
 def run(args: list[str], cwd: Path | None = None) -> Any:
-    """Run `orca <args> --json` and return its `result` (or the whole answer if it has none)."""
+    """Run `orca <args> --json` against the local Orca and return its `result` (or the whole
+    answer if it has none)."""
+    require_local()
     done = _exec([*args, "--json"], cwd)
     command = " ".join(args[:2])
     try:
@@ -162,7 +164,8 @@ def _branch_name(ref: str) -> str:
 def create_workspace(name: str, base: str, main_checkout: Path) -> dict[str, str]:
     """A new Orca workspace (Git worktree with its own branch) from `base` (design §5.1)."""
     created = run(
-        ["worktree", "create", "--repo", f"path:{main_checkout}", "--name", name, "--base-branch", base]
+        ["worktree", "create", "--repo", f"path:{main_checkout}", "--name", name, "--base-branch", base,
+         "--no-parent"]
     )["worktree"]
     branch = str(created["branch"]).removeprefix("refs/heads/")
     return {"id": created["id"], "path": created["path"], "branch": branch}
@@ -180,7 +183,7 @@ def workspace_exists(workspace_id: str) -> bool:
 
 def launch_agent(
     workspace_id: str, agent: str, prompt: str, model: str | None, effort: str | None
-) -> dict[str, str]:
+) -> dict[str, str | None]:
     """Start `agent` in the workspace. If Orca's reply is lost, the same operation is re-issued
     once with `--retry-launch <operationId>`; it is never launched again as a new agent."""
     if effort and not model:
@@ -190,6 +193,7 @@ def launch_agent(
         args += ["--model", model]
     if effort:
         args += ["--effort", effort]
+    operation_id = None
     try:
         result = run(args)
     except OrcaError as exc:
@@ -199,14 +203,15 @@ def launch_agent(
         result = run([*args, "--retry-launch", operation_id])
     outcome = result.get("outcome", {})
     return {
-        "operation_id": str(result.get("operationId", "")),
-        "terminal": str(outcome.get("handle") or result.get("agentTerminalHandle") or ""),
-        "kind": str(outcome.get("kind", "terminal")),
+        "operation_id": result.get("operationId") or operation_id,
+        "terminal": outcome.get("handle") or None,
+        "kind": outcome.get("kind", "terminal"),
     }
 
 
 def _operation_id(exc: OrcaError) -> str | None:
-    """The operationId Orca gives in a lost-launch error, if any."""
+    """The operationId Orca gives in a lost-launch error, if any. The exact error shape was not
+    recorded in the spike, so the id is looked for in the error fields and in its message."""
     data = exc.error.get("data") or {}
     found = exc.error.get("operationId") or (data.get("operationId") if isinstance(data, dict) else None)
     if found:
@@ -232,6 +237,7 @@ def session_liveness(terminal: str | None) -> str:
 
 
 # Task state -> (card status, fixed comment or None to use the detail, unread notice); design §7.5.
+# "No notice" leaves Orca's unread flag as it is.
 CARDS: dict[str, tuple[str, str | None, bool]] = {
     "in_progress": ("in-progress", None, False),  # detail: next action
     "in_review": ("in-review", None, False),  # detail: pending reviews
@@ -249,11 +255,13 @@ def done_comment(verified: int, total: int, pr_number: int | None) -> str:
 def update_card(workspace_id: str, task_id: str, title: str, state: str, detail: str | None) -> list[str]:
     """Update the workspace card for the task's state. Never raises: a failure only gives a
     warning, and if Orca refuses some value the comment alone is updated."""
+    if state not in CARDS:
+        return [f"no Orca card defined for state '{state}'"]
     status, fixed, unread = CARDS[state]
     comment = fixed or detail or ""
     selector = ["worktree", "set", "--worktree", f"id:{workspace_id}"]
     full = [*selector, "--display-name", f"{task_id} {title}", "--workspace-status", status,
-            "--comment", comment, "--unread" if unread else "--read"]
+            "--comment", comment, *(["--unread"] if unread else [])]
     try:
         result = run(full)
         return [str(w.get("message", w)) for w in result.get("warnings", [])]
