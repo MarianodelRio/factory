@@ -231,13 +231,13 @@ tasks:
 |---|---|---|
 | `pending` | Approved, but some dependency is not finished **and integrated into the base branch** | Computed |
 | `ready` | Can be started | Computed |
-| `in_progress` | A lead agent is working on it | `factory task claim`, or `factory task recover` |
+| `in_progress` | A lead agent is working on it | `factory task claim`, or `factory task recover --confirm` (from `interrupted`, or from `in_progress` when Orca cannot say whether the agent is alive, §7.4) |
 | `in_review` | Implemented; reviews in progress | `factory task submit` |
 | `done` | Closing criteria met (§5.7) | `factory task finish`, from `in_progress` or `in_review` (the gates of §5.7 decide; a task without reviews can close without `submit`) |
 | `blocked` | Needs a decision, is paused or the design changed | `factory task block --reason`, a pause (§7.3), a design change (§4.5) or a review that does not converge (§5.4) |
 | `interrupted` | The agent stopped working before finishing | Computed on query (§7.2) |
 
-`pending` and `ready` are computed for tasks that do not yet have a state file. A task leaves `blocked` with `factory task unblock`, once the person has resolved the reason (or automatically on re-approval, if the reason was the design change).
+`pending` and `ready` are computed for tasks that do not yet have a state file. A task leaves `blocked` with `factory task unblock`, once the person has resolved the reason and only while the change's approval is valid (or automatically on re-approval, if the reason was the design change).
 
 ---
 
@@ -376,7 +376,7 @@ Rules:
 
 Any change to `design.md` (including a typo fix) changes the digest, and the change goes back to `awaiting_approval`:
 - No new tasks of that change can be started.
-- Tasks in progress move to `blocked` with reason `design_changed`.
+- Tasks in progress (`in_progress`, `in_review` or `interrupted`) move to `blocked` with reason `design_changed`.
 - `done` tasks are not touched.
 
 On re-approval, `tasks.yaml` is regenerated keeping the ids, and the tasks blocked for that reason return to their previous state. Nothing is deleted.
@@ -626,7 +626,7 @@ If a note changes requirements or architecture, the agent blocks the task; the d
 
 1. `factory task recover CHG-0012-01` gathers the task, workspace, branch, `git status`, commits, last checkpoint and evidence. If needed, the skill adds excerpts from the previous session (`orca search`).
 2. It compares the AC with the evidence and summarizes what is missing.
-3. If the previous session is still alive, it only proposes continuing in it. If not, it proposes launching a new agent in the same workspace.
+3. If the previous session is still alive, it only proposes continuing in it. If not, it proposes launching a new agent in the same workspace. If Orca cannot say ("unknown"), it says so and the person decides whether the previous session is gone.
 4. After the person confirms, it closes the previous attempt (`result: interrupted`), records a new one, reassigns the claim and the agent continues from the last checkpoint. Uncommitted changes from the previous attempt are kept as they are.
 
 The Factory never relaunches anything without confirmation.

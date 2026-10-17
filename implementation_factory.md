@@ -189,7 +189,7 @@ Goal: answer design §10.3 with evidence and record real outputs for the fakes. 
 - [ ] T-12 Design changed after approval
   Depends: T-11, T-08 · Design: §4.5 · Acceptance: A-08
   Files: `src/factory/design.py`, `src/factory/tasks.py`, `tests/test_design_change.py`
-  Do: whenever the CLI reads a change, compare digests. On mismatch: change is `awaiting_approval`; `in_progress`/`in_review` tasks move to `blocked` (`design_changed`); `done` untouched. On re-approval: keep task ids, new tasks get new numbers, tasks blocked by `design_changed` return to their previous state.
+  Do: whenever the CLI reads a change, compare digests. On mismatch: change is `awaiting_approval`; `in_progress`/`in_review`/`interrupted` tasks move to `blocked` (`design_changed`); `done` untouched. On re-approval: keep task ids, new tasks get new numbers, tasks blocked by `design_changed` return to their previous state.
   Done when: tests for each of those rules.
 
 ### M4 — Orca client
@@ -229,7 +229,7 @@ Goal: answer design §10.3 with evidence and record real outputs for the fakes. 
 - [ ] T-18 [P] `checkpoint`, `note`, `block`, `unblock`
   Depends: T-17 · Design: §5.2, §7.3 · Acceptance: A-20
   Files: `src/factory/tasks.py`, `tests/test_notes.py`
-  Do: `checkpoint` saves done/next and returns unread notes (marking them read). `note --text` and `note --pause` from any session. A read pause note moves the task to `blocked` (`paused`). `block --reason`, `unblock`. Cards updated.
+  Do: `checkpoint` saves done/next and returns unread notes (marking them read). `note --text` and `note --pause` from any session. A read pause note moves the task to `blocked` (`paused`). `block --reason`, `unblock` (only while the change's approval is valid, design §1.5). Cards updated.
   Done when: tests: a note written from another worktree is returned by the next checkpoint; pause → blocked; unblock → previous state.
 
 - [ ] T-19 [P] `task verify`
@@ -259,7 +259,7 @@ Goal: answer design §10.3 with evidence and record real outputs for the fakes. 
 - [ ] T-23 [P] `status` and `task recover`
   Depends: T-21 · Design: §7.1, §7.2, §7.4 · Acceptance: A-21, A-22, A-25
   Files: `src/factory/tasks.py`, `tests/test_status_recover.py`
-  Do: `status`: summary, per task, attention list (design §7.1). For `in_progress` tasks ask Orca liveness: `finished` without submit → `interrupted`; `unknown` → shown as unknown; >10 min without checkpoint → warning only. Missing workspace → broken link. `recover`: gather context (git status, commits, last checkpoint, evidence); if the session is alive, propose continuing only; otherwise `recover --confirm` (called by the skill only after the person agrees; see §6) closes the previous attempt as `interrupted`, open a new one, reassign the claim. Uncommitted changes untouched.
+  Do: `status`: summary, per task, attention list (design §7.1). For `in_progress` tasks ask Orca liveness: `finished` without submit → `interrupted`; `unknown` → shown as unknown; >10 min without checkpoint → warning only. Missing workspace → broken link. `recover`: gather context (git status, commits, last checkpoint, evidence); if the session is alive, propose continuing only; if it is `unknown`, say so and let the person decide; otherwise (or after the person decides) `recover --confirm` (called by the skill only after the person agrees; see §6) closes the previous attempt as `interrupted`, open a new one, reassign the claim. Uncommitted changes untouched.
   Done when: tests for each liveness case, the 10-minute warning, broken link, and recover keeping uncommitted files.
 
 ### M6 — Templates (can start after M1)
@@ -374,6 +374,8 @@ Write here anything the design does not answer or that reality contradicts. Each
 | 2026-10-17 | T-01 | Permissions (§10.1): Orca's `agentDefaultArgs` launches Claude with `--dangerously-skip-permissions`. The "ask" rule still holds (verified). | No launch change (the Factory adds no flags). `factory doctor` reports it as the permission-mode warning of §3.1. Note it in design §10.1. | resolved: approved by the person; design §10.1 updated |
 | 2026-10-17 | T-08 | §1.5 does not say from which states `finish` is allowed (a trivial task has no reviews). | From `in_progress` and `in_review`; the §5.7 gates decide. | resolved: confirmed by the person; design §1.5 updated |
 | 2026-10-17 | T-08 | `unblock` and re-approval return the task to "its previous state", but the §1.4 JSON does not store it. | Add `blocked_from` to the task state. | resolved: confirmed by the person; design §1.4 updated |
+| 2026-10-17 | M2 review | §4.5 blocks tasks "in progress" on a design change, but an `interrupted` task could not be blocked, and a paused task could be unblocked on an unapproved design. | `interrupted` tasks are also blocked (`design_changed`) and return on re-approval; `unblock` works only while the approval is valid, whatever the reason (replaces T-08's "unblock does not release design_changed"). | resolved: confirmed by the person; design §1.5 and §4.5 updated |
+| 2026-10-17 | M2 review | With liveness `unknown` (§7.2) a task stays `in_progress` and could never be recovered. | `task recover` also works from `in_progress` when liveness is `unknown`: it says so, and `--confirm` (after the person decides) closes the attempt as interrupted and opens a new one. | resolved: confirmed by the person; design §1.5 and §7.4 updated |
 | 2026-10-17 | T-23 | Design §7.4 says recover acts "after the person confirms", but §9 has a single `task recover`. | `task recover <id>` only inspects; `task recover <id> --confirm` acts (the skill calls it after asking). Add to design §9. | resolved: design §9 updated |
 
 ---
@@ -393,3 +395,4 @@ One line per completed task or session: date, task, what was done, what comes ne
 | 2026-10-17 | M1 review | No blockers. Fixed the harness: fakes always first on PATH and refuse to run without their fixture (the real orca/gh are never reached), fake orca creates worktrees in `$FAKE_ORCA_REPO` (not the cwd), answer sequences, per-terminal answers, `--retry-launch` echo; fake gh `--version` survives the fail switch. Left as minor: static `worktree list`, config without `schema_version` accepted as 1. 97 tests green. | T-07 state storage. |
 | 2026-10-17 | T-07 | `state.TaskStore`: flock on the append-only events file, atomic JSON replace, each event carries the resulting state (rebuild = last readable event), exclusive claim file with release/reassign; `empty_state` with the §1.4 fields. 109 tests green. | T-08 state machine. |
 | 2026-10-17 | T-08 | Transition table in `tasks.py` (design §1.5 + finish from in_progress/in_review), `block` records reason and `blocked_from`, `unblock`/`reapprove` return to it; manual `unblock` refuses `design_changed` (only re-approval releases it, §4.5). Design §1.4/§1.5 updated with the person's two answers. 187 tests green. M2 done. | M2 review, then T-09. |
+| 2026-10-17 | M2 review | No blockers. Minor fixes to state storage (event before JSON, rebuild a missing JSON, claim written in one step, locked release/reassign). Two gaps decided by the person: interrupted tasks are blocked by a design change and `unblock` needs a valid approval; `recover` also from `in_progress` when liveness is unknown. Design §1.5, §4.5, §7.4 updated. 197 tests green. | T-09 digest, ids and task-block parsing. |

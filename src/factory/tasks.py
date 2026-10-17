@@ -18,15 +18,18 @@ DESIGN_CHANGED = "design_changed"
 REVIEW_NOT_CONVERGING = "review_not_converging"
 
 # (state, action) -> next state, design §1.5. `block` records the previous state in
-# `blocked_from`; `unblock` and `reapprove` return to it.
+# `blocked_from`; `unblock` and `reapprove` return to it. The callers check the conditions
+# that are not about states: a valid approval for `unblock`, liveness for `recover`.
 TRANSITIONS: dict[tuple[str, str], str] = {
     ("ready", "claim"): "in_progress",  # factory task claim
     ("interrupted", "recover"): "in_progress",  # factory task recover --confirm
+    ("in_progress", "recover"): "in_progress",  # only when liveness is unknown (§7.4)
     ("in_progress", "submit"): "in_review",  # factory task submit
     ("in_progress", "finish"): "done",  # factory task finish (gates of §5.7)
     ("in_review", "finish"): "done",
     ("in_progress", "block"): "blocked",  # task block, a read pause note, a design change
     ("in_review", "block"): "blocked",  # also a review that does not converge
+    ("interrupted", "block"): "blocked",  # a design change
     ("in_progress", "interrupt"): "interrupted",  # status/recover: the lead agent finished
 }
 RETURNS = {"unblock", "reapprove"}
@@ -39,8 +42,6 @@ def transition(task: State, action: str, current: str | None = None, reason: str
     result = copy.deepcopy(task)
 
     if action in RETURNS and state == "blocked":
-        if action == "unblock" and task["blocked_reason"] == DESIGN_CHANGED:
-            _reject(task, action, "it is blocked by a design change: approve the design again")
         if action == "reapprove" and task["blocked_reason"] != DESIGN_CHANGED:
             _reject(task, action, f"it is blocked for '{task['blocked_reason']}', not by a design change")
         result.update(state=task["blocked_from"], blocked_reason=None, blocked_from=None)

@@ -16,11 +16,13 @@ def task(state, **fields):
 ALLOWED = [
     ("ready", "claim", "in_progress"),
     ("interrupted", "recover", "in_progress"),
+    ("in_progress", "recover", "in_progress"),
     ("in_progress", "submit", "in_review"),
     ("in_progress", "finish", "done"),
     ("in_review", "finish", "done"),
     ("in_progress", "block", "blocked"),
     ("in_review", "block", "blocked"),
+    ("interrupted", "block", "blocked"),
     ("in_progress", "interrupt", "interrupted"),
 ]
 
@@ -48,7 +50,7 @@ def test_illegal_transitions_are_rejected(current, action):
 
 
 @pytest.mark.parametrize("reason", [PAUSED, DESIGN_CHANGED, REVIEW_NOT_CONVERGING, "needs a schema decision"])
-@pytest.mark.parametrize("before", ["in_progress", "in_review"])
+@pytest.mark.parametrize("before", ["in_progress", "in_review", "interrupted"])
 def test_block_records_reason_and_previous_state(reason, before):
     result = transition(task(before), "block", reason=reason)
     assert (result["state"], result["blocked_reason"], result["blocked_from"]) == ("blocked", reason, before)
@@ -60,19 +62,17 @@ def test_block_needs_a_reason():
     assert exc.value.code == "invalid_transition"
 
 
-@pytest.mark.parametrize("before", ["in_progress", "in_review"])
+@pytest.mark.parametrize("before", ["in_progress", "in_review", "interrupted"])
 def test_unblock_returns_to_previous_state(before):
     blocked = transition(task(before), "block", reason=PAUSED)
     result = transition(blocked, "unblock")
     assert (result["state"], result["blocked_reason"], result["blocked_from"]) == (before, None, None)
 
 
-def test_unblock_does_not_release_a_design_change():
+def test_unblock_is_a_plain_return_whatever_the_reason():
+    # Whether the approval is valid is checked by the unblock command (T-18), not the table.
     blocked = transition(task("in_review"), "block", reason=DESIGN_CHANGED)
-    with pytest.raises(FactoryError) as exc:
-        transition(blocked, "unblock")
-    assert exc.value.code == "invalid_transition"
-    assert "approv" in exc.value.message
+    assert transition(blocked, "unblock")["state"] == "in_review"
 
 
 def test_reapproval_releases_only_design_changed_tasks():
