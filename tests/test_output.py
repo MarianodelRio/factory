@@ -16,6 +16,12 @@ def test_error_envelope():
     }
 
 
+def test_error_details():
+    err = FactoryError("design_invalid", "2 problems", EXIT_PRECONDITION, ["a", "b"])
+    assert error_envelope(err)["error"]["details"] == ["a", "b"]
+    assert "  - b" in render(error_envelope(err), as_json=False)
+
+
 def test_render_json_is_one_line_object():
     text = render(ok_envelope({"a": [1, 2]}), as_json=True)
     assert "\n" not in text

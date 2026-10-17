@@ -14,13 +14,17 @@ EXIT_UNAVAILABLE = 5
 
 
 class FactoryError(Exception):
-    """An expected failure: short snake_case code, message for the person, exit code."""
+    """An expected failure: short snake_case code, message for the person, exit code and, when
+    there are several problems, one line per problem in `details`."""
 
-    def __init__(self, code: str, message: str, exit_code: int = EXIT_ERROR) -> None:
+    def __init__(
+        self, code: str, message: str, exit_code: int = EXIT_ERROR, details: list[str] | None = None
+    ) -> None:
         super().__init__(message)
         self.code = code
         self.message = message
         self.exit_code = exit_code
+        self.details = details or []
 
 
 def ok_envelope(data: dict[str, Any], warnings: list[str] | None = None) -> dict[str, Any]:
@@ -28,11 +32,10 @@ def ok_envelope(data: dict[str, Any], warnings: list[str] | None = None) -> dict
 
 
 def error_envelope(error: FactoryError, warnings: list[str] | None = None) -> dict[str, Any]:
-    return {
-        "ok": False,
-        "error": {"code": error.code, "message": error.message},
-        "warnings": list(warnings or []),
-    }
+    body: dict[str, Any] = {"code": error.code, "message": error.message}
+    if error.details:
+        body["details"] = error.details
+    return {"ok": False, "error": body, "warnings": list(warnings or [])}
 
 
 def render(envelope: dict[str, Any], as_json: bool) -> str:
@@ -43,6 +46,7 @@ def render(envelope: dict[str, Any], as_json: bool) -> str:
     else:
         error = envelope["error"]
         lines = [f"error ({error['code']}): {error['message']}"]
+        lines += [f"  - {d}" for d in error.get("details", [])]
     lines += [f"warning: {w}" for w in envelope["warnings"]]
     return "\n".join(lines)
 

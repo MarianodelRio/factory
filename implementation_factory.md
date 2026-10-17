@@ -84,7 +84,7 @@ Keep these stable; tasks and subagents depend on them.
 
 **Exit codes.** `0` ok · `1` unexpected error · `2` usage error · `3` precondition failed (not approved, not on base branch, dependency pending, gate not met) · `4` conflict (task already claimed) · `5` external tool unavailable (Orca, gh, git).
 
-**Error codes** are short snake_case strings; each module documents the ones it raises.
+**Error codes** are short snake_case strings; each module documents the ones it raises. When there are several problems (e.g. design validation), `error.details` lists one per line.
 
 **Paths** (`paths.py`): `repo_root()`, `main_checkout()` (first entry of `git worktree list --porcelain`), `state_dir()` = `<main_checkout>/.factory/state`, `changes_dir()` = `<repo_root>/.factory/changes`.
 
@@ -168,7 +168,7 @@ Goal: answer design §10.3 with evidence and record real outputs for the fakes. 
 
 ### M3 — Design and approval
 
-- [ ] T-09 Digest, ids and task-block parsing
+- [x] T-09 Digest, ids and task-block parsing
   Depends: T-07 · Design: §1.4, §4.3
   Files: `src/factory/design.py`, `tests/test_design_parse.py`
   Do: `digest(design_md)` = SHA-256 with LF normalization. `next_change_id()` from `.factory/changes/`. Extract the YAML block under `## Tasks` and validate it: required fields, allowed values, ids `<change>-NN`, `depends_on` refers to tasks of the same change or existing ones, no cycles, every `AC-xx` in "Acceptance criteria" is covered by some task, every task AC exists.
@@ -335,7 +335,7 @@ Fill the "Test" column as tasks are completed. "Manual" criteria are checked in 
 | A-03 | T-28 | | |
 | A-04 | T-26, T-31 | | ✔ |
 | A-05 | T-31 | | ✔ |
-| A-06 | T-09, T-10 | | |
+| A-06 | T-09, T-10 | `test_design_parse.py` (each validation error) | |
 | A-07 | T-11 (+ skill rules in T-26) | | ✔ (permission prompt) |
 | A-08 | T-12 | | |
 | A-09 | T-16 | | |
@@ -396,3 +396,4 @@ One line per completed task or session: date, task, what was done, what comes ne
 | 2026-10-17 | T-07 | `state.TaskStore`: flock on the append-only events file, atomic JSON replace, each event carries the resulting state (rebuild = last readable event), exclusive claim file with release/reassign; `empty_state` with the §1.4 fields. 109 tests green. | T-08 state machine. |
 | 2026-10-17 | T-08 | Transition table in `tasks.py` (design §1.5 + finish from in_progress/in_review), `block` records reason and `blocked_from`, `unblock`/`reapprove` return to it; manual `unblock` refuses `design_changed` (only re-approval releases it, §4.5). Design §1.4/§1.5 updated with the person's two answers. 187 tests green. M2 done. | M2 review, then T-09. |
 | 2026-10-17 | M2 review | No blockers. Minor fixes to state storage (event before JSON, rebuild a missing JSON, claim written in one step, locked release/reassign). Two gaps decided by the person: interrupted tasks are blocked by a design change and `unblock` needs a valid approval; `recover` also from `in_progress` when liveness is unknown. Design §1.5, §4.5, §7.4 updated. 197 tests green. | T-09 digest, ids and task-block parsing. |
+| 2026-10-17 | T-09 | `design.py`: `digest` (LF-normalized SHA-256), `next_change_id`, `parse_design` (AC list + YAML task block: fields, values, ids, dependencies incl. other changes, cycles, AC coverage both ways), all problems reported at once in `error.details` (added to the §3 envelope). 223 tests green. | T-10 register/show. |
