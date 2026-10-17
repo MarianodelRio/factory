@@ -92,6 +92,14 @@ def task_show(args: argparse.Namespace) -> Result:
     return tasks.show_task(args.task, task_context()), []
 
 
+def task_claim(args: argparse.Namespace) -> Result:
+    return tasks.claim(args.task, task_context())
+
+
+def task_launch(args: argparse.Namespace) -> Result:
+    return tasks.launch(args.task, args.agent, args.reviewer, args.model, args.effort, task_context())
+
+
 # Command name ("task launch") -> handler. Filled in as tasks are implemented.
 HANDLERS: dict[str, Handler] = {
     "design register": design_register,
@@ -100,6 +108,8 @@ HANDLERS: dict[str, Handler] = {
     "design reject": design_reject,
     "task list": task_list,
     "task show": task_show,
+    "task claim": task_claim,
+    "task launch": task_launch,
 }
 
 
@@ -153,6 +163,7 @@ def build_parser() -> Parser:
     launch = command(task_cmds, "launch", "task launch", "launch the lead agent in the task workspace")
     launch.add_argument("task")
     launch.add_argument("--agent", required=True, choices=["claude", "codex"])
+    launch.add_argument("--reviewer", choices=["claude", "codex"], help="agent for the conformance review")
     launch.add_argument("--model")
     launch.add_argument("--effort")
 

@@ -108,3 +108,13 @@ def ref_exists(ref: str, cwd: Path | None = None) -> bool:
             return False
         raise
     return True
+
+
+def show_file(ref: str, path: str, cwd: Path | None = None) -> str | None:
+    """Content of `path` in `ref`, or None if it is not there."""
+    try:
+        return run(["show", f"{ref}:{path}"], cwd)
+    except FactoryError as exc:
+        if exc.code == "git_failed":
+            return None
+        raise

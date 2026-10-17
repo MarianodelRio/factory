@@ -68,7 +68,8 @@ class TaskStore:
     def read_task(self, task_id: str) -> State | None:
         """The current state, rebuilt from the events if the JSON is missing or corrupted; None if
         the task has no state at all."""
-        if not self._json(task_id).exists() and not self._events(task_id).exists():
+        events = self._events(task_id)
+        if not self._json(task_id).exists() and (not events.exists() or events.stat().st_size == 0):
             return None
         try:
             state: State = json.loads(self._json(task_id).read_text(encoding="utf-8"))

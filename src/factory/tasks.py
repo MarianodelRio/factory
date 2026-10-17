@@ -3,20 +3,28 @@
 Raises FactoryError with these codes:
 - invalid_transition (EXIT_PRECONDITION): the action is not allowed from the task's state.
 - task_not_found (EXIT_PRECONDITION): no approved change has a task with that id.
+- task_not_ready (EXIT_PRECONDITION): claim of a task that is not `ready` (the reason is given).
+- approval_not_on_base (EXIT_PRECONDITION): the approval commit is not on the base branch.
+- task_claimed (EXIT_CONFLICT): the task is already claimed (from factory.state).
+- already_launched (EXIT_CONFLICT): the current attempt already has a lead agent, or a launch
+  whose result is unknown.
+- launch_unconfirmed (EXIT_UNAVAILABLE): Orca did not answer a launch; an agent may have started.
+Plus the codes of factory.orca (Orca unavailable, not local, ...).
 """
 
 from __future__ import annotations
 
 import copy
+import json
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any, NoReturn
 
 import yaml
 
-from factory import design, git, orca
-from factory.output import EXIT_PRECONDITION, FactoryError
-from factory.state import State, TaskStore
+from factory import config, design, git, orca
+from factory.output import EXIT_CONFLICT, EXIT_PRECONDITION, EXIT_UNAVAILABLE, FactoryError
+from factory.state import State, TaskStore, now
 
 # Reasons for `blocked` that the CLI sets itself; any other text comes from `task block --reason`.
 PAUSED = "paused"
@@ -188,11 +196,124 @@ def list_tasks(ctx: Context) -> dict[str, Any]:
     return {"tasks": [view(task, ctx) for task in all_tasks.values()]}
 
 
-def show_task(task_id: str, ctx: Context) -> dict[str, Any]:
+def _task(task_id: str, ctx: Context) -> dict[str, Any]:
     all_tasks = catalog(ctx)
     if task_id not in all_tasks:
         raise FactoryError("task_not_found", f"no approved change has a task {task_id}", EXIT_PRECONDITION)
-    task = all_tasks[task_id]
+    return all_tasks[task_id]
+
+
+def show_task(task_id: str, ctx: Context) -> dict[str, Any]:
+    task = _task(task_id, ctx)
     shown = view(task, ctx)
     definition = {k: v for k, v in task.items() if k not in ("change", "approved")}
     return {**definition, **shown, "record": ctx.store.read_task(task_id)}
+
+
+def new_attempt(number: int) -> dict[str, Any]:
+    return {
+        "id": number,
+        "agent": None,
+        "reviewer": None,
+        "model": None,
+        "operation_id": None,
+        "terminal": None,
+        "started_at": now(),
+        "ended_at": None,
+        "result": None,
+    }
+
+
+def claim(task_id: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
+    """Claim a ready task and create its Orca workspace from the base branch (design §5.1)."""
+    task = _task(task_id, ctx)
+    if ctx.store.read_claim(task_id) is not None:
+        raise FactoryError("task_claimed", f"{task_id} is already claimed", EXIT_CONFLICT)
+    shown = view(task, ctx)
+    if shown["state"] != "ready":
+        raise FactoryError("task_not_ready", f"{task_id} is {shown['state']}: {shown['reason']}", EXIT_PRECONDITION)
+    orca.check(_min_version(ctx))
+    base = orca.base_branch(ctx.main_checkout)
+    _require_approval_on_base(task["change"], base, ctx)
+
+    ctx.store.create_claim(task_id, 1)
+    try:
+        workspace = orca.create_workspace(task_id, base, ctx.main_checkout)
+    except FactoryError:
+        ctx.store.release_claim(task_id)
+        raise
+
+    def start(state: State) -> State:
+        state = transition(state, "claim", current="ready")
+        state["workspace"] = {"orca_id": workspace["id"], "branch": workspace["branch"]}
+        state["attempts"] = [new_attempt(1)]
+        return state
+
+    ctx.store.update_task(task_id, start, "claim")
+    next_action = f"launch the lead agent (factory task launch {task_id})"
+    warnings = orca.update_card(workspace["id"], task_id, task["title"], "in_progress", next_action)
+    data = {"task": task_id, "state": "in_progress", "workspace": workspace["id"], "path": workspace["path"],
+            "branch": workspace["branch"], "attempt": 1}
+    return data, warnings
+
+
+def launch(
+    task_id: str, agent: str, reviewer: str | None, model: str | None, effort: str | None, ctx: Context
+) -> tuple[dict[str, Any], list[str]]:
+    """Open the lead agent in the task's workspace with the brief `/factory-implement <id>`."""
+    task = _task(task_id, ctx)
+    record = ctx.store.read_task(task_id)
+    if record is None or record["state"] != "in_progress":
+        state = record["state"] if record else view(task, ctx)["state"]
+        _reject({"task": task_id}, "launch", f"it is {state}; claim it first")
+    if record["attempts"][-1]["agent"] is not None:
+        message = f"attempt {record['attempts'][-1]['id']} of {task_id} already has a lead agent"
+        raise FactoryError("already_launched", message, EXIT_CONFLICT)
+    if effort and not model:
+        raise FactoryError("effort_needs_model", "--effort requires --model", 2)
+    orca.check(_min_version(ctx))
+
+    _set_attempt(ctx, task_id, {"agent": agent, "reviewer": reviewer, "model": model}, "launch")
+    prompt = f"/factory-implement {task_id}" + (f" --reviewer {reviewer}" if reviewer else "")
+    workspace_id = record["workspace"]["orca_id"]
+    try:
+        launched = orca.launch_agent(workspace_id, agent, prompt, model, effort)
+    except orca.OrcaError as exc:
+        if exc.orca_code is None:
+            message = (f"Orca did not confirm the launch ({exc.message}); an agent may have started. "
+                       f"Check the workspace in Orca; if no agent is there, use factory task recover {task_id}")
+            raise FactoryError("launch_unconfirmed", message, EXIT_UNAVAILABLE) from exc
+        _set_attempt(ctx, task_id, {"agent": None, "reviewer": None, "model": None}, "launch_failed")
+        raise
+    except FactoryError:
+        _set_attempt(ctx, task_id, {"agent": None, "reviewer": None, "model": None}, "launch_failed")
+        raise
+    _set_attempt(ctx, task_id, {"operation_id": launched["operation_id"], "terminal": launched["terminal"]},
+                 "launched")
+    warnings = orca.update_card(workspace_id, task_id, task["title"], "in_progress", f"lead agent {agent} working")
+    data = {"task": task_id, "agent": agent, "reviewer": reviewer, "model": model,
+            "operation_id": launched["operation_id"], "terminal": launched["terminal"],
+            "message": f"{task_id} launched; open it from the Orca sidebar"}
+    return data, warnings
+
+
+def _set_attempt(ctx: Context, task_id: str, fields: dict[str, Any], event: str) -> None:
+    def apply(state: State) -> State:
+        state["attempts"][-1].update(fields)
+        return state
+
+    ctx.store.update_task(task_id, apply, event)
+
+
+def _min_version(ctx: Context) -> str:
+    cfg = config.load_config(ctx.main_checkout / ".factory" / "config.toml")
+    return str(cfg["orca"]["min_version"])
+
+
+def _require_approval_on_base(change_id: str, base: str, ctx: Context) -> None:
+    folder = ctx.changes_dir / change_id
+    approval = design.approval_of(folder) or {}
+    on_base = git.show_file(base, f".factory/changes/{change_id}/approval.json", ctx.main_checkout)
+    if on_base is None or json.loads(on_base).get("design_digest") != approval.get("design_digest"):
+        message = f"the approval of {change_id} is not committed on {base}"
+        raise FactoryError("approval_not_on_base", message, EXIT_PRECONDITION)

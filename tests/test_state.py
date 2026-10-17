@@ -170,3 +170,10 @@ def test_claim_is_never_seen_empty(tmp_path):
     store.create_claim(TASK, 1)
     assert store.read_claim(TASK)["attempt"] == 1
     assert not list(tmp_path.glob(".*.tmp"))
+
+
+def test_released_claim_leaves_no_state(tmp_path):
+    store = TaskStore(tmp_path)
+    store.create_claim(TASK, 1)
+    store.release_claim(TASK)
+    assert store.read_task(TASK) is None

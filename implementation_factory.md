@@ -220,7 +220,7 @@ Goal: answer design §10.3 with evidence and record real outputs for the fakes. 
   Do: for tasks without a state file, compute `pending`/`ready`: approval valid and every dependency `done` **and** its branch merged into the base branch (`git merge-base --is-ancestor`). `list` and `show` with reasons (e.g. "waiting for CHG-0012-01 to be merged").
   Done when: tests: dependency not done → pending; done but not merged → pending with reason; done and merged → ready.
 
-- [ ] T-17 `task claim` and `task launch`
+- [x] T-17 `task claim` and `task launch`
   Depends: T-16, T-14, T-15 · Design: §5.1, §10.2 · Acceptance: A-10, A-11
   Files: `src/factory/tasks.py`, `tests/test_claim_launch.py`
   Do: `claim`: check ready + approval commit on base → create claim lock → create workspace from base branch → write state (`in_progress`, attempt 1) → card. If workspace creation fails, release the claim (task back to `ready`). `launch --agent`: launch the lead agent with the brief `/factory-implement <id>` plus the review agent name; record the attempt's agent, model (as passed), `operation_id` and `terminal` (design §1.4).
@@ -339,8 +339,8 @@ Fill the "Test" column as tasks are completed. "Manual" criteria are checked in 
 | A-07 | T-11 (+ skill rules in T-26) | `test_approve.py` (commits only the folder, other branch, "vale"/other id refused, hook failure, typed id, piped stdin refused); file content cannot approve by construction (only `--message` or a typed id are read) | ✔ (permission prompt) |
 | A-08 | T-12 | `test_design_change.py` | |
 | A-09 | T-16 | `test_task_states.py` (not done → pending; done not merged → pending with reason; merged → ready) | |
-| A-10 | T-17, T-26 | | ✔ |
-| A-11 | T-07, T-17 | `test_state.py::test_concurrent_claims_exactly_one_wins` | |
+| A-10 | T-17, T-26 | `test_claim_launch.py` (workspace + branch, launch with brief; in-workspace mode is skill behavior, T-26) | ✔ |
+| A-11 | T-07, T-17 | `test_state.py::test_concurrent_claims_exactly_one_wins`, `test_claim_launch.py::test_second_claim_is_a_conflict` | |
 | A-12 | T-20 | | |
 | A-13 | T-20 | | |
 | A-14 | T-21 | | |
@@ -353,7 +353,7 @@ Fill the "Test" column as tasks are completed. "Manual" criteria are checked in 
 | A-21 | T-23 | | |
 | A-22 | T-23 | | |
 | A-23 | T-15 | `test_cards.py::test_card_follows_the_table` (one case per row) | |
-| A-24 | T-13 | `test_orca.py` (closed, unreachable, remote variables, non-local host); claim/launch refusal in T-17 | |
+| A-24 | T-13 | `test_orca.py` (closed, unreachable, remote variables, non-local host), `test_claim_launch.py::test_orca_unavailable_claims_nothing` | |
 | A-25 | T-23 | | |
 | A-26 | T-07, T-22, T-23 (no secrets written) | | |
 
@@ -381,6 +381,7 @@ Write here anything the design does not answer or that reality contradicts. Each
 | 2026-10-17 | T-12 | Re-approval of a design that drops a previously approved task id is refused (`design_invalid`). | Follows §4.5 "keeping the ids … Nothing is deleted". | resolved: follows design §4.5 |
 | 2026-10-17 | M3 review | §4.5 restores `design_changed` tasks "on re-approval"; the CLI also restores them when an edit is reverted (the digest matches the existing approval again). | Equivalent: the approval is valid again for that exact design, so nothing new is approved. | resolved: follows design §1.5 ("approved" = digest matches) |
 | 2026-10-17 | T-16 | "Integrated into the base branch" is checked with `git merge-base --is-ancestor` (branch tip, or last recorded commit, against `<base>` or `origin/<base>`, no fetch). A squash or rebase merge on GitHub rewrites the commits, so the dependency would stay `pending` forever. | Ask the person whether their repos use squash/rebase merges; if so, also accept a merged PR (`gh pr view --json state`) as integration. | resolved: the person uses normal merge commits; git ancestry only (squash/rebase merges are not supported in v1) |
+| 2026-10-17 | T-17 | §5.1 says the brief carries the chosen review agent, but §9's `task launch` has no flag for it. | `task launch --reviewer <claude|codex>`; brief `/factory-implement <id> --reviewer <agent>`; stored as `attempts[].reviewer`. Update design §1.4, §5.1, §9. | resolved: confirmed by the person; design updated |
 | 2026-10-17 | T-23 | Design §7.4 says recover acts "after the person confirms", but §9 has a single `task recover`. | `task recover <id>` only inspects; `task recover <id> --confirm` acts (the skill calls it after asking). Add to design §9. | resolved: design §9 updated |
 
 ---
@@ -411,3 +412,4 @@ One line per completed task or session: date, task, what was done, what comes ne
 | 2026-10-17 | T-15 | `orca.update_card` from the §7.5 table (display name = id + title, status, comment, unread/read), `done_comment`; never raises: failures become warnings, a refused value falls back to a comment-only update, Orca's own warnings are passed on. M4 done. | M4 review, then T-16. |
 | 2026-10-17 | M4 review | No blockers. Fixed: local-only check moved into `orca.run` (every command; liveness under a remote selection is `unknown`); workspaces created with `--no-parent` (independent, as in the spike); cards no longer force `--read` ("no notice" leaves Orca's flag alone); unknown card state → warning; launch returns `terminal: null` for non-terminal launches and keeps the resent operationId. Carried to T-17: a launch that times out has no operationId and must not lead to a second agent. 319 tests green. | T-16 computed states, task list/show. |
 | 2026-10-17 | T-16 | `tasks.Context`/`catalog`/`view`: tasks of approved, not rejected changes from the main checkout (after §4.5 sync); computed `pending`/`ready` with reasons (awaiting approval, dependency not done, not merged into base or origin/base, Orca unavailable for the base branch — still viewable); `task list` and `task show` (definition + state + full record). Open question in §6 about squash merges. 330 tests green. | T-17 claim and launch. |
+| 2026-10-17 | T-17 | `task claim` (not claimed, `ready`, Orca check, approval committed on base, exclusive claim, workspace from base with `--no-parent`; workspace failure releases the claim; state `in_progress` with attempt 1; card) and `task launch` (`--reviewer` added to §9 by the person's choice; brief `/factory-implement <id> [--reviewer X]`; records agent, reviewer, model as passed, operation_id, terminal; an Orca refusal frees the attempt, a launch without answer is `launch_unconfirmed` and is not repeated — recover). Fixed: a released claim no longer leaves an unreadable state. ruff line length 120. 347 tests green. | T-18 and T-19 (both edit tasks.py: sequential). |

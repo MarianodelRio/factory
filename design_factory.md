@@ -189,7 +189,7 @@ tasks:
   "blocked_from": null,
   "workspace": {"orca_id": "repo-123::/home/me/orca/CHG-0012-01", "branch": "<assigned by Orca>"},
   "attempts": [
-    {"id": 1, "agent": "codex", "model": null, "operation_id": "...", "terminal": "term_...", "started_at": "...", "ended_at": null, "result": null}
+    {"id": 1, "agent": "codex", "reviewer": "claude", "model": null, "operation_id": "...", "terminal": "term_...", "started_at": "...", "ended_at": null, "result": null}
   ],
   "last_checkpoint": {"at": "...", "done": ["Model and tests"], "next": "Run full suite"},
   "acceptance": {
@@ -207,7 +207,7 @@ tasks:
 }
 ```
 
-`blocked_from` is the state the task had when it was blocked (`in_progress` or `in_review`); `unblock` and re-approval return it there. In each attempt, `model` is the `--model` the Factory passed, or `null` for the agent's default (Orca does not report the model used). `operation_id` and `terminal` are Orca's `operationId` and agent handle from the launch; `terminal` is what the liveness check queries (§7.2).
+`blocked_from` is the state the task had when it was blocked (`in_progress` or `in_review`); `unblock` and re-approval return it there. In each attempt, `reviewer` is the agent chosen for the conformance review (`--reviewer`), and `model` is the `--model` the Factory passed, or `null` for the agent's default (Orca does not report the model used). `operation_id` and `terminal` are Orca's `operationId` and agent handle from the launch; `terminal` is what the liveness check queries (§7.2).
 
 **State writing**:
 - Only the CLI writes to `.factory/state/`. Each write takes a short lock on that task's file, reads, modifies and writes atomically (temp file + rename). This way the lead agent, the reviewer and the person (notes, pauses) can write without overwriting each other.
@@ -392,7 +392,7 @@ It is invoked like this: `/factory-implement CHG-0012-01 con codex, revisa claud
 **From the main checkout** (the usual case):
 1. It checks that the change is approved, that the approval commit is on the base branch and that **all dependencies are `done` and integrated into the base branch**. If any is not, the task stays `pending` and the skill explains why.
 2. `factory task claim CHG-0012-01`: claims the task and Orca creates a **new workspace with its branch** from the base branch (`orca worktree create`), which appears in the sidebar. If creation fails, the claim is undone.
-3. `factory task launch CHG-0012-01 --agent codex`: Orca opens the lead agent in that workspace (`orca agent launch`) with a brief that is literally `/factory-implement CHG-0012-01` and the chosen review agent.
+3. `factory task launch CHG-0012-01 --agent codex --reviewer claude`: Orca opens the lead agent in that workspace (`orca agent launch`) with a brief that is literally `/factory-implement CHG-0012-01 --reviewer claude` (without `--reviewer` when the task has no conformance review).
 4. The main session does not move: it reports "CHG-0012-01 launched; open it from the sidebar" and is free.
 
 **Inside the task's workspace** (the skill detects it with Git): the session acts directly as the lead agent and does not launch another.
@@ -693,7 +693,7 @@ factory design reject <CHG> --reason "..."
 
 factory task list | show <id>
 factory task claim <id>                          # claim + workspace in Orca
-factory task launch <id> --agent <claude|codex> [--model ...] [--effort ...]
+factory task launch <id> --agent <claude|codex> [--reviewer <claude|codex>] [--model ...] [--effort ...]
 factory task checkpoint <id> --done "..." --next "..."
 factory task note <id> --text "..." [--pause]
 factory task block <id> --reason "..." | unblock <id>
