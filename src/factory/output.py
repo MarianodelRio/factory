@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import re
+from pathlib import PurePath
 from typing import Any
 
 EXIT_OK = 0
@@ -80,3 +82,29 @@ def _scalar(value: Any) -> str:
     if isinstance(value, dict | list):
         return "none"
     return str(value)
+
+
+# Common secret shapes (design §10.1, A-26). Values stop at quotes, commas and backslashes so that
+# masking JSON text keeps it valid.
+SECRET_PATTERNS = [
+    re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----", re.DOTALL),
+    re.compile(r"\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{20,}"),
+    re.compile(r"\bgithub_pat_[A-Za-z0-9_]{20,}"),
+    re.compile(r"\bsk-[A-Za-z0-9_-]{20,}"),
+    re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
+    re.compile(r"\bxox[abprs]-[A-Za-z0-9-]{10,}"),
+]
+SECRET_ASSIGNMENT = re.compile(r"(?i)\b(password|passwd|secret|token|api[_-]?key)(\s*[=:]\s*)[^\s\"',\\]+")
+SECRET_FILES = (".env", "*.pem", "*.key", "*.p12", "*.pfx", "id_rsa", "id_ecdsa", "id_ed25519", ".env.*")
+MASK = "[redacted]"
+
+
+def mask_secrets(text: str) -> str:
+    for pattern in SECRET_PATTERNS:
+        text = pattern.sub(MASK, text)
+    return SECRET_ASSIGNMENT.sub(lambda m: f"{m.group(1)}{m.group(2)}{MASK}", text)
+
+
+def is_secret_file(path: str) -> bool:
+    name = PurePath(path).name
+    return any(PurePath(name).match(pattern) for pattern in SECRET_FILES)

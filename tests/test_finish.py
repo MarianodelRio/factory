@@ -9,7 +9,10 @@ from test_verify import DESIGN, configure
 from factory.cli import main
 from factory.state import TaskStore
 
-QUALITY = {"type": "quality", "verdict": "pass", "findings": []}
+
+def quality():
+    from test_review import workspace_head
+    return {"type": "quality", "commit": workspace_head(), "verdict": "pass", "findings": []}
 
 
 @pytest.fixture
@@ -30,7 +33,7 @@ def ready_to_finish(repo, fake_orca, monkeypatch, capsys, tmp_path):
     (tmp_path / "shot.txt").write_text("calendar shows 4 occurrences")
     assert main(["task", "verify", TASK, "--manual", "AC-02", "--evidence", str(tmp_path / "shot.txt")]) == 0
     assert main(["task", "submit", TASK]) == 0
-    (tmp_path / "q.json").write_text(json.dumps(QUALITY))
+    (tmp_path / "q.json").write_text(json.dumps(quality()))
     assert main(["task", "review", TASK, "--record", str(tmp_path / "q.json")]) == 0
     capsys.readouterr()
     return {"repo": repo, "store": store, "workspace": workspace}
@@ -136,7 +139,7 @@ def test_scope_warning_is_stored_but_does_not_block(ready_to_finish, capsys):
     store = ready_to_finish["store"]
     assert main(["task", "verify", TASK]) == 0
     capsys.readouterr()
-    (workspace.parent / "q2.json").write_text(json.dumps(QUALITY))
+    (workspace.parent / "q2.json").write_text(json.dumps(quality()))
     assert main(["task", "review", TASK, "--record", str(workspace.parent / "q2.json")]) == 0
     capsys.readouterr()
     code, out = finish(capsys)
@@ -161,7 +164,7 @@ def test_finish_records_the_branch_commits(ready_to_finish, capsys):
 def test_gate_checks_on_an_older_code_commit(ready_to_finish, capsys, tmp_path):
     repo, workspace = ready_to_finish["repo"], ready_to_finish["workspace"]
     repo.commit("src/bookings/model.py", "RULE = 'daily'\n", "Change after verify", cwd=workspace)
-    (tmp_path / "q3.json").write_text(json.dumps(QUALITY))
+    (tmp_path / "q3.json").write_text(json.dumps(quality()))
     assert main(["task", "review", TASK, "--record", str(tmp_path / "q3.json")]) == 0
     capsys.readouterr()
     assert any("checks passed on an older commit" in d for d in failing_gates(capsys))

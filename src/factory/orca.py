@@ -21,7 +21,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from factory.output import EXIT_UNAVAILABLE, EXIT_USAGE, FactoryError
+from factory.output import EXIT_UNAVAILABLE, EXIT_USAGE, FactoryError, mask_secrets
 
 TIMEOUT = 120
 
@@ -258,7 +258,7 @@ def update_card(workspace_id: str, task_id: str, title: str, state: str, detail:
     if state not in CARDS:
         return [f"no Orca card defined for state '{state}'"]
     status, fixed, unread = CARDS[state]
-    comment = fixed or detail or ""
+    comment = mask_secrets(fixed or detail or "")
     selector = ["worktree", "set", "--worktree", f"id:{workspace_id}"]
     full = [*selector, "--display-name", f"{task_id} {title}", "--workspace-status", status,
             "--comment", comment, *(["--unread"] if unread else [])]

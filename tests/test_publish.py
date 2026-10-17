@@ -112,3 +112,11 @@ def test_gh_not_usable(done, fake_gh, capsys):
 def test_publish_requires_done(ready_to_finish, fake_gh, capsys):  # noqa: F811
     code, out = publish(capsys)
     assert (code, out["error"]["code"]) == (3, "invalid_transition")
+
+
+def test_pr_body_is_masked(done, fake_gh, capsys):
+    store = done["store"]
+    secret = "ghp_" + "q" * 36
+    store.update_task(TASK, lambda s: {**s, "memory": f"rotated {secret}"}, "x")
+    publish(capsys)
+    assert secret not in fake_gh.prs()[0]["body"]

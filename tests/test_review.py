@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import pytest
 from test_claim_launch import TASK, orca_calls
@@ -28,10 +29,22 @@ def cli(capsys, *argv):
     return code, json.loads(capsys.readouterr().out)
 
 
-def review_file(tmp_path, kind="quality", findings=(), name="r.json"):
+def review_file(tmp_path, kind="quality", findings=(), name="r.json", commit=None):
     path = tmp_path / name
-    path.write_text(json.dumps({"type": kind, "verdict": "pass", "findings": list(findings)}))
+    report = {"type": kind, "commit": commit or workspace_head(), "verdict": "pass", "findings": list(findings)}
+    path.write_text(json.dumps(report))
     return str(path)
+
+
+def workspace_head():
+    """HEAD of the task's workspace, as a reviewer reports it (`git rev-parse HEAD`)."""
+    from pathlib import Path
+
+    from conftest import git
+
+    from factory.state import TaskStore
+    record = TaskStore(Path.cwd() / ".factory" / "state").read_task("CHG-0012-01")
+    return git("rev-parse", "HEAD", cwd=record["workspace"]["orca_id"].split("::", 1)[1])
 
 
 MAJOR = {"severity": "major", "file": "src/x.py", "line": 4, "problem": "no error handling", "fix": "raise"}
@@ -147,6 +160,8 @@ def test_max_rounds_from_config(working, store, tmp_path, capsys):
 @pytest.mark.parametrize("content", [
     "not json",
     json.dumps({"verdict": "pass", "findings": []}),
+    json.dumps({"type": "quality", "verdict": "pass", "findings": []}),
+    json.dumps({"type": "quality", "commit": "not-a-sha", "verdict": "pass", "findings": []}),
     json.dumps({"type": "style", "verdict": "pass", "findings": []}),
     json.dumps({"type": "quality", "verdict": "pass", "findings": [{"severity": "huge", "problem": "x"}]}),
     json.dumps({"type": "quality", "verdict": "pass", "findings": [{"severity": "minor"}]}),
@@ -166,3 +181,18 @@ def test_card_in_review_lists_pending_reviews(working, fake_orca, tmp_path, caps
     cli(capsys, "task", "review", TASK, "--record", review_file(tmp_path))
     card = orca_calls(fake_orca, "worktree set")[-1]
     assert card[card.index("--comment") + 1] == "reviews passed: finish"
+
+
+def test_review_commit_must_be_on_the_branch(working, tmp_path, capsys):
+    cli(capsys, "task", "submit", TASK)
+    code, out = cli(capsys, "task", "review", TASK, "--record", review_file(tmp_path, commit="0" * 40))
+    assert (code, out["error"]["code"]) == (3, "review_invalid")
+
+
+def test_review_stores_the_reviewed_commit_not_head(working, store, tmp_path, capsys):
+    cli(capsys, "task", "submit", TASK)
+    reviewed = workspace_head()
+    workspace = Path(store.read_task(TASK)["workspace"]["orca_id"].split("::", 1)[1])
+    working.commit("src/later.py", "x = 1\n", "after the review", cwd=workspace)
+    cli(capsys, "task", "review", TASK, "--record", review_file(tmp_path, commit=reviewed))
+    assert store.read_task(TASK)["reviews"][0]["commit"] == reviewed

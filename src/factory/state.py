@@ -1,5 +1,6 @@
 """Task state files in `.factory/state/` (design §1.4): the only code that writes them.
 
+Everything written goes through `mask_secrets` (design §10.1).
 Per task: `<task>.json` (current state, replaced atomically), `<task>.events.jsonl` (append-only
 history; each event carries the resulting state, so a corrupted JSON is rebuilt from the last
 readable event) and `<task>.lock` (the claim). Writers serialize on an `flock` of the events
@@ -23,7 +24,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from factory.output import EXIT_CONFLICT, EXIT_ERROR, EXIT_PRECONDITION, FactoryError
+from factory.output import EXIT_CONFLICT, EXIT_ERROR, EXIT_PRECONDITION, FactoryError, mask_secrets
 
 State = dict[str, Any]
 
@@ -86,7 +87,7 @@ class TaskStore:
         with self._locked(task_id) as log:
             current = self._load(task_id)
             updated = fn(copy.deepcopy(current))
-            log.write(json.dumps({"at": now(), "event": event, "state": updated}) + "\n")
+            log.write(mask_secrets(json.dumps({"at": now(), "event": event, "state": updated})) + "\n")
             log.flush()
             os.fsync(log.fileno())
             self._write_json(task_id, updated)
@@ -145,7 +146,7 @@ class TaskStore:
             return self.rebuild_from_events(task_id)
 
     def _write_json(self, task_id: str, state: State) -> None:
-        self._atomic_write(self._json(task_id), json.dumps(state, indent=2, ensure_ascii=False) + "\n")
+        self._atomic_write(self._json(task_id), mask_secrets(json.dumps(state, indent=2, ensure_ascii=False)) + "\n")
 
     def _atomic_write(self, path: Path, text: str) -> None:
         tmp = self._temp_file(text)

@@ -31,4 +31,4 @@ def test_role_matches_the_design(name, title):
 def test_reviewers_carry_the_json_contract(name):
     text = resources.files("factory").joinpath(f"templates/roles/{name}.md").read_text()
     kind = name.removesuffix("_reviewer")
-    assert f'{{"type": "{kind}", "verdict": "pass", "findings": [{{"severity": "major"' in text
+    assert f'{{"type": "{kind}", "commit": "<sha>", "verdict": "pass", "findings": [{{"severity": "major"' in text

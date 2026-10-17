@@ -11,7 +11,8 @@ Raises FactoryError with these codes:
 - launch_unconfirmed (EXIT_UNAVAILABLE): Orca did not answer a launch; an agent may have started.
 - task_not_started (EXIT_PRECONDITION): the task has no state yet (it was never claimed).
 - approval_not_valid (EXIT_PRECONDITION): unblock while the change's approval is not valid.
-- evidence_not_found / ac_not_in_task / ac_not_manual (EXIT_PRECONDITION): bad `verify --manual`.
+- evidence_not_found / ac_not_in_task / ac_not_manual / secret_file_refused (EXIT_PRECONDITION): bad
+  `verify --manual`.
 - review_invalid (EXIT_PRECONDITION): the reviewer JSON does not follow design §5.3.
 - review_agent_missing (EXIT_USAGE): a conformance review without `--agent` or a recorded reviewer.
 - gates_not_met (EXIT_PRECONDITION): `finish` with closing criteria unmet; `details` lists them.
@@ -26,6 +27,7 @@ import copy
 import datetime
 import fnmatch
 import json
+import re
 import shlex
 import shutil
 import subprocess
@@ -37,7 +39,15 @@ from typing import Any, NoReturn
 import yaml
 
 from factory import config, design, git, orca
-from factory.output import EXIT_CONFLICT, EXIT_PRECONDITION, EXIT_UNAVAILABLE, EXIT_USAGE, FactoryError
+from factory.output import (
+    EXIT_CONFLICT,
+    EXIT_PRECONDITION,
+    EXIT_UNAVAILABLE,
+    EXIT_USAGE,
+    FactoryError,
+    is_secret_file,
+    mask_secrets,
+)
 from factory.state import State, TaskStore, now
 
 # Reasons for `blocked` that the CLI sets itself; any other text comes from `task block --reason`.
@@ -494,8 +504,10 @@ def _run_evidence(command: str, cwd: Path, output: Path, ctx: Context) -> tuple[
         output.write_text(f"command: {command}\nnot run: {exc}\n", encoding="utf-8")
         return "not_run", str(output.relative_to(ctx.store.root))
     output.write_text(
-        f"command: {command}\nexit code: {done.returncode}\n\n"
-        f"--- stdout ---\n{done.stdout}\n--- stderr ---\n{done.stderr}",
+        mask_secrets(
+            f"command: {command}\nexit code: {done.returncode}\n\n"
+            f"--- stdout ---\n{done.stdout}\n--- stderr ---\n{done.stderr}"
+        ),
         encoding="utf-8",
     )
     return ("passed" if done.returncode == 0 else "failed"), str(output.relative_to(ctx.store.root))
@@ -513,6 +525,9 @@ def verify_manual(task_id: str, ac: str, evidence: Path, ctx: Context) -> tuple[
         raise FactoryError("ac_not_manual", message, EXIT_PRECONDITION)
     if not evidence.is_file():
         raise FactoryError("evidence_not_found", f"{evidence} does not exist", EXIT_PRECONDITION)
+    if is_secret_file(str(evidence)):
+        message = f"{evidence.name} looks like a secret (key or .env file) and cannot be evidence"
+        raise FactoryError("secret_file_refused", message, EXIT_PRECONDITION)
     target = ctx.store.root / "evidence" / task_id / f"{ac}{evidence.suffix}"
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(evidence, target)
@@ -607,7 +622,11 @@ def record_review(task_id: str, path: Path, agent: str | None, ctx: Context) -> 
     reviewer = agent or (record["attempts"][-1].get("reviewer") if kind == "conformance" else None)
     reviewer = reviewer or f"{record['attempts'][-1].get('agent') or 'lead'}-subagent"
     verdict = "fail" if any(f["severity"] in ("blocker", "major") for f in report["findings"]) else "pass"
-    commit = git.run(["rev-parse", "HEAD"], workspace_path(record))
+    cwd = workspace_path(record)
+    if not git.ref_exists(report["commit"], cwd) or not git.is_ancestor(report["commit"], "HEAD", cwd):
+        message = f"the reviewed commit {report['commit']} is not on the branch of {task_id}"
+        raise FactoryError("review_invalid", message, EXIT_PRECONDITION)
+    commit = git.run(["rev-parse", report["commit"]], cwd)
     max_rounds = int(_config(ctx)["review"]["max_rounds"])
 
     def apply(state: State) -> State:
@@ -637,6 +656,8 @@ def _review_report(path: Path) -> dict[str, Any]:
         report = {}
     if report.get("type") not in REVIEW_TYPES:
         problems.append(f"type must be one of {', '.join(REVIEW_TYPES)}")
+    if not isinstance(report.get("commit"), str) or not re.fullmatch(r"[0-9a-f]{7,40}", report["commit"]):
+        problems.append("commit must be the reviewed commit (git rev-parse HEAD)")
     findings = report.get("findings")
     if not isinstance(findings, list):
         problems.append("findings must be a list")
@@ -651,7 +672,7 @@ def _review_report(path: Path) -> dict[str, Any]:
             problems.append(f"finding {number}: problem is required")
     if problems:
         raise FactoryError("review_invalid", f"{path} is not a valid review", EXIT_PRECONDITION, problems)
-    return {"type": report["type"], "findings": findings}
+    return {"type": report["type"], "commit": report["commit"], "findings": findings}
 
 
 def finish(task_id: str, memory: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
@@ -746,7 +767,7 @@ def publish(task_id: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
     try:
         git.gh_version(ctx.main_checkout)
         pull_request = git.pr_for_branch(branch, ctx.main_checkout) or git.pr_create(
-            base, branch, f"{task_id}: {task['title']}", pr_body(task, record), ctx.main_checkout
+            base, branch, f"{task_id}: {task['title']}", mask_secrets(pr_body(task, record)), ctx.main_checkout
         )
     except FactoryError as exc:
         if exc.code not in ("gh_unavailable", "gh_failed"):
