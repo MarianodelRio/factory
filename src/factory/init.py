@@ -112,7 +112,10 @@ def _node_checks(root: Path) -> dict[str, str]:
     path = root / "package.json"
     if not path.exists():
         return {}
-    scripts = json.loads(path.read_text(encoding="utf-8")).get("scripts", {})
+    try:
+        scripts = json.loads(path.read_text(encoding="utf-8")).get("scripts", {})
+    except (json.JSONDecodeError, AttributeError):
+        return {}
     runner = "pnpm" if (root / "pnpm-lock.yaml").exists() else "yarn" if (root / "yarn.lock").exists() else "npm"
     return {kind: f"{runner} run {kind}" for kind in CHECK_KINDS if kind in scripts}
 
@@ -121,8 +124,10 @@ def _python_checks(root: Path) -> dict[str, str]:
     path = root / "pyproject.toml"
     if not path.exists():
         return {}
-    data = tomllib.loads(path.read_text(encoding="utf-8"))
-    tools = data.get("tool", {})
+    try:
+        tools = tomllib.loads(path.read_text(encoding="utf-8")).get("tool", {})
+    except tomllib.TOMLDecodeError:
+        return {}
     found = {}
     if "pytest" in tools:
         found["test"] = "pytest"
@@ -179,7 +184,11 @@ GITIGNORE_LINE = ".factory/state/"
 SMALL_REPO_FILES = 30
 DOCS_SMALL = ("conventions.md",)
 DOCS_NORMAL = ("product.md", "architecture.md", "conventions.md", "working-agreements.md", "decisions/README.md")
-DELETABLE_SUFFIXES = (".md", ".mdc", ".txt", ".rst")
+DELETABLE_SUFFIXES = (".md", ".mdc", ".rst")
+# Never deleted or modified by init (design §3.2): approved designs, decisions, working agreements.
+PROTECTED = (".factory/", "docs/decisions/", "docs/working-agreements.md")
+# The [templates] header (maybe with a comment) and its `"path" = "hash"` lines.
+TEMPLATES_SECTION = re.compile(r'^[ \t]*\[templates\][^\n]*\n(?:[ \t]*(?:"[^"\n]*"[ \t]*=[^\n]*)?\n?)*', re.MULTILINE)
 MARK = re.compile(r"<!-- factory-template: ([\w./-]+)@(\d+) -->")
 
 
@@ -235,6 +244,9 @@ class Plan:
         self.warnings: list[str] = []
         self.writes: dict[str, str] = {}
         self.tracked: dict[str, str] = {}  # skill files whose installed hash goes to [templates]
+        self.recorded: dict[str, str] = {}  # hashes already in [templates]
+        self.report: dict[str, Any] = {}
+        self.deleted_content: dict[str, str] = {}
 
     def write(self, root: Path, path: str, new: str, reason: str) -> None:
         old = _read(root, path)
@@ -249,7 +261,7 @@ class Plan:
     def data(self) -> dict[str, Any]:
         body = {"create": self.create, "modify": self.modify, "delete": self.delete, "respect": self.respect,
                 "customized": self.customized, "orca": self.orca, "warnings": self.warnings}
-        fingerprint = json.dumps([body, self.writes, self.tracked], sort_keys=True)
+        fingerprint = json.dumps([body, self.writes, self.tracked, self.deleted_content], sort_keys=True)
         return {"plan_id": hashlib.sha256(fingerprint.encode("utf-8")).hexdigest()[:12], **body}
 
 
@@ -259,7 +271,11 @@ def build_plan(root: Path, main_checkout: Path, deletes: list[tuple[str, str]]) 
     configured = config.load_config(root / ".factory" / "config.toml") if (root / ".factory").is_dir() else None
     recorded: dict[str, str] = dict((configured or {}).get("templates", {}))
     plan = Plan()
-    plan.warnings = report["warnings"]
+    plan.report, plan.recorded = report, recorded
+    plan.warnings = report["warnings"] + [
+        "Codex gets no approval 'ask' rule yet (its mechanism is not verified): approving from Codex rests on "
+        "the skills' rules"
+    ]
 
     for rel, content in _skill_files().items():
         for base in SKILL_BASES:
@@ -331,32 +347,60 @@ def _deletions(root: Path, plan: Plan, deletes: list[tuple[str, str]]) -> None:
             if not file.read_text(encoding="utf-8").strip():
                 proposed[str(file.relative_to(root))] = "empty document"
     for path, reason in deletes:
-        _check_deletable(root, path)
+        path = _check_deletable(root, path)
         proposed[path] = reason
     plan.delete = [{"path": p, "reason": r} for p, r in sorted(proposed.items())]
+    plan.deleted_content = {p: _sha((root / p).read_text(encoding="utf-8", errors="replace")) for p in proposed}
 
 
-def _check_deletable(root: Path, path: str) -> None:
-    """Only documentation and instruction files may be deleted; never code, tests, CI or secrets."""
+def safe_path(root: Path, path: str) -> str:
+    """`path` as a clean repo-relative path; refused if it leaves the repository or goes through a
+    symbolic link."""
+    relative = Path(path)
+    if relative.is_absolute() or ".." in relative.parts or not relative.parts:
+        raise FactoryError("unsafe_path", f"{path} is not a path inside the repository", EXIT_PRECONDITION)
+    current = root
+    for part in relative.parts:
+        current = current / part
+        if current.is_symlink():
+            raise FactoryError("unsafe_path", f"{path} goes through a symbolic link", EXIT_PRECONDITION)
+    return relative.as_posix()
+
+
+def _check_deletable(root: Path, path: str) -> str:
+    """Only documentation and instruction files may be deleted; never code, tests, CI, secrets,
+    approved designs, decisions or working agreements."""
+    try:
+        path = safe_path(root, path)
+    except FactoryError as exc:
+        raise FactoryError("delete_not_allowed", exc.message, EXIT_PRECONDITION) from exc
     file = root / path
     parts = Path(path).parts
     allowed = (
         file.is_file()
         and not is_secret_file(path)
         and not ({"tests", "test"} & set(parts))
-        and not path.startswith((".github/workflows/", ".gitlab-ci", ".circleci/"))
+        and not path.startswith((".github/workflows/", ".gitlab-ci", ".circleci/", *PROTECTED))
         and (file.suffix in DELETABLE_SUFFIXES or path in OTHER_INSTRUCTIONS)
     )
     if not allowed:
-        message = f"{path} cannot be deleted by /factory-init (missing, code, tests, CI or a secret)"
+        message = f"{path} cannot be deleted by /factory-init (missing, code, tests, CI, a secret or protected)"
         raise FactoryError("delete_not_allowed", message, EXIT_PRECONDITION)
+    return path
 
 
 def _settings(root: Path, plan: Plan) -> None:
     """`permissions.ask` for approve and reject in Claude Code, merged into existing settings."""
     current = _read(root, ".claude/settings.json")
-    settings = json.loads(current) if current else {}
-    ask = settings.setdefault("permissions", {}).setdefault("ask", [])
+    try:
+        settings = json.loads(current) if current else {}
+        ask = settings.setdefault("permissions", {}).setdefault("ask", [])
+        if not isinstance(ask, list):
+            raise TypeError("permissions.ask is not a list")
+    except (json.JSONDecodeError, AttributeError, TypeError) as exc:
+        plan.warnings.append(f".claude/settings.json could not be merged ({exc}): add the 'ask' rules by hand")
+        plan.respect.append({"path": ".claude/settings.json", "reason": "not valid settings JSON"})
+        return
     ask.extend(rule for rule in ASK_RULES if rule not in ask)
     plan.write(root, ".claude/settings.json", json.dumps(settings, indent=2) + "\n", "always ask before approve/reject")
 
@@ -377,7 +421,7 @@ def _config_text(root: Path, report: dict[str, Any], tracked: dict[str, str]) ->
             "[language]", f"artifacts = {json.dumps(d['language']['artifacts'])}", "",
         ]
         current = "\n".join(lines)
-    body = re.sub(r"^\[templates\]\n(?:(?!\[).*\n?)*", "", current, flags=re.MULTILINE).rstrip("\n")
+    body = TEMPLATES_SECTION.sub("", current.replace("\r\n", "\n")).rstrip("\n")
     table = "\n".join(f"{json.dumps(path)} = {json.dumps(sha)}" for path, sha in sorted(tracked.items()))
     return f"{body}\n\n[templates]\n{table}\n"
 
@@ -424,9 +468,19 @@ def apply_init(
     def excluded(path: str) -> bool:
         return any(path == ex.rstrip("/") or path.startswith(ex.rstrip("/") + "/") for ex in excludes)
 
-    created = [i["path"] for i in plan.create if not excluded(i["path"])]
-    modified = [i["path"] for i in plan.modify if not excluded(i["path"])]
-    deleted = [i["path"] for i in plan.delete if not excluded(i["path"])]
+    # The [templates] table keeps the old hash of an excluded skill file, so it is not seen as customized later.
+    tracked = {p: h for p, h in plan.tracked.items() if not excluded(p)}
+    tracked |= {p: plan.recorded[p] for p in plan.tracked if excluded(p) and p in plan.recorded}
+    config_path = ".factory/config.toml"
+    config_text = _config_text(root, plan.report, tracked)
+    if not excluded(config_path):
+        plan.create = [i for i in plan.create if i["path"] != config_path]
+        plan.modify = [i for i in plan.modify if i["path"] != config_path]
+        plan.write(root, config_path, config_text, "record template hashes")
+
+    created = [safe_path(root, i["path"]) for i in plan.create if not excluded(i["path"])]
+    modified = [safe_path(root, i["path"]) for i in plan.modify if not excluded(i["path"])]
+    deleted = [safe_path(root, i["path"]) for i in plan.delete if not excluded(i["path"])]
     backup = _backup_dir(state_dir)
     for path in modified + deleted:
         target = backup / "files" / path
@@ -435,13 +489,9 @@ def apply_init(
     (backup / "manifest.json").write_text(json.dumps({"created": created, "modified": modified,
                                                       "deleted": deleted}, indent=2) + "\n")
 
-    tracked = {p: h for p, h in plan.tracked.items() if not excluded(p) or (root / p).exists()}
-    plan.writes[".factory/config.toml"] = _config_text(root, doctor(root, main_checkout), tracked)
     for path in created + modified:
         (root / path).parent.mkdir(parents=True, exist_ok=True)
         (root / path).write_text(plan.writes[path], encoding="utf-8")
-    if ".factory/config.toml" not in created + modified and not excluded(".factory/config.toml"):
-        (root / ".factory/config.toml").write_text(plan.writes[".factory/config.toml"], encoding="utf-8")
     for path in deleted:
         (root / path).unlink()
 

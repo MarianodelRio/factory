@@ -46,7 +46,7 @@ def test_references_exist(name):
         texts += [f.read_text() for f in refs.iterdir() if f.name.endswith(".md")]
     for text in texts:
         for ref in re.findall(r"`((?:references/)?(?:roles/)?[\w-]+\.md)`", text):
-            if ref in ("AGENTS.md", "SKILL.md") or ref.startswith(("docs/",)):
+            if ref in ("AGENTS.md", "SKILL.md", "CLAUDE.md", "GEMINI.md") or ref.startswith(("docs/",)):
                 continue
             path = ref if ref.startswith("references/") else f"references/{ref}"
             if path in INSTALLED:

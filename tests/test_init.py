@@ -212,3 +212,63 @@ def test_orca_actions_when_the_repo_is_new(project, fake_orca, capsys):
     assert calls[1][:5] == ["repo", "set-base-ref", "--repo", f"path:{project.root}", "--ref"]
     assert calls[1][5] == "origin/main"
     assert calls[2][:4] == ["skills", "install", "--skill", "orca-cli"]
+
+
+@pytest.mark.parametrize("path", ["../victim.md", "/etc/hostname", "docs/../../x.md",
+                                  ".factory/changes/CHG-0001/design.md", "docs/decisions/0001-a.md",
+                                  "docs/working-agreements.md", "requirements.txt"])
+def test_unsafe_or_protected_deletions_are_refused(project, capsys, path):
+    (project.root.parent / "victim.md").write_text("keep me\n")
+    for rel in (".factory/changes/CHG-0001/design.md", "docs/decisions/0001-a.md", "docs/working-agreements.md",
+                "requirements.txt"):
+        (project.root / rel).parent.mkdir(parents=True, exist_ok=True)
+        (project.root / rel).write_text("x\n")
+    code, out = cli(capsys, "init", "--plan", "--delete", path, "--reason", "x")
+    assert (code, out["error"]["code"]) == (3, "delete_not_allowed")
+    assert (project.root.parent / "victim.md").exists()
+
+
+def test_symlinked_skills_folder_is_refused(project, capsys, tmp_path):
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (project.root / ".claude").mkdir()
+    (project.root / ".claude/skills").symlink_to(outside)
+    data = plan(capsys)
+    code, out = cli(capsys, "init", "--apply", data["plan_id"])
+    assert (code, out["error"]["code"]) == (3, "unsafe_path")
+    assert list(outside.iterdir()) == []
+
+
+def test_deleted_file_changed_after_the_plan_is_refused(project, capsys):
+    (project.root / "GEMINI.md").write_text("Use tabs.\n")
+    data = plan(capsys, "--delete", "GEMINI.md", "--reason", "dup")
+    (project.root / "GEMINI.md").write_text("Use tabs. And something important.\n")
+    code, out = cli(capsys, "init", "--apply", data["plan_id"], "--delete", "GEMINI.md", "--reason", "dup")
+    assert (code, out["error"]["code"]) == (3, "plan_changed")
+
+
+def test_templates_section_with_a_comment_is_replaced(project, capsys):
+    apply(capsys, plan(capsys)["plan_id"])
+    path = project.root / ".factory/config.toml"
+    path.write_text(path.read_text().replace("[templates]", "[templates]  # managed by factory init"))
+    apply(capsys, plan(capsys)["plan_id"])
+    assert path.read_text().count("[templates]") == 1
+    tomllib.loads(path.read_text())
+
+
+def test_excluding_a_skill_keeps_backups_and_tracking_right(project, capsys):
+    apply(capsys, plan(capsys)["plan_id"])
+    cfg = project.root / ".factory/config.toml"
+    data = plan(capsys)
+    result = apply(capsys, data["plan_id"], "--exclude", ".agents/skills")
+    assert ".factory/config.toml" not in result["modified"]  # nothing changed, so nothing rewritten
+    assert plan(capsys)["customized"] == []
+    assert tomllib.loads(cfg.read_text())["templates"]
+
+
+def test_malformed_settings_are_respected_with_a_warning(project, capsys):
+    (project.root / ".claude").mkdir()
+    (project.root / ".claude/settings.json").write_text("{not json")
+    data = plan(capsys)
+    assert ".claude/settings.json" in paths(data["respect"])
+    assert any("settings.json" in w for w in data["warnings"])

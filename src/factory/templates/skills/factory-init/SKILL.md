@@ -22,13 +22,17 @@ first: `orca skills get orca-cli`.
 3. **Plan**: `factory init --plan --json`. Present the four lists and the Orca actions:
    - **Create**, **Modify** (with the diff), **Delete** (each with its reason), **Respect**;
    - Orca: register the repo, set its base branch, install or update the Orca skills (global).
-   Deletions are limited to Factory leftovers, duplicated or contradictory instructions, unused
-   tool files and empty or outdated docs; never code, tests, CI, secrets or anything whose purpose
-   is unclear. If the person asked for only the analysis, stop here.
+   The CLI proposes only safe deletions (Factory leftovers, empty docs) and lists other instruction
+   files (`.cursorrules`, `GEMINI.md`, ...) under "respect: review". Read them: if one duplicates or
+   contradicts `AGENTS.md` (move what is worth keeping into `AGENTS.md` first) or belongs to a tool
+   no longer used, plan again adding `--delete <path> --reason "<why>"` for each. Never code, tests,
+   CI, secrets, decisions, working agreements or anything whose purpose is unclear (the CLI refuses
+   them). If the person asked for only the analysis, stop here.
 4. **Confirm once**: ask for one confirmation. The person may exclude items ("everything except
    deleting X", "todo menos borrar X").
-5. **Apply**: `factory init --apply <plan-id> --json`, adding `--exclude <path>` for each excluded
-   item. Every modified or deleted file is backed up under `.factory/state/backups/<timestamp>/`.
+5. **Apply**: `factory init --apply <plan-id> --json` with the plan's id, the same `--delete`/`--reason`
+   options as the plan, and `--exclude <path>` for each excluded file (or the action id, e.g.
+   `skills-update`, for an Orca action). If it answers `plan_changed`, plan again and confirm again. Every modified or deleted file is backed up under `.factory/state/backups/<timestamp>/`.
    Files customized since the last install are shown as a diff and never overwritten without
    asking.
 6. **Write the initial documentation** from evidence: read the real code, manifests and CI, and
