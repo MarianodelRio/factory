@@ -187,3 +187,23 @@ def test_interruption_and_recovery(initialized, fake_orca, capsys):
     assert [(a["id"], a["agent"], a["result"]) for a in record["attempts"]] == [(1, "claude", "interrupted"),
                                                                              (2, "codex", None)]
     assert (workspace / "half.py").exists()
+
+
+def test_next_step_after_done(initialized, capsys):
+    change = approved_change(initialized, capsys)
+    task = f"{change}-02"
+    ok(capsys, "task", "claim", task)
+    ok(capsys, "task", "launch", task, "--agent", "claude")
+    initialized.commit("src/export.py", "x = 1\n", "Export", cwd=workspace_of(initialized, task))
+    ok(capsys, "task", "verify", task)
+    ok(capsys, "task", "finish", task, "--memory", "none")
+
+    def next_step():
+        return next(t for t in ok(capsys, "status")["tasks"] if t["id"] == task)["next_step"]
+
+    assert next_step() == f"factory task publish {task}"
+    ok(capsys, "task", "publish", task)  # the fake gh opens PR #1
+    assert next_step().startswith("merge PR #1")
+    branch = json.loads((initialized.root / f".factory/state/{task}.json").read_text())["workspace"]["branch"]
+    git("merge", "-q", "--no-ff", "-m", "merge", branch, cwd=initialized.root)
+    assert next_step() == "nothing: merged into main"

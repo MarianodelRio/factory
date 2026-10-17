@@ -877,7 +877,7 @@ def status(ctx: Context) -> tuple[dict[str, Any], list[str]]:
             reviews=[{k: r[k] for k in ("type", "round", "verdict", "commit")} for r in reviews],
             pull_request=(record or {}).get("pull_request"),
             broken_link=broken,
-            next_step=_next_step(row, record, task, cfg),
+            next_step=_next_step(row, record, task, cfg, ctx),
         )
         rows.append(row)
         attention += _attention(row)
@@ -917,7 +917,9 @@ def _attention(row: dict[str, Any]) -> list[str]:
     return notes
 
 
-def _next_step(row: dict[str, Any], record: State | None, task: dict[str, Any], cfg: dict[str, Any]) -> str:
+def _next_step(
+    row: dict[str, Any], record: State | None, task: dict[str, Any], cfg: dict[str, Any], ctx: Context
+) -> str:
     state = row["state"]
     if state == "ready":
         return f"/factory-implement {task['id']}"
@@ -931,9 +933,22 @@ def _next_step(row: dict[str, Any], record: State | None, task: dict[str, Any], 
         return f"resolve '{row['reason']}', then factory task unblock {task['id']}"
     if state == "interrupted":
         return f"factory task recover {task['id']}"
-    if state == "done" and not (record or {}).get("pull_request"):
-        return f"factory task publish {task['id']}"
+    if state == "done" and record:
+        return _after_done(record, task, ctx)
     return "nothing"
+
+
+def _after_done(record: State, task: dict[str, Any], ctx: Context) -> str:
+    """Next step of a done task: publish it, then the person merges it (or its PR)."""
+    base = ctx.base()
+    branch = record["workspace"]["branch"]
+    if base and _merged(record, base, ctx.main_checkout):
+        return f"nothing: merged into {base}"
+    if record.get("pull_request"):
+        return f"merge PR #{record['pull_request']['number']} when ready (the person decides)"
+    if git.ref_exists(f"origin/{branch}", ctx.main_checkout):
+        return f"{branch} is pushed: open its PR or merge it into {base or 'the base branch'} (the person decides)"
+    return f"factory task publish {task['id']}"
 
 
 def recover(task_id: str, confirm: bool, ctx: Context) -> tuple[dict[str, Any], list[str]]:
