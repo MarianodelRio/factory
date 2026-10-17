@@ -868,6 +868,7 @@ def status(ctx: Context) -> tuple[dict[str, Any], list[str]]:
         reviews = (record or {}).get("reviews", [])
         row.update(
             agent=attempt.get("agent"),
+            reviewer=attempt.get("reviewer"),
             liveness=liveness,
             last_checkpoint=checkpoint,
             minutes_since_checkpoint=age,

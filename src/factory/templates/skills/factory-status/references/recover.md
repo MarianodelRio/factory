@@ -1,0 +1,22 @@
+# Recovering an interrupted task (design §7.2, §7.4)
+
+1. `factory task recover <task> --json` (no changes): task, workspace, branch, `git_status`,
+   commits, last checkpoint, `acceptance` (with evidence), `missing_acceptance`, `liveness`,
+   `broken_link` and a `proposal`.
+2. Compare the acceptance criteria with the evidence and summarize what is missing.
+3. Decide with the person:
+   - `liveness: alive` → only propose continuing in that session (open it from the Orca sidebar).
+   - `liveness: finished` or the task is `interrupted` → propose launching a new agent in the same
+     workspace.
+   - `liveness: unknown` → say that Orca cannot tell; the person decides whether the previous
+     session is gone.
+   - `broken_link: true` → the workspace was deleted outside the Factory: ask the person what to do.
+   - If more context is needed and Orca's session search is enabled, add excerpts with
+     `orca search "<task>" --json`.
+4. Only after the person confirms: `factory task recover <task> --confirm --json`. It closes the
+   previous attempt as interrupted, opens a new one and reassigns the claim. Uncommitted changes
+   stay as they are.
+5. Launch the lead for the new attempt: `factory task launch <task> --agent <agent> --reviewer <reviewer> --json`,
+   with the agents the person chooses (suggest the previous attempt's, from `factory task show`),
+   leaving out `--reviewer` when the task has no conformance review. It continues from the last
+   checkpoint.
