@@ -154,7 +154,7 @@ Goal: answer design §10.3 with evidence and record real outputs for the fakes. 
 
 ### M2 — State core
 
-- [ ] T-07 Task state storage
+- [x] T-07 Task state storage
   Depends: T-06 · Design: §1.4 (state writing)
   Files: `src/factory/state.py`, `tests/test_state.py`
   Do: `update_task(task_id, fn)` = flock on the task file → read → apply `fn` → write temp + rename → append event to `<task>.events.jsonl`. `read_task`. `rebuild_from_events`. Claim lock: `create_claim(task_id, attempt)` with exclusive create (fails with conflict if it exists), `release_claim`, `reassign_claim`. JSON shape of design §1.4.
@@ -340,7 +340,7 @@ Fill the "Test" column as tasks are completed. "Manual" criteria are checked in 
 | A-08 | T-12 | | |
 | A-09 | T-16 | | |
 | A-10 | T-17, T-26 | | ✔ |
-| A-11 | T-07, T-17 | | |
+| A-11 | T-07, T-17 | `test_state.py::test_concurrent_claims_exactly_one_wins` | |
 | A-12 | T-20 | | |
 | A-13 | T-20 | | |
 | A-14 | T-21 | | |
@@ -389,3 +389,4 @@ One line per completed task or session: date, task, what was done, what comes ne
 | 2026-10-17 | T-05 | `config.load_config(path)`: §8 defaults deep-merged per section, `config_invalid` (exit 3) for bad TOML, schema_version, choices, max_rounds, checks; unknown keys kept. (Subagent, reviewed.) The name of the template-hash section is left to T-28. | T-06. |
 | 2026-10-17 | T-06 | `paths.py` (repo_root, main_checkout, state_dir, changes_dir; same state_dir from main and worktrees) on a minimal `git.py` (`run`, `toplevel`, `worktree_paths`; git_unavailable / not_a_git_repo / git_failed). (Subagent, reviewed.) 92 tests green. M1 done. | M1 review, then T-07. |
 | 2026-10-17 | M1 review | No blockers. Fixed the harness: fakes always first on PATH and refuse to run without their fixture (the real orca/gh are never reached), fake orca creates worktrees in `$FAKE_ORCA_REPO` (not the cwd), answer sequences, per-terminal answers, `--retry-launch` echo; fake gh `--version` survives the fail switch. Left as minor: static `worktree list`, config without `schema_version` accepted as 1. 97 tests green. | T-07 state storage. |
+| 2026-10-17 | T-07 | `state.TaskStore`: flock on the append-only events file, atomic JSON replace, each event carries the resulting state (rebuild = last readable event), exclusive claim file with release/reassign; `empty_state` with the §1.4 fields. 109 tests green. | T-08 state machine. |
