@@ -11,6 +11,7 @@ Raises FactoryError with these codes:
 - launch_unconfirmed (EXIT_UNAVAILABLE): Orca did not answer a launch; an agent may have started.
 - task_not_started (EXIT_PRECONDITION): the task has no state yet (it was never claimed).
 - approval_not_valid (EXIT_PRECONDITION): unblock while the change's approval is not valid.
+- evidence_not_found / ac_not_in_task / ac_not_manual (EXIT_PRECONDITION): bad `verify --manual`.
 Plus the codes of factory.orca (Orca unavailable, not local, ...).
 """
 
@@ -18,6 +19,9 @@ from __future__ import annotations
 
 import copy
 import json
+import shlex
+import shutil
+import subprocess
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any, NoReturn
@@ -411,3 +415,88 @@ def unblock(task_id: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
         raise FactoryError("approval_not_valid", message, EXIT_PRECONDITION)
     record = ctx.store.update_task(task_id, lambda s: transition(s, "unblock"), "unblock")
     return {"task": task_id, "state": record["state"]}, _card(task, record)
+
+
+def workspace_path(record: State) -> Path:
+    return Path(str(record["workspace"]["orca_id"]).split("::", 1)[1])
+
+
+def verify(task_id: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
+    """Run the project checks and each AC command in the task's workspace (design §5.5). An AC is
+    `verified` only on exit code 0; a command that cannot run is `not_run`, never passed."""
+    task, record = _started(task_id, ctx)
+    if record["state"] not in ("in_progress", "in_review"):
+        _reject(record, "verify", f"it is {record['state']}")
+    cfg = config.load_config(ctx.main_checkout / ".factory" / "config.toml")
+    cwd = workspace_path(record)
+    evidence_dir = ctx.store.root / "evidence" / task_id
+    evidence_dir.mkdir(parents=True, exist_ok=True)
+
+    results: dict[str, str] = {}
+    check_evidence: dict[str, str] = {}
+    for name, command in cfg["checks"].items():
+        results[name], check_evidence[name] = _run_evidence(command, cwd, evidence_dir / f"check-{name}.txt", ctx)
+    if not results or "not_run" in results.values():
+        checks_status = "not_run"
+    else:
+        checks_status = "failed" if "failed" in results.values() else "passed"
+
+    acceptance: dict[str, dict[str, Any]] = {}
+    for ac, how in task["acceptance"].items():
+        if how == "manual":
+            continue
+        outcome, evidence = _run_evidence(how, cwd, evidence_dir / f"{ac}.txt", ctx)
+        acceptance[ac] = {"status": "verified" if outcome == "passed" else outcome, "evidence": evidence}
+    commit = git.run(["rev-parse", "HEAD"], cwd)
+
+    def apply(state: State) -> State:
+        state["checks"] = {"status": checks_status, "at": now(), "commit": commit, "results": results,
+                           "evidence": check_evidence}
+        for ac in task["acceptance"]:
+            state["acceptance"].setdefault(ac, {"status": "pending", "evidence": None})
+        state["acceptance"].update(acceptance)
+        return state
+
+    updated = ctx.store.update_task(task_id, apply, "verify")
+    return {"task": task_id, "checks": updated["checks"], "acceptance": updated["acceptance"]}, []
+
+
+def _run_evidence(command: str, cwd: Path, output: Path, ctx: Context) -> tuple[str, str]:
+    """Run one check or AC command (an argument list, never a shell) and save its evidence.
+    Returns (`passed` | `failed` | `not_run`, evidence path relative to the state dir)."""
+    try:
+        done = subprocess.run(shlex.split(command), cwd=cwd, capture_output=True, text=True)
+    except (ValueError, OSError) as exc:
+        output.write_text(f"command: {command}\nnot run: {exc}\n", encoding="utf-8")
+        return "not_run", str(output.relative_to(ctx.store.root))
+    output.write_text(
+        f"command: {command}\nexit code: {done.returncode}\n\n"
+        f"--- stdout ---\n{done.stdout}\n--- stderr ---\n{done.stderr}",
+        encoding="utf-8",
+    )
+    return ("passed" if done.returncode == 0 else "failed"), str(output.relative_to(ctx.store.root))
+
+
+def verify_manual(task_id: str, ac: str, evidence: Path, ctx: Context) -> tuple[dict[str, Any], list[str]]:
+    """Record a `manual` AC with the person's or agent's evidence file (design §5.5)."""
+    task, record = _started(task_id, ctx)
+    if record["state"] not in ("in_progress", "in_review"):
+        _reject(record, "verify", f"it is {record['state']}")
+    if ac not in task["acceptance"]:
+        raise FactoryError("ac_not_in_task", f"{task_id} has no {ac}", EXIT_PRECONDITION)
+    if task["acceptance"][ac] != "manual":
+        message = f"{ac} is verified by its command; run factory task verify"
+        raise FactoryError("ac_not_manual", message, EXIT_PRECONDITION)
+    if not evidence.is_file():
+        raise FactoryError("evidence_not_found", f"{evidence} does not exist", EXIT_PRECONDITION)
+    target = ctx.store.root / "evidence" / task_id / f"{ac}{evidence.suffix}"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(evidence, target)
+    relative = str(target.relative_to(ctx.store.root))
+
+    def apply(state: State) -> State:
+        state["acceptance"][ac] = {"status": "verified", "evidence": relative}
+        return state
+
+    ctx.store.update_task(task_id, apply, "verify_manual")
+    return {"task": task_id, "acceptance": {ac: {"status": "verified", "evidence": relative}}}, []

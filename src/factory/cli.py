@@ -116,6 +116,12 @@ def task_unblock(args: argparse.Namespace) -> Result:
     return tasks.unblock(args.task, task_context())
 
 
+def task_verify(args: argparse.Namespace) -> Result:
+    if args.manual:
+        return tasks.verify_manual(args.task, args.manual, Path(args.evidence).resolve(), task_context())
+    return tasks.verify(args.task, task_context())
+
+
 # Command name ("task launch") -> handler. Filled in as tasks are implemented.
 HANDLERS: dict[str, Handler] = {
     "design register": design_register,
@@ -130,6 +136,7 @@ HANDLERS: dict[str, Handler] = {
     "task note": task_note,
     "task block": task_block,
     "task unblock": task_unblock,
+    "task verify": task_verify,
 }
 
 
