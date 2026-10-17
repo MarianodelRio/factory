@@ -66,28 +66,29 @@ class TaskStore:
         return self.root / f"{task_id}.lock"
 
     def read_task(self, task_id: str) -> State | None:
-        """The current state, rebuilt from the events if the JSON is corrupted; None if absent."""
-        path = self._json(task_id)
-        if not path.exists():
+        """The current state, rebuilt from the events if the JSON is missing or corrupted; None if
+        the task has no state at all."""
+        if not self._json(task_id).exists() and not self._events(task_id).exists():
             return None
         try:
-            state: State = json.loads(path.read_text(encoding="utf-8"))
+            state: State = json.loads(self._json(task_id).read_text(encoding="utf-8"))
             return state
-        except json.JSONDecodeError:
+        except (FileNotFoundError, json.JSONDecodeError):
             with self._locked(task_id):
                 state = self.rebuild_from_events(task_id)
                 self._write_json(task_id, state)
             return state
 
     def update_task(self, task_id: str, fn: Callable[[State], State], event: str) -> State:
-        """Lock, read, apply `fn`, write atomically and log `event`. If `fn` raises, nothing changes."""
+        """Lock, read, apply `fn`, log `event` and write atomically. If `fn` raises, nothing changes.
+        The event goes first, so the events are never behind the JSON."""
         with self._locked(task_id) as log:
             current = self._load(task_id)
             updated = fn(copy.deepcopy(current))
-            self._write_json(task_id, updated)
             log.write(json.dumps({"at": now(), "event": event, "state": updated}) + "\n")
             log.flush()
             os.fsync(log.fileno())
+            self._write_json(task_id, updated)
         return updated
 
     def rebuild_from_events(self, task_id: str) -> State:
@@ -103,13 +104,15 @@ class TaskStore:
         raise FactoryError("state_corrupted", message, EXIT_ERROR)
 
     def create_claim(self, task_id: str, attempt: int) -> None:
+        """Create the claim with its content in one step: a hard link fails if the claim exists."""
         self.root.mkdir(parents=True, exist_ok=True)
+        tmp = self._temp_file(json.dumps({"attempt": attempt, "at": now()}))
         try:
-            fd = os.open(self._claim(task_id), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
+            os.link(tmp, self._claim(task_id))
         except FileExistsError as exc:
             raise FactoryError("task_claimed", f"{task_id} is already claimed", EXIT_CONFLICT) from exc
-        with os.fdopen(fd, "w") as file:
-            json.dump({"attempt": attempt, "at": now()}, file)
+        finally:
+            tmp.unlink()
 
     def read_claim(self, task_id: str) -> dict[str, Any] | None:
         try:
@@ -119,21 +122,24 @@ class TaskStore:
             return None
 
     def release_claim(self, task_id: str) -> None:
-        self._claim(task_id).unlink(missing_ok=True)
+        with self._locked(task_id):
+            self._claim(task_id).unlink(missing_ok=True)
 
     def reassign_claim(self, task_id: str, attempt: int) -> None:
         """Give an existing claim to a new attempt (only `recover` does this)."""
-        if not self._claim(task_id).exists():
-            raise FactoryError("not_claimed", f"{task_id} has no claim to reassign", EXIT_PRECONDITION)
-        self._atomic_write(self._claim(task_id), json.dumps({"attempt": attempt, "at": now()}))
+        with self._locked(task_id):
+            if not self._claim(task_id).exists():
+                raise FactoryError("not_claimed", f"{task_id} has no claim to reassign", EXIT_PRECONDITION)
+            self._atomic_write(self._claim(task_id), json.dumps({"attempt": attempt, "at": now()}))
 
     def _load(self, task_id: str) -> State:
-        path = self._json(task_id)
-        if not path.exists():
-            return empty_state(task_id)
         try:
-            state: State = json.loads(path.read_text(encoding="utf-8"))
+            state: State = json.loads(self._json(task_id).read_text(encoding="utf-8"))
             return state
+        except FileNotFoundError:
+            if self._events(task_id).stat().st_size == 0:
+                return empty_state(task_id)
+            return self.rebuild_from_events(task_id)
         except json.JSONDecodeError:
             return self.rebuild_from_events(task_id)
 
@@ -141,16 +147,24 @@ class TaskStore:
         self._atomic_write(self._json(task_id), json.dumps(state, indent=2, ensure_ascii=False) + "\n")
 
     def _atomic_write(self, path: Path, text: str) -> None:
-        fd, tmp = tempfile.mkstemp(dir=self.root, prefix=f".{path.name}.", suffix=".tmp")
+        tmp = self._temp_file(text)
+        try:
+            os.replace(tmp, path)
+        except BaseException:
+            tmp.unlink(missing_ok=True)
+            raise
+
+    def _temp_file(self, text: str) -> Path:
+        fd, name = tempfile.mkstemp(dir=self.root, prefix=".", suffix=".tmp")
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as file:
                 file.write(text)
                 file.flush()
                 os.fsync(file.fileno())
-            os.replace(tmp, path)
         except BaseException:
-            Path(tmp).unlink(missing_ok=True)
+            Path(name).unlink(missing_ok=True)
             raise
+        return Path(name)
 
     def _locked(self, task_id: str) -> _EventsLock:
         self.root.mkdir(parents=True, exist_ok=True)

@@ -87,3 +87,8 @@ def test_transition_does_not_mutate_its_input():
     original = task("in_progress")
     transition(original, "submit")
     assert original["state"] == "in_progress"
+
+
+def test_a_stored_state_wins_over_the_computed_one():
+    with pytest.raises(FactoryError):
+        transition(task("done"), "claim", current="ready")

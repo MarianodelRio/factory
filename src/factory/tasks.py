@@ -34,8 +34,8 @@ RETURNS = {"unblock", "reapprove"}
 
 def transition(task: State, action: str, current: str | None = None, reason: str | None = None) -> State:
     """Return a copy of `task` after `action`. `current` is the computed state (`pending` or
-    `ready`) of a task that has no state file yet; otherwise the stored state is used."""
-    state = current or task["state"]
+    `ready`) of a task that has no stored state yet; a stored state always wins."""
+    state: str = task["state"] or current or ""
     result = copy.deepcopy(task)
 
     if action in RETURNS and state == "blocked":

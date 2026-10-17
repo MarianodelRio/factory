@@ -153,3 +153,20 @@ def test_rebuild_skips_a_truncated_last_event(tmp_path):
     with (tmp_path / f"{TASK}.events.jsonl").open("a") as log:
         log.write('{"event": "submit", "sta')
     assert store.rebuild_from_events(TASK)["state"] == "in_progress"
+
+
+def test_missing_json_with_events_is_rebuilt(tmp_path):
+    store = TaskStore(tmp_path)
+    store.update_task(TASK, lambda s: {**s, "state": "in_progress"}, "claim")
+    (tmp_path / f"{TASK}.json").unlink()
+    assert store.read_task(TASK)["state"] == "in_progress"
+    (tmp_path / f"{TASK}.json").unlink()
+    store.update_task(TASK, lambda s: {**s, "counter": 1}, "touch")
+    assert store.read_task(TASK)["state"] == "in_progress"
+
+
+def test_claim_is_never_seen_empty(tmp_path):
+    store = TaskStore(tmp_path)
+    store.create_claim(TASK, 1)
+    assert store.read_claim(TASK)["attempt"] == 1
+    assert not list(tmp_path.glob(".*.tmp"))
