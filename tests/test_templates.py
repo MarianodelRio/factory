@@ -30,4 +30,5 @@ def test_role_matches_the_design(name, title):
 @pytest.mark.parametrize("name", ["quality_reviewer", "conformance_reviewer"])
 def test_reviewers_carry_the_json_contract(name):
     text = resources.files("factory").joinpath(f"templates/roles/{name}.md").read_text()
-    assert '{"verdict": "pass", "findings": [{"severity": "major"' in text
+    kind = name.removesuffix("_reviewer")
+    assert f'{{"type": "{kind}", "verdict": "pass", "findings": [{{"severity": "major"' in text

@@ -238,7 +238,7 @@ Goal: answer design §10.3 with evidence and record real outputs for the fakes. 
   Do: run the config `[checks]` and each AC command inside the task workspace; save stdout/stderr/exit code under `evidence/<task>/`; mark `verified` only on exit 0; commands that cannot run → `not_run`. `--manual AC --evidence <file>` copies the file into evidence and marks the AC verified.
   Done when: tests for pass, fail, not runnable, and manual evidence.
 
-- [ ] T-20 `task submit` and `task review`
+- [x] T-20 `task submit` and `task review`
   Depends: T-19 · Design: §5.3, §5.4 · Acceptance: A-12, A-13
   Files: `src/factory/tasks.py`, `tests/test_review.py`
   Do: `submit` → `in_review`. `review --type conformance --agent X` launches an Orca agent in the same workspace with the conformance role and the task context (quality runs as a subagent of the lead and needs no launch, unless T-01 says the client has none). Effective review types = task `review` field adjusted by config `always|never`. `review --record <file.json>`: validate the reviewer JSON of design §5.3, compute verdict (`pass` if no blocker/major), store with round number and current HEAD commit. If the second round of a type is not `pass` (config `max_rounds`) → `blocked`, findings kept.
@@ -341,15 +341,15 @@ Fill the "Test" column as tasks are completed. "Manual" criteria are checked in 
 | A-09 | T-16 | `test_task_states.py` (not done → pending; done not merged → pending with reason; merged → ready) | |
 | A-10 | T-17, T-26 | `test_claim_launch.py` (workspace + branch, launch with brief; in-workspace mode is skill behavior, T-26) | ✔ |
 | A-11 | T-07, T-17 | `test_state.py::test_concurrent_claims_exactly_one_wins`, `test_claim_launch.py::test_second_claim_is_a_conflict` | |
-| A-12 | T-20 | | |
-| A-13 | T-20 | | |
+| A-12 | T-20 | `test_review.py::test_effective_review_types`, conformance launch / quality subagent tests; "reviewers do not edit" is in the role text (T-24) | |
+| A-13 | T-20 | `test_review.py::test_second_round_without_pass_blocks_and_keeps_findings` | |
 | A-14 | T-21 | | |
 | A-15 | T-22 | | |
 | A-16 | T-21, T-26 | | ✔ |
 | A-17 | T-26, T-29 | | ✔ |
 | A-18 | T-26 | | ✔ |
 | A-19 | T-24, T-25, T-26 | | ✔ |
-| A-20 | T-18 (+ before submit in T-20) | `test_notes.py` (note from another worktree read at next checkpoint; pause → blocked) | |
+| A-20 | T-18 (+ before submit in T-20) | `test_notes.py` (note from another worktree read at next checkpoint; pause → blocked), `test_review.py::test_submit_moves_to_in_review_and_reads_notes` | |
 | A-21 | T-23 | | |
 | A-22 | T-23 | | |
 | A-23 | T-15 | `test_cards.py::test_card_follows_the_table` (one case per row) | |
@@ -382,6 +382,7 @@ Write here anything the design does not answer or that reality contradicts. Each
 | 2026-10-17 | M3 review | §4.5 restores `design_changed` tasks "on re-approval"; the CLI also restores them when an edit is reverted (the digest matches the existing approval again). | Equivalent: the approval is valid again for that exact design, so nothing new is approved. | resolved: follows design §1.5 ("approved" = digest matches) |
 | 2026-10-17 | T-16 | "Integrated into the base branch" is checked with `git merge-base --is-ancestor` (branch tip, or last recorded commit, against `<base>` or `origin/<base>`, no fetch). A squash or rebase merge on GitHub rewrites the commits, so the dependency would stay `pending` forever. | Ask the person whether their repos use squash/rebase merges; if so, also accept a merged PR (`gh pr view --json state`) as integration. | resolved: the person uses normal merge commits; git ancestry only (squash/rebase merges are not supported in v1) |
 | 2026-10-17 | T-17 | §5.1 says the brief carries the chosen review agent, but §9's `task launch` has no flag for it. | `task launch --reviewer <claude|codex>`; brief `/factory-implement <id> --reviewer <agent>`; stored as `attempts[].reviewer`. Update design §1.4, §5.1, §9. | resolved: confirmed by the person; design updated |
+| 2026-10-17 | T-20 | `task review --record` stores the reviewer JSON, but the §5.3 JSON does not say the review type. | Add `"type": "quality"|"conformance"` to the reviewer JSON (each reviewer role file writes its own type); `--record` may take `--agent` to name the reviewer. Update design §5.3 and §9. | resolved: chosen by the person; design and role templates updated |
 | 2026-10-17 | T-23 | Design §7.4 says recover acts "after the person confirms", but §9 has a single `task recover`. | `task recover <id>` only inspects; `task recover <id> --confirm` acts (the skill calls it after asking). Add to design §9. | resolved: design §9 updated |
 
 ---
@@ -416,3 +417,4 @@ One line per completed task or session: date, task, what was done, what comes ne
 | 2026-10-17 | T-18 | `checkpoint` (saves done/next, delivers unread notes marking them read, a pause note blocks with `paused`), `note [--pause]` from any checkout, `block --reason`, `unblock` (only with a valid approval); cards from the state (`card_detail`). Notes gain a `pause` flag (design §1.4 example updated). | T-19 verify. |
 | 2026-10-17 | T-19 | `task verify`: config `[checks]` and each AC command run in the task workspace as argument lists (`shlex.split`, no shell), evidence in the main checkout's `evidence/<task>/`, AC `verified` only on exit 0, unrunnable → `not_run`, no checks → `not_run`; checks store the HEAD commit; `--manual AC --evidence file` only for manual ACs. Check commands run from `tasks.py` (not git/orca), still without shell. 365 tests green. | T-20 submit and review. |
 | 2026-10-17 | T-24 | Six role files in `src/factory/templates/roles/` with the §5.3 text verbatim, template marks, and the reviewer JSON contract in both reviewer files; a test keeps them equal to the design and loads them as package data (checked in the built wheel). Done before T-20, which uses them. | T-20 submit and review. |
+| 2026-10-17 | T-20 | `submit` (reads pending notes; a pause blocks instead; card with pending reviews), `effective_reviews` (task field + config always/never), `review --type` (conformance: Orca agent in the workspace with the role text and context, agent = `--agent` or the attempt's reviewer; quality: subagent unless `--agent`), `review --record` (JSON with `type` per the person's choice, validated; verdict computed; round and HEAD stored; not `pass` at `max_rounds` → blocked with findings). 391 tests green. | T-21 finish. |

@@ -7,5 +7,5 @@ Finish with this JSON and nothing after it. `verdict` is `pass` only if there is
 `major` finding; `severity` is `blocker`, `major` or `minor`.
 
 ```json
-{"verdict": "pass", "findings": [{"severity": "major", "file": "src/x.py", "line": 42, "problem": "...", "fix": "..."}]}
+{"type": "quality", "verdict": "pass", "findings": [{"severity": "major", "file": "src/x.py", "line": 42, "problem": "...", "fix": "..."}]}
 ```

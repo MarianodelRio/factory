@@ -439,10 +439,10 @@ Short, professional instructions, in English, in `templates/roles/`. Each one is
 **Conformance reviewer**
 > You verify that the implementation matches the approved design. For every acceptance criterion, confirm it is implemented and that real evidence proves it. Flag anything out of scope, any deviation from the design and any violated decision record. Do not judge style. Do not edit files.
 
-Both reviewers finish with this JSON, which the lead agent records with `factory task review --record`:
+Both reviewers finish with this JSON, which the lead agent records with `factory task review --record`; `type` is `quality` or `conformance`:
 
 ```json
-{"verdict": "pass", "findings": [{"severity": "major", "file": "src/x.py", "line": 42, "problem": "...", "fix": "..."}]}
+{"type": "conformance", "verdict": "pass", "findings": [{"severity": "major", "file": "src/x.py", "line": 42, "problem": "...", "fix": "..."}]}
 ```
 
 ### 5.4 Reviews
@@ -700,7 +700,7 @@ factory task block <id> --reason "..." | unblock <id>
 factory task verify <id> [--manual <AC> --evidence <file>]
 factory task submit <id>                         # -> in_review
 factory task review <id> --type quality|conformance [--agent ...]
-factory task review <id> --record <file.json>
+factory task review <id> --record <file.json> [--agent ...]   # the JSON says its type
 factory task finish <id> --memory "<summary>|none"
 factory task publish <id>                        # push the branch and PR
 factory task recover <id> [--confirm]            # without --confirm it only inspects

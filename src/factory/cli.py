@@ -116,6 +116,16 @@ def task_unblock(args: argparse.Namespace) -> Result:
     return tasks.unblock(args.task, task_context())
 
 
+def task_submit(args: argparse.Namespace) -> Result:
+    return tasks.submit(args.task, task_context())
+
+
+def task_review(args: argparse.Namespace) -> Result:
+    if args.record:
+        return tasks.record_review(args.task, Path(args.record).resolve(), args.agent, task_context())
+    return tasks.review(args.task, args.type, args.agent, task_context())
+
+
 def task_verify(args: argparse.Namespace) -> Result:
     if args.manual:
         return tasks.verify_manual(args.task, args.manual, Path(args.evidence).resolve(), task_context())
@@ -137,6 +147,8 @@ HANDLERS: dict[str, Handler] = {
     "task block": task_block,
     "task unblock": task_unblock,
     "task verify": task_verify,
+    "task submit": task_submit,
+    "task review": task_review,
 }
 
 
@@ -239,8 +251,6 @@ def build_parser() -> Parser:
 def _validate(args: argparse.Namespace) -> None:
     if args.command == "task verify" and (args.manual is None) != (args.evidence is None):
         raise UsageError("factory task verify: --manual and --evidence go together")
-    if args.command == "task review" and args.agent and args.record:
-        raise UsageError("factory task review: --agent only applies with --type")
 
 
 def main(argv: list[str] | None = None) -> int:

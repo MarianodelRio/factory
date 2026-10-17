@@ -12,6 +12,8 @@ Raises FactoryError with these codes:
 - task_not_started (EXIT_PRECONDITION): the task has no state yet (it was never claimed).
 - approval_not_valid (EXIT_PRECONDITION): unblock while the change's approval is not valid.
 - evidence_not_found / ac_not_in_task / ac_not_manual (EXIT_PRECONDITION): bad `verify --manual`.
+- review_invalid (EXIT_PRECONDITION): the reviewer JSON does not follow design §5.3.
+- review_agent_missing (EXIT_USAGE): a conformance review without `--agent` or a recorded reviewer.
 Plus the codes of factory.orca (Orca unavailable, not local, ...).
 """
 
@@ -23,13 +25,14 @@ import shlex
 import shutil
 import subprocess
 from collections.abc import Callable
+from importlib import resources
 from pathlib import Path
 from typing import Any, NoReturn
 
 import yaml
 
 from factory import config, design, git, orca
-from factory.output import EXIT_CONFLICT, EXIT_PRECONDITION, EXIT_UNAVAILABLE, FactoryError
+from factory.output import EXIT_CONFLICT, EXIT_PRECONDITION, EXIT_UNAVAILABLE, EXIT_USAGE, FactoryError
 from factory.state import State, TaskStore, now
 
 # Reasons for `blocked` that the CLI sets itself; any other text comes from `task block --reason`.
@@ -340,7 +343,7 @@ def card_detail(record: State) -> str | None:
         checkpoint = record.get("last_checkpoint") or {}
         return checkpoint.get("next") or "lead agent working"
     if state == "in_review":
-        return "reviews in progress"
+        return "reviews in progress"  # replaced by the pending reviews where they are known
     if state == "blocked":
         return str(record["blocked_reason"])
     if state == "done":
@@ -500,3 +503,137 @@ def verify_manual(task_id: str, ac: str, evidence: Path, ctx: Context) -> tuple[
 
     ctx.store.update_task(task_id, apply, "verify_manual")
     return {"task": task_id, "acceptance": {ac: {"status": "verified", "evidence": relative}}}, []
+
+
+REVIEW_TYPES = ("quality", "conformance")
+SEVERITIES = ("blocker", "major", "minor")
+
+
+def effective_reviews(task: dict[str, Any], cfg: dict[str, Any]) -> list[str]:
+    """The task's `review` field, with the config's `always` / `never` applied (design §5.4)."""
+    chosen = set(task.get("review") or [])
+    for kind in REVIEW_TYPES:
+        if cfg["review"][kind] == "always":
+            chosen.add(kind)
+        elif cfg["review"][kind] == "never":
+            chosen.discard(kind)
+    return [kind for kind in REVIEW_TYPES if kind in chosen]
+
+
+def _config(ctx: Context) -> dict[str, Any]:
+    return config.load_config(ctx.main_checkout / ".factory" / "config.toml")
+
+
+def submit(task_id: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
+    """Read the person's pending notes and move the task to `in_review`; a pause note blocks it
+    instead (design §5.2)."""
+    task, _ = _started(task_id, ctx)
+    delivered: list[dict[str, Any]] = []
+
+    def apply(state: State) -> State:
+        if state["state"] != "in_progress":
+            _reject(state, "submit", f"it is {state['state']}")
+        delivered.extend(_read_notes(state))
+        if any(n.get("pause") for n in delivered):
+            return transition(state, "block", reason=PAUSED)
+        return transition(state, "submit")
+
+    record = ctx.store.update_task(task_id, apply, "submit")
+    reviews = effective_reviews(task, _config(ctx))
+    paused = record["state"] == "blocked"
+    data = {"task": task_id, "state": record["state"], "notes": delivered, "paused": paused, "reviews": reviews}
+    detail = ("pending reviews: " + ", ".join(reviews)) if reviews else "no reviews required"
+    workspace = record["workspace"]["orca_id"]
+    if paused:
+        return data, _card(task, record)
+    return data, orca.update_card(workspace, task_id, task["title"], "in_review", detail)
+
+
+def review(task_id: str, kind: str, agent: str | None, ctx: Context) -> tuple[dict[str, Any], list[str]]:
+    """Launch a reviewer (design §5.4): conformance is an Orca agent in the same workspace; quality
+    is a read-only subagent of the lead unless an agent is named (client without subagents)."""
+    task, record = _started(task_id, ctx)
+    if record["state"] != "in_review":
+        _reject(record, "review", f"it is {record['state']}; submit it first")
+    attempt = record["attempts"][-1]
+    if kind == "quality" and agent is None:
+        message = (f"the quality review runs as a read-only subagent of the lead; record its JSON with "
+                   f"factory task review {task_id} --record <file>")
+        return {"task": task_id, "type": kind, "launched": False, "message": message}, []
+    agent = agent or attempt.get("reviewer")
+    if not agent:
+        message = "name the reviewer with --agent (it was not given at launch with --reviewer)"
+        raise FactoryError("review_agent_missing", message, EXIT_USAGE)
+    orca.check(_min_version(ctx))
+    base = orca.base_branch(ctx.main_checkout)
+    role = resources.files("factory").joinpath(f"templates/roles/{kind}_reviewer.md").read_text(encoding="utf-8")
+    prompt = (
+        f"{role}\n"
+        f"Review task {task_id} ({task['title']}) of change {task['change']} in this workspace.\n"
+        f"- Approved design and acceptance criteria: .factory/changes/{task['change']}/design.md\n"
+        f"- Task, evidence and checks: factory task show {task_id} --json\n"
+        f"- The change to review: git diff {base}...HEAD\n"
+        "Do not edit files. End with the JSON; the lead agent records it."
+    )
+    launched = orca.launch_agent(record["workspace"]["orca_id"], agent, prompt, None, None)
+    data = {"task": task_id, "type": kind, "agent": agent, "launched": True, **launched}
+    return data, []
+
+
+def record_review(task_id: str, path: Path, agent: str | None, ctx: Context) -> tuple[dict[str, Any], list[str]]:
+    """Store a reviewer's JSON with its round and the reviewed commit. `pass` only without
+    `blocker` or `major` findings; a type that is not `pass` after `max_rounds` blocks the task
+    with the findings kept (design §5.4)."""
+    task, record = _started(task_id, ctx)
+    report = _review_report(path)
+    kind = report["type"]
+    reviewer = agent or (record["attempts"][-1].get("reviewer") if kind == "conformance" else None)
+    reviewer = reviewer or f"{record['attempts'][-1].get('agent') or 'lead'}-subagent"
+    verdict = "fail" if any(f["severity"] in ("blocker", "major") for f in report["findings"]) else "pass"
+    commit = git.run(["rev-parse", "HEAD"], workspace_path(record))
+    max_rounds = int(_config(ctx)["review"]["max_rounds"])
+
+    def apply(state: State) -> State:
+        if state["state"] != "in_review":
+            _reject(state, "record a review", f"it is {state['state']}")
+        round_number = 1 + sum(1 for r in state["reviews"] if r["type"] == kind)
+        state["reviews"].append({"type": kind, "reviewer": reviewer, "round": round_number, "commit": commit,
+                                 "verdict": verdict, "findings": report["findings"], "at": now()})
+        if verdict != "pass" and round_number >= max_rounds:
+            state = transition(state, "block", reason=REVIEW_NOT_CONVERGING)
+        return state
+
+    updated = ctx.store.update_task(task_id, apply, "review")
+    saved = updated["reviews"][-1]
+    data = {"task": task_id, "state": updated["state"], "review": saved}
+    if updated["state"] == "blocked":
+        return data, _card(task, updated)
+    return data, []
+
+
+def _review_report(path: Path) -> dict[str, Any]:
+    problems: list[str] = []
+    try:
+        report = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise FactoryError("review_invalid", f"{path} is not a readable JSON file: {exc}", EXIT_PRECONDITION) from exc
+    if not isinstance(report, dict):
+        problems.append("the review must be a JSON object")
+        report = {}
+    if report.get("type") not in REVIEW_TYPES:
+        problems.append(f"type must be one of {', '.join(REVIEW_TYPES)}")
+    findings = report.get("findings")
+    if not isinstance(findings, list):
+        problems.append("findings must be a list")
+        findings = []
+    for number, finding in enumerate(findings, start=1):
+        if not isinstance(finding, dict):
+            problems.append(f"finding {number} must be an object")
+            continue
+        if finding.get("severity") not in SEVERITIES:
+            problems.append(f"finding {number}: severity must be one of {', '.join(SEVERITIES)}")
+        if not isinstance(finding.get("problem"), str) or not finding["problem"].strip():
+            problems.append(f"finding {number}: problem is required")
+    if problems:
+        raise FactoryError("review_invalid", f"{path} is not a valid review", EXIT_PRECONDITION, problems)
+    return {"type": report["type"], "findings": findings}
