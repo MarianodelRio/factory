@@ -31,8 +31,8 @@ def _claim(root: str, attempt: int, results) -> None:
 def test_empty_state_has_the_design_shape():
     state = empty_state(TASK)
     assert state["task"] == TASK
-    for key in ("state", "blocked_reason", "workspace", "attempts", "last_checkpoint", "acceptance",
-                "checks", "reviews", "notes", "memory", "commits", "pull_request"):
+    for key in ("state", "blocked_reason", "blocked_from", "workspace", "attempts", "last_checkpoint",
+                "acceptance", "checks", "reviews", "notes", "memory", "commits", "pull_request"):
         assert key in state
 
 

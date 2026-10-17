@@ -186,6 +186,7 @@ tasks:
   "task": "CHG-0012-01",
   "state": "in_review",
   "blocked_reason": null,
+  "blocked_from": null,
   "workspace": {"orca_id": "repo-123::/home/me/orca/CHG-0012-01", "branch": "<assigned by Orca>"},
   "attempts": [
     {"id": 1, "agent": "codex", "model": null, "operation_id": "...", "terminal": "term_...", "started_at": "...", "ended_at": null, "result": null}
@@ -206,7 +207,7 @@ tasks:
 }
 ```
 
-In each attempt, `model` is the `--model` the Factory passed, or `null` for the agent's default (Orca does not report the model used). `operation_id` and `terminal` are Orca's `operationId` and agent handle from the launch; `terminal` is what the liveness check queries (§7.2).
+`blocked_from` is the state the task had when it was blocked (`in_progress` or `in_review`); `unblock` and re-approval return it there. In each attempt, `model` is the `--model` the Factory passed, or `null` for the agent's default (Orca does not report the model used). `operation_id` and `terminal` are Orca's `operationId` and agent handle from the launch; `terminal` is what the liveness check queries (§7.2).
 
 **State writing**:
 - Only the CLI writes to `.factory/state/`. Each write takes a short lock on that task's file, reads, modifies and writes atomically (temp file + rename). This way the lead agent, the reviewer and the person (notes, pauses) can write without overwriting each other.
@@ -232,7 +233,7 @@ In each attempt, `model` is the `--model` the Factory passed, or `null` for the 
 | `ready` | Can be started | Computed |
 | `in_progress` | A lead agent is working on it | `factory task claim`, or `factory task recover` |
 | `in_review` | Implemented; reviews in progress | `factory task submit` |
-| `done` | Closing criteria met (§5.7) | `factory task finish` |
+| `done` | Closing criteria met (§5.7) | `factory task finish`, from `in_progress` or `in_review` (the gates of §5.7 decide; a task without reviews can close without `submit`) |
 | `blocked` | Needs a decision, is paused or the design changed | `factory task block --reason`, a pause (§7.3), a design change (§4.5) or a review that does not converge (§5.4) |
 | `interrupted` | The agent stopped working before finishing | Computed on query (§7.2) |
 

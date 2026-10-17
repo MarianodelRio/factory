@@ -160,7 +160,7 @@ Goal: answer design §10.3 with evidence and record real outputs for the fakes. 
   Do: `update_task(task_id, fn)` = flock on the task file → read → apply `fn` → write temp + rename → append event to `<task>.events.jsonl`. `read_task`. `rebuild_from_events`. Claim lock: `create_claim(task_id, attempt)` with exclusive create (fails with conflict if it exists), `release_claim`, `reassign_claim`. JSON shape of design §1.4.
   Done when: tests show (a) two processes updating the same task concurrently lose no write, (b) two concurrent claims → exactly one wins (A-11), (c) a corrupted JSON is rebuilt from events.
 
-- [ ] T-08 State machine
+- [x] T-08 State machine
   Depends: T-07 · Design: §1.5
   Files: `src/factory/tasks.py` (transition table only), `tests/test_transitions.py`
   Do: a pure table of allowed transitions and the command that triggers each (design §1.5), plus `blocked_reason` handling (`paused`, `design_changed`, review not converging, free text). Illegal transitions raise `invalid_transition`.
@@ -372,6 +372,8 @@ Write here anything the design does not answer or that reality contradicts. Each
 | 2026-10-17 | T-01 | Base branch (§8, T-13): `orca repo show` returns `worktreeBaseRef` only after `orca repo set-base-ref`; otherwise no field. | `base_branch()` reads `worktreeBaseRef` (strip `origin/` / `refs/remotes/origin/`). If missing → exit 5 with "set the base branch in Orca". `factory init` adds `orca repo set-base-ref` to its Orca actions (with the detected default branch, confirmed in the plan). Update design §3.1 and §8. | resolved: approved by the person; design §3.1 and §8 updated |
 | 2026-10-17 | T-01 | Model (§1.4): Orca does not report the model used. | `attempts[].model` = the `--model` passed, or `null` (agent default). Clarify in design §1.4. | resolved: approved by the person; design §1.4 updated |
 | 2026-10-17 | T-01 | Permissions (§10.1): Orca's `agentDefaultArgs` launches Claude with `--dangerously-skip-permissions`. The "ask" rule still holds (verified). | No launch change (the Factory adds no flags). `factory doctor` reports it as the permission-mode warning of §3.1. Note it in design §10.1. | resolved: approved by the person; design §10.1 updated |
+| 2026-10-17 | T-08 | §1.5 does not say from which states `finish` is allowed (a trivial task has no reviews). | From `in_progress` and `in_review`; the §5.7 gates decide. | resolved: confirmed by the person; design §1.5 updated |
+| 2026-10-17 | T-08 | `unblock` and re-approval return the task to "its previous state", but the §1.4 JSON does not store it. | Add `blocked_from` to the task state. | resolved: confirmed by the person; design §1.4 updated |
 | 2026-10-17 | T-23 | Design §7.4 says recover acts "after the person confirms", but §9 has a single `task recover`. | `task recover <id>` only inspects; `task recover <id> --confirm` acts (the skill calls it after asking). Add to design §9. | resolved: design §9 updated |
 
 ---
@@ -390,3 +392,4 @@ One line per completed task or session: date, task, what was done, what comes ne
 | 2026-10-17 | T-06 | `paths.py` (repo_root, main_checkout, state_dir, changes_dir; same state_dir from main and worktrees) on a minimal `git.py` (`run`, `toplevel`, `worktree_paths`; git_unavailable / not_a_git_repo / git_failed). (Subagent, reviewed.) 92 tests green. M1 done. | M1 review, then T-07. |
 | 2026-10-17 | M1 review | No blockers. Fixed the harness: fakes always first on PATH and refuse to run without their fixture (the real orca/gh are never reached), fake orca creates worktrees in `$FAKE_ORCA_REPO` (not the cwd), answer sequences, per-terminal answers, `--retry-launch` echo; fake gh `--version` survives the fail switch. Left as minor: static `worktree list`, config without `schema_version` accepted as 1. 97 tests green. | T-07 state storage. |
 | 2026-10-17 | T-07 | `state.TaskStore`: flock on the append-only events file, atomic JSON replace, each event carries the resulting state (rebuild = last readable event), exclusive claim file with release/reassign; `empty_state` with the §1.4 fields. 109 tests green. | T-08 state machine. |
+| 2026-10-17 | T-08 | Transition table in `tasks.py` (design §1.5 + finish from in_progress/in_review), `block` records reason and `blocked_from`, `unblock`/`reapprove` return to it; manual `unblock` refuses `design_changed` (only re-approval releases it, §4.5). Design §1.4/§1.5 updated with the person's two answers. 187 tests green. M2 done. | M2 review, then T-09. |

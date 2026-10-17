@@ -38,6 +38,7 @@ def empty_state(task_id: str) -> State:
         "task": task_id,
         "state": None,
         "blocked_reason": None,
+        "blocked_from": None,
         "workspace": None,
         "attempts": [],
         "last_checkpoint": None,
