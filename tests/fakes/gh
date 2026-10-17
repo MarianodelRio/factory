@@ -3,7 +3,8 @@
 
 - calls.jsonl: one JSON line per call.
 - prs.json: pull requests created with `gh pr create` ({number, url, head, base, title, body}).
-- fail: if this file exists, every call fails with its content on stderr and exit 1.
+- fail: if this file exists, every call except `--version` fails with its content on stderr
+  and exit 1 (gh installed but not usable).
 Supports `gh --version`, `gh auth status`, `gh pr create`, `gh pr list --head <branch>`.
 """
 
@@ -12,6 +13,9 @@ import os
 import sys
 from pathlib import Path
 
+if "FAKE_GH_DIR" not in os.environ:
+    print("fake gh: use the fake_gh fixture (FAKE_GH_DIR is not set)", file=sys.stderr)
+    sys.exit(1)
 STATE = Path(os.environ["FAKE_GH_DIR"])
 
 
@@ -29,7 +33,7 @@ def main():
     with (STATE / "calls.jsonl").open("a") as log:
         log.write(json.dumps({"argv": argv, "cwd": os.getcwd()}) + "\n")
     fail = STATE / "fail"
-    if fail.exists():
+    if fail.exists() and argv[:1] != ["--version"]:
         print(fail.read_text(), file=sys.stderr)
         sys.exit(1)
 

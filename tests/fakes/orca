@@ -3,10 +3,13 @@
 
 Controlled through the directory in $FAKE_ORCA_DIR:
 - calls.jsonl: one JSON line per call, {"argv": [...], "cwd": "..."} (written by this script).
-- responses/<command with spaces as dashes>.json: {"exit": int, "stdout": <json or text>}
-  replaces the default answer for that command (e.g. responses/terminal-show.json).
-`worktree create` really creates a Git worktree under $FAKE_ORCA_DIR/workspaces/<name>, so the
-code under test sees a real workspace.
+- responses/<command with spaces as dashes>[@<target>].json: {"exit": int, "stdout": <json or
+  text>} replaces the default answer for that command (e.g. responses/terminal-show.json, or
+  responses/terminal-show@term_1.json for one terminal). A list of such objects is answered in
+  order, one per call; after the last one the default answer comes back.
+`worktree create` really creates a Git worktree of the repo in $FAKE_ORCA_REPO under
+$FAKE_ORCA_DIR/workspaces/<name>, so the code under test sees a real workspace.
+`agent launch --retry-launch <operationId>` answers with that same operationId.
 """
 
 import json
@@ -16,7 +19,11 @@ import sys
 from pathlib import Path
 
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures" / "orca"
+if "FAKE_ORCA_DIR" not in os.environ:
+    print("fake orca: use the fake_orca fixture (FAKE_ORCA_DIR is not set)", file=sys.stderr)
+    sys.exit(1)
 STATE = Path(os.environ["FAKE_ORCA_DIR"])
+REPO = os.environ.get("FAKE_ORCA_REPO")
 
 DEFAULTS = {
     "status": "status",
@@ -90,11 +97,15 @@ def worktree_record(body, path, branch, repo_id):
 
 def create_worktree(argv):
     name = flag(argv, "--name")
+    if not name:
+        answer(2, error("invalid_argument", "--name is required"))
+    if not REPO:
+        answer(1, error("fake_setup", "fake orca: FAKE_ORCA_REPO is not set"))
     base = flag(argv, "--base-branch") or "origin/main"
     path = STATE / "workspaces" / name
     branch = f"user/{name}"
     try:
-        git("worktree", "add", "-b", branch, str(path), base)
+        git("worktree", "add", "-b", branch, str(path), base, cwd=REPO)
     except subprocess.CalledProcessError as exc:
         answer(1, error("worktree_create_failed", exc.stderr.strip()))
     body = load("worktree-create")
@@ -117,6 +128,22 @@ def show_worktree(argv):
     return worktree_record(body, path, branch, repo_id)
 
 
+def override(command, target):
+    responses = STATE / "responses"
+    name = command.replace(" ", "-")
+    for file in ([responses / f"{name}@{target}.json"] if target else []) + [responses / f"{name}.json"]:
+        if file.exists():
+            spec = json.loads(file.read_text())
+            if isinstance(spec, list):
+                if len(spec) > 1:
+                    file.write_text(json.dumps(spec[1:]))
+                else:
+                    file.unlink()
+                spec = spec[0]
+            return spec
+    return None
+
+
 def main():
     argv = sys.argv[1:]
     STATE.mkdir(parents=True, exist_ok=True)
@@ -124,9 +151,8 @@ def main():
         log.write(json.dumps({"argv": argv, "cwd": os.getcwd()}) + "\n")
 
     command = "version" if argv[:1] == ["--version"] else command_of(argv)
-    override = STATE / "responses" / f"{command.replace(' ', '-')}.json"
-    if override.exists():
-        spec = json.loads(override.read_text())
+    spec = override(command, flag(argv, "--terminal") or flag(argv, "--worktree"))
+    if spec is not None:
         answer(spec.get("exit", 0), spec.get("stdout", ""))
     if command == "version":
         answer(0, "1.4.229")
@@ -134,6 +160,10 @@ def main():
         answer(0, create_worktree(argv))
     if command == "worktree show":
         answer(0, show_worktree(argv))
+    if command == "agent launch" and flag(argv, "--retry-launch"):
+        body = load("agent-launch")
+        body["result"]["operationId"] = flag(argv, "--retry-launch")
+        answer(0, body)
     if command in DEFAULTS:
         answer(0, load(DEFAULTS[command]))
     answer(1, error("unknown_command", f"fake orca has no answer for '{command}'"))

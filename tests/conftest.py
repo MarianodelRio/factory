@@ -43,7 +43,9 @@ class Repo:
 
 @pytest.fixture(autouse=True)
 def isolated_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """No real Orca session variables, and a Git identity that does not depend on the machine."""
+    """No real Orca session variables, a Git identity that does not depend on the machine, and the
+    fake `orca` and `gh` first on PATH, so no test can reach the real tools (the fakes refuse to
+    run unless their fixture is used)."""
     for name in list(os.environ):
         if name.startswith("ORCA_"):
             monkeypatch.delenv(name)
@@ -53,6 +55,7 @@ def isolated_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     )
     monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(gitconfig))
     monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
+    monkeypatch.setenv("PATH", f"{FAKES}{os.pathsep}{os.environ['PATH']}")
 
 
 @pytest.fixture
@@ -82,19 +85,32 @@ class FakeTool:
 
 
 class FakeOrca(FakeTool):
-    def respond(self, command: str, stdout: Any, exit: int = 0) -> None:
-        """Replace the answer to `command` (e.g. "terminal show") with `stdout` and `exit`."""
+    def respond(self, command: str, stdout: Any, exit: int = 0, target: str | None = None) -> None:
+        """Replace the answer to `command` (e.g. "terminal show") with `stdout` and `exit`;
+        `target` limits it to one --terminal/--worktree value."""
+        self._write(command, {"exit": exit, "stdout": stdout}, target)
+
+    def respond_sequence(
+        self, command: str, answers: list[dict[str, Any]], target: str | None = None
+    ) -> None:
+        """Answer `command` with each {"exit", "stdout"} in turn, then with the default answer."""
+        self._write(command, answers, target)
+
+    def _write(self, command: str, spec: Any, target: str | None) -> None:
         responses = self.state / "responses"
         responses.mkdir(parents=True, exist_ok=True)
-        spec = {"exit": exit, "stdout": stdout}
-        (responses / f"{command.replace(' ', '-')}.json").write_text(json.dumps(spec))
+        name = command.replace(" ", "-") + (f"@{target}" if target else "")
+        (responses / f"{name}.json").write_text(json.dumps(spec))
 
-    def respond_fixture(self, command: str, fixture: str, exit: int = 0) -> None:
-        self.respond(command, load_fixture(fixture), exit)
+    def respond_fixture(self, command: str, fixture: str, exit: int = 0, target: str | None = None) -> None:
+        self.respond(command, load_fixture(fixture), exit, target)
 
     def fail(self, command: str, code: str = "runtime_error", message: str = "fake failure") -> None:
-        error = {"id": "fake", "ok": False, "error": {"code": code, "message": message}, "_meta": {}}
-        self.respond(command, error, exit=1)
+        self.respond(command, orca_error(code, message), exit=1)
+
+
+def orca_error(code: str, message: str) -> dict[str, Any]:
+    return {"id": "fake", "ok": False, "error": {"code": code, "message": message}, "_meta": {}}
 
 
 class FakeGh(FakeTool):
@@ -112,19 +128,16 @@ def load_fixture(name: str) -> Any:
 
 
 @pytest.fixture
-def fake_tools(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("PATH", f"{FAKES}{os.pathsep}{os.environ['PATH']}")
-
-
-@pytest.fixture
-def fake_orca(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fake_tools: None) -> FakeOrca:
+def fake_orca(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, repo: Repo) -> FakeOrca:
+    """Fake orca bound to the `repo` fixture: workspaces are worktrees of that repo."""
     state = tmp_path / "fake-orca"
     monkeypatch.setenv("FAKE_ORCA_DIR", str(state))
+    monkeypatch.setenv("FAKE_ORCA_REPO", str(repo.root))
     return FakeOrca(state)
 
 
 @pytest.fixture
-def fake_gh(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fake_tools: None) -> FakeGh:
+def fake_gh(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> FakeGh:
     state = tmp_path / "fake-gh"
     monkeypatch.setenv("FAKE_GH_DIR", str(state))
     return FakeGh(state)
