@@ -44,7 +44,8 @@ first: `orca skills get orca-cli`.
 7. **Validate**: run `factory doctor --json` again and check that it reports no problem.
 8. **Summarize**: what was done, what remains to complete in `docs/`, and how to start
    (`/factory-design`). Nothing is committed: the person reviews the diff and commits (or asks
-   you to).
+   you to). That commit goes on the base branch itself (Orca's base branch, usually `main`), not on
+   a new branch: approvals are committed there and task workspaces start from it.
 
 Restoring: `factory init --restore <backup> --json` puts back what a run modified or deleted.
 Running `/factory-init` again is safe: it duplicates nothing.
