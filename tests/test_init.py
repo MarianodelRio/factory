@@ -288,3 +288,11 @@ def ok_cli(capsys, *argv):
     code, out = cli(capsys, *argv)
     assert code == 0, out
     return out["data"]
+
+
+def test_installed_factory_files_do_not_make_a_small_repo_normal(project, capsys):
+    apply(capsys, plan(capsys)["plan_id"])
+    git("add", "-A", cwd=project.root)
+    git("commit", "-q", "-m", "Install the Factory", cwd=project.root)
+    created = paths(plan(capsys)["create"])
+    assert "docs/product.md" not in created and "docs/architecture.md" not in created
