@@ -3,11 +3,14 @@
 Raises FactoryError with these codes:
 - design_invalid (EXIT_PRECONDITION): the task block or the acceptance criteria are not valid;
   `details` lists every problem found.
+- change_not_found (EXIT_PRECONDITION): the change folder or its `design.md` does not exist.
+- change_rejected (EXIT_PRECONDITION): the change was rejected; a new change must be created.
 """
 
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 from pathlib import Path
 from typing import Any
@@ -15,8 +18,10 @@ from typing import Any
 import yaml
 
 from factory.output import EXIT_PRECONDITION, FactoryError
+from factory.state import TaskStore
 
 CHANGE_ID = re.compile(r"^CHG-(\d{4})$")
+TITLE = re.compile(r"^# (?:CHG-\d{4}\s*[—-]\s*)?(.+)$", re.MULTILINE)
 AC_ID = re.compile(r"^AC-\d{2,}$")
 AC_LINE = re.compile(r"^\s*-\s*(AC-\d{2,})\s*:")
 FENCE = re.compile(r"^```yaml\s*\n(.*?)^```\s*$", re.MULTILINE | re.DOTALL)
@@ -202,3 +207,103 @@ def _find_cycle(tasks: list[dict[str, Any]], own: set[str]) -> list[str] | None:
         if found:
             return found
     return None
+
+
+def reserve_change(changes_dir: Path) -> dict[str, Any]:
+    """Create the folder of the next free change id; two sessions never get the same one."""
+    changes_dir.mkdir(parents=True, exist_ok=True)
+    while True:
+        change_id = next_change_id(changes_dir)
+        try:
+            (changes_dir / change_id).mkdir()
+        except FileExistsError:
+            continue
+        return {"change": change_id, "design": str(changes_dir / change_id / "design.md")}
+
+
+def register(change_id: str, changes_dir: Path) -> dict[str, Any]:
+    """Validate the `design.md` of a reserved change."""
+    folder = _folder(change_id, changes_dir)
+    if (folder / "rejection.json").exists():
+        message = f"{change_id} was rejected; create a new change to take it up again"
+        raise FactoryError("change_rejected", message, EXIT_PRECONDITION)
+    text = _design_text(folder)
+    parsed = parse_design(text, change_id, known_tasks(changes_dir, exclude=change_id))
+    return {"change": change_id, "digest": digest(text), **parsed}
+
+
+def show(change_id: str, changes_dir: Path, store: TaskStore) -> dict[str, Any]:
+    """Change state (§1.5), digest, criteria, tasks with their stored state, approval or rejection.
+    An invalid design is still shown, with its problems."""
+    folder = _folder(change_id, changes_dir)
+    text = _design_text(folder)
+    try:
+        parsed = parse_design(text, change_id, known_tasks(changes_dir, exclude=change_id))
+        problems: list[str] = []
+    except FactoryError as exc:
+        if exc.code != "design_invalid":
+            raise
+        parsed, problems = {"acceptance_criteria": [], "tasks": []}, exc.details
+
+    tasks = []
+    for task in parsed["tasks"]:
+        stored = store.read_task(task["id"])
+        tasks.append({**task, "state": stored["state"] if stored else None})
+
+    approval = _read_json(folder / "approval.json")
+    rejection = _read_json(folder / "rejection.json")
+    current = digest(text)
+    if rejection is not None:
+        state = "rejected"
+    elif approval is None or approval.get("design_digest") != current:
+        state = "awaiting_approval"
+    elif tasks and all(t["state"] == "done" for t in tasks):
+        state = "done"
+    else:
+        state = "approved"
+
+    title = TITLE.search(normalize(text))
+    return {
+        "change": change_id,
+        "title": title.group(1).strip() if title else None,
+        "state": state,
+        "digest": current,
+        "acceptance_criteria": parsed["acceptance_criteria"],
+        "tasks": tasks,
+        "approval": approval,
+        "rejection": rejection,
+        "problems": problems,
+    }
+
+
+def known_tasks(changes_dir: Path, exclude: str) -> set[str]:
+    """Ids of approved tasks of other changes (their `tasks.yaml`)."""
+    ids: set[str] = set()
+    for tasks_file in sorted(changes_dir.glob("CHG-*/tasks.yaml")):
+        if tasks_file.parent.name == exclude:
+            continue
+        data = yaml.safe_load(tasks_file.read_text(encoding="utf-8")) or {}
+        ids.update(str(t["id"]) for t in data.get("tasks", []) if isinstance(t, dict) and "id" in t)
+    return ids
+
+
+def _folder(change_id: str, changes_dir: Path) -> Path:
+    folder = changes_dir / change_id
+    if not folder.is_dir():
+        message = f"{change_id} does not exist in {changes_dir}"
+        raise FactoryError("change_not_found", message, EXIT_PRECONDITION)
+    return folder
+
+
+def _design_text(folder: Path) -> str:
+    path = folder / "design.md"
+    if not path.exists():
+        raise FactoryError("change_not_found", f"{path} does not exist yet", EXIT_PRECONDITION)
+    return path.read_text(encoding="utf-8")
+
+
+def _read_json(path: Path) -> dict[str, Any] | None:
+    if not path.exists():
+        return None
+    data: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+    return data

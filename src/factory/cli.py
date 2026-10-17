@@ -7,7 +7,7 @@ import sys
 from collections.abc import Callable
 from typing import Any, NoReturn
 
-from factory import __version__
+from factory import __version__, design, paths
 from factory.output import (
     EXIT_ERROR,
     EXIT_OK,
@@ -17,6 +17,7 @@ from factory.output import (
     ok_envelope,
     render,
 )
+from factory.state import TaskStore
 
 Result = tuple[dict[str, Any], list[str]]
 Handler = Callable[[argparse.Namespace], Result]
@@ -35,8 +36,27 @@ def not_implemented(args: argparse.Namespace) -> Result:
     raise FactoryError("not_implemented", f"'{args.command}' is not implemented yet", EXIT_ERROR)
 
 
+def change_id(value: str) -> str:
+    if not design.CHANGE_ID.match(value):
+        raise argparse.ArgumentTypeError(f"'{value}' is not a change id (CHG-NNNN)")
+    return value
+
+
+def design_register(args: argparse.Namespace) -> Result:
+    if args.change is None:
+        return design.reserve_change(paths.changes_dir()), []
+    return design.register(args.change, paths.changes_dir()), []
+
+
+def design_show(args: argparse.Namespace) -> Result:
+    return design.show(args.change, paths.changes_dir(), TaskStore(paths.state_dir())), []
+
+
 # Command name ("task launch") -> handler. Filled in as tasks are implemented.
-HANDLERS: dict[str, Handler] = {}
+HANDLERS: dict[str, Handler] = {
+    "design register": design_register,
+    "design show": design_show,
+}
 
 
 def build_parser() -> Parser:
@@ -64,13 +84,14 @@ def build_parser() -> Parser:
 
     design = groups.add_parser("design", help="register, show, approve or reject a change")
     design_cmds = design.add_subparsers(dest="action", required=True, metavar="<action>")
-    for name, help_text in (("register", "validate a design and assign its id"), ("show", "show a change")):
-        command(design_cmds, name, f"design {name}", help_text).add_argument("change")
+    register = command(design_cmds, "register", "design register", "reserve an id, or validate a design")
+    register.add_argument("change", nargs="?", type=change_id, help="omit to reserve the next id")
+    command(design_cmds, "show", "design show", "show a change").add_argument("change", type=change_id)
     approve = command(design_cmds, "approve", "design approve", "approve a change (base branch only)")
-    approve.add_argument("change")
+    approve.add_argument("change", type=change_id)
     approve.add_argument("--message", help="the person's literal approval message")
     reject = command(design_cmds, "reject", "design reject", "reject a change")
-    reject.add_argument("change")
+    reject.add_argument("change", type=change_id)
     reject.add_argument("--reason", required=True)
 
     task = groups.add_parser("task", help="task lifecycle")

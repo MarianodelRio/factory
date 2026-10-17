@@ -309,7 +309,7 @@ For truly trivial changes the Factory is not needed: just ask an agent directly.
 3. **Clarifies** what is ambiguous: it first researches and proposes options; it asks only what changes the design.
 4. **Writes the design** with the template (§4.3), proportional to the size of the change. For each task it decides its complexity and reviews, using the table in §5.4 as a guide.
 5. **Self-reviews** with a critical subagent (*Design critic* role, §5.3) that answers one question: *could another agent implement this correctly without having seen this conversation?* The agent fixes issues before presenting.
-6. **Registers** the change (`factory design register`): the CLI assigns it an id and validates that the task block has the right format and that every AC is covered by some task.
+6. **Registers** the change in two steps: before writing, `factory design register` reserves the next id and creates `.factory/changes/<id>/`, where the skill writes `design.md`; then `factory design register <id>` validates that the task block has the right format and that every AC is covered by some task (it is run again after every edit).
 7. **Presents** a summary (goal, decisions, risks, AC, tasks), opens the design in Orca and says how to approve.
 8. If the person asks for changes, it applies them in the same conversation; the digest changes with every modification.
 
@@ -686,7 +686,8 @@ It is used by the skills; it is also available to the person. All output support
 factory doctor                                   # analysis without changes
 factory init --plan | --apply | --restore <backup>
 
-factory design register|show <CHG>
+factory design register [<CHG>]                 # no id: reserve the next one; with id: validate
+factory design show <CHG>
 factory design approve <CHG> [--message "..."]   # without --message, asks you to type the id
 factory design reject <CHG> --reason "..."
 

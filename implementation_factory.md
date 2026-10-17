@@ -174,10 +174,10 @@ Goal: answer design §10.3 with evidence and record real outputs for the fakes. 
   Do: `digest(design_md)` = SHA-256 with LF normalization. `next_change_id()` from `.factory/changes/`. Extract the YAML block under `## Tasks` and validate it: required fields, allowed values, ids `<change>-NN`, `depends_on` refers to tasks of the same change or existing ones, no cycles, every `AC-xx` in "Acceptance criteria" is covered by some task, every task AC exists.
   Done when: tests cover a valid design, each validation error (A-06), CRLF vs LF giving the same digest.
 
-- [ ] T-10 `design register` and `design show`
+- [x] T-10 `design register` and `design show`
   Depends: T-09 · Design: §4.2 (step 6), §1.5
   Files: `src/factory/design.py`, `src/factory/cli.py`, `tests/test_design_cli.py`
-  Do: `register` validates and assigns the id (creates the folder if the design was drafted elsewhere). `show` returns change state (derived, design §1.5), digest, AC, tasks and the approval if any.
+  Do: `register` without id reserves the next id and creates its folder (exclusive, safe against two sessions); `register <CHG>` validates its `design.md` (dependencies may point to tasks in other changes' `tasks.yaml`; a rejected change cannot be registered again). `show` returns change state (derived, design §1.5), digest, AC, tasks and the approval if any.
   Done when: tests for register (ok, invalid → exit 3 with details) and show in each change state.
 
 - [ ] T-11 `design approve` and `design reject`
@@ -335,7 +335,7 @@ Fill the "Test" column as tasks are completed. "Manual" criteria are checked in 
 | A-03 | T-28 | | |
 | A-04 | T-26, T-31 | | ✔ |
 | A-05 | T-31 | | ✔ |
-| A-06 | T-09, T-10 | `test_design_parse.py` (each validation error) | |
+| A-06 | T-09, T-10 | `test_design_parse.py` (each validation error), `test_design_cli.py::test_register_invalid_design_lists_problems` | |
 | A-07 | T-11 (+ skill rules in T-26) | | ✔ (permission prompt) |
 | A-08 | T-12 | | |
 | A-09 | T-16 | | |
@@ -376,6 +376,7 @@ Write here anything the design does not answer or that reality contradicts. Each
 | 2026-10-17 | T-08 | `unblock` and re-approval return the task to "its previous state", but the §1.4 JSON does not store it. | Add `blocked_from` to the task state. | resolved: confirmed by the person; design §1.4 updated |
 | 2026-10-17 | M2 review | §4.5 blocks tasks "in progress" on a design change, but an `interrupted` task could not be blocked, and a paused task could be unblocked on an unapproved design. | `interrupted` tasks are also blocked (`design_changed`) and return on re-approval; `unblock` works only while the approval is valid, whatever the reason (replaces T-08's "unblock does not release design_changed"). | resolved: confirmed by the person; design §1.5 and §4.5 updated |
 | 2026-10-17 | M2 review | With liveness `unknown` (§7.2) a task stays `in_progress` and could never be recovered. | `task recover` also works from `in_progress` when liveness is `unknown`: it says so, and `--confirm` (after the person decides) closes the attempt as interrupted and opens a new one. | resolved: confirmed by the person; design §1.5 and §7.4 updated |
+| 2026-10-17 | T-10 | §9 `design register <CHG>` vs §4.2 "the CLI assigns it an id"; task ids need the change id before the task block is written. | Two steps: `register` (no id) reserves the next id and creates the folder; `register <CHG>` validates. Update design §4.2 and §9. | resolved: confirmed by the person; design §4.2 and §9 updated |
 | 2026-10-17 | T-23 | Design §7.4 says recover acts "after the person confirms", but §9 has a single `task recover`. | `task recover <id>` only inspects; `task recover <id> --confirm` acts (the skill calls it after asking). Add to design §9. | resolved: design §9 updated |
 
 ---
@@ -397,3 +398,4 @@ One line per completed task or session: date, task, what was done, what comes ne
 | 2026-10-17 | T-08 | Transition table in `tasks.py` (design §1.5 + finish from in_progress/in_review), `block` records reason and `blocked_from`, `unblock`/`reapprove` return to it; manual `unblock` refuses `design_changed` (only re-approval releases it, §4.5). Design §1.4/§1.5 updated with the person's two answers. 187 tests green. M2 done. | M2 review, then T-09. |
 | 2026-10-17 | M2 review | No blockers. Minor fixes to state storage (event before JSON, rebuild a missing JSON, claim written in one step, locked release/reassign). Two gaps decided by the person: interrupted tasks are blocked by a design change and `unblock` needs a valid approval; `recover` also from `in_progress` when liveness is unknown. Design §1.5, §4.5, §7.4 updated. 197 tests green. | T-09 digest, ids and task-block parsing. |
 | 2026-10-17 | T-09 | `design.py`: `digest` (LF-normalized SHA-256), `next_change_id`, `parse_design` (AC list + YAML task block: fields, values, ids, dependencies incl. other changes, cycles, AC coverage both ways), all problems reported at once in `error.details` (added to the §3 envelope). 223 tests green. | T-10 register/show. |
+| 2026-10-17 | T-10 | `design register` (no id: reserve the next id + folder, exclusive; with id: validate, deps from other changes' `tasks.yaml`, rejected → `change_rejected`) and `design show` (derived change state, digest, AC, tasks with stored state, approval/rejection, problems of an invalid design); change ids validated by the CLI. Design §4.2/§9 updated with the person's choice. 235 tests green. | T-13 Orca client base (needed by T-11), then T-11. |
