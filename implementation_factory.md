@@ -146,7 +146,7 @@ Goal: answer design §10.3 with evidence and record real outputs for the fakes. 
   Do: read `.factory/config.toml` with `tomllib`, apply the defaults of design §8, validate known values (`auto|always|never`, `offer|always|never`), reject unknown `schema_version`.
   Done when: tests cover defaults, valid values, invalid values (clear error) and a missing file (defaults).
 
-- [ ] T-06 [P] Path resolution
+- [x] T-06 [P] Path resolution
   Depends: T-04 · Design: §1.3
   Files: `src/factory/paths.py`, `tests/test_paths.py`
   Do: functions of §3. Must work when called from the main checkout and from any worktree of the same clone.
@@ -387,3 +387,4 @@ One line per completed task or session: date, task, what was done, what comes ne
 | 2026-10-17 | T-03 | Package skeleton (uv_build, Python 3.11 pinned for dev, PyYAML), `factory` CLI with every design §9 command registered (not implemented → exit 1), JSON envelope and exit codes of §3, README. `uv` reinstalled on the machine (link was broken). 52 tests, ruff, mypy green. | T-04 test harness (fake orca/gh), then T-05/T-06. |
 | 2026-10-17 | T-04 | `tests/conftest.py` (isolated Git identity, no ORCA_* vars, temp repo with bare remote and worktrees), fake `orca` (fixtures, call log, per-command overrides, real `git worktree add` on `worktree create`) and fake `gh` (PR create/list, failure switch). 59 tests green. | T-05 and T-06 in parallel. |
 | 2026-10-17 | T-05 | `config.load_config(path)`: §8 defaults deep-merged per section, `config_invalid` (exit 3) for bad TOML, schema_version, choices, max_rounds, checks; unknown keys kept. (Subagent, reviewed.) The name of the template-hash section is left to T-28. | T-06. |
+| 2026-10-17 | T-06 | `paths.py` (repo_root, main_checkout, state_dir, changes_dir; same state_dir from main and worktrees) on a minimal `git.py` (`run`, `toplevel`, `worktree_paths`; git_unavailable / not_a_git_repo / git_failed). (Subagent, reviewed.) 92 tests green. M1 done. | M1 review, then T-07. |
