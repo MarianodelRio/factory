@@ -60,7 +60,8 @@ Notes that need no design change:
 - Card statuses (`orca worktree set --workspace-status`): defaults `todo`, `in-progress`,
   `in-review`, `completed`; custom ids allowed. `--comment`, `--unread|--read`, `--display-name`.
 - `orca agent launch` supports `--model`, `--effort` (requires `--model`), `--retry-launch
-  <operationId>`; result in `result.launch` (`outcome.kind` chat|terminal, `outcome.handle`).
+  <operationId>`; result in `result.outcome` (`kind` structured|terminal, `handle`) and `result.operationId`
+  (`orca worktree create --agent` nests the same data under `result.launch`).
 - `orca terminal list --json` → per terminal `agentIdentity` (`claude`), `connected`,
   `worktreeId`, `lastOutputAt`, `preview`. `orca reference find` reports agent `liveness`
   (`live`, `unverifiable`, `exited`).
@@ -70,7 +71,7 @@ Notes that need no design change:
   `worktree create` unless `--setup skip`.
 - Codex: no `codex` binary on the machine, no `~/.codex`; `orca account list` reports
   "Codex not signed in".
-- `orca search` is available (index status endpoint answers).
+- `orca search --index-status` answers; search itself is disabled on this machine (see below).
 - Orca setting `agentDefaultArgs` (profile state) adds `claude: --dangerously-skip-permissions`
   (and the equivalent bypass flags for other agents) to every agent Orca launches.
 
@@ -81,8 +82,9 @@ Notes that need no design change:
   once Codex is available.
 - 2026-10-17, item 3 (Claude): with `.claude/settings.json` `permissions.ask:
   ["Bash(echo factory-ask-probe:*)"]`, `claude --dangerously-skip-permissions` **still asked**
-  before running the command (checked by the person). The "ask" rule therefore also holds in
-  the default mode.
+  before running the command (checked by the person). The default mode was not tested: it
+  prompts for any command not explicitly allowed, and "ask" rules take precedence over allow
+  rules.
 
 ## Sandbox run (2026-10-17, repo `factory-spike` registered in Orca with the person's consent)
 

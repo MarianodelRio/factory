@@ -17,7 +17,7 @@
       "connected": false,
       "writable": false,
       "lastOutputAt": 1792253695076,
-      "preview": "ano@laptop:~/orca/workspaces/factory-spike/spike-a (user/spike-a) $ claude '--dangerously-skip-permissions' 'factory probe'\n/exitBB\nResume this session with:\nclaude --resume 77347cc4-c7d3-4da5-ac7c-252612fba44a\nuser@host:~/orca/workspaces/factory-spike/spike-a (user/spike-a) $",
+      "preview": "ser@host:~/orca/workspaces/factory-spike/spike-a (user/spike-a) $ claude '--dangerously-skip-permissions' 'factory probe'\n/exitBB\nResume this session with:\nclaude --resume 00000000-0000-4000-8000-000000000000\nuser@host:~/orca/workspaces/factory-spike/spike-a (user/spike-a) $",
       "exitCause": {
         "kind": "operator_close"
       },

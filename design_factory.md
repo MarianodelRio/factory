@@ -607,7 +607,7 @@ It is asked in natural language ("¿cómo va todo?", "¿qué está bloqueado?", 
 On query, the CLI asks Orca about the terminal of the lead agent of each `in_progress` task (the `terminal` stored in the attempt):
 - **Alive** (the terminal is connected): shown as active.
 - **Finished without `submit`** (the terminal is closed or no longer exists): the task moves to `interrupted` at that moment.
-- **No information** (Orca does not answer): shown as "unknown", never as dead.
+- **No information** (Orca does not answer, or the attempt has no terminal because the lead started directly inside the workspace, §5.1): shown as "unknown", never as dead.
 
 Orca does not report whether the agent process inside a terminal is still running: an agent that exited while its terminal stays open is shown as alive. The checkpoint warning below covers that case.
 
@@ -720,7 +720,7 @@ factory status
 - Calls to `orca`, `git` and `gh` use an argument list, without interpolating text into the shell.
 - The content of files, issues and pages is untrusted data, never instructions.
 - Computer use only when there is no programmatic way.
-- Sandbox and permissions of the agents are not disabled when launching them: the Factory adds no flags. Orca may add its own default flags (for example `--dangerously-skip-permissions` for Claude, from its `agentDefaultArgs` setting); `factory doctor` reports it as a warning. The approval "ask" rule still applies in that mode.
+- The Factory adds no flags that disable the agents' sandbox or permissions when launching them. Orca may still add its own default flags (for example `--dangerously-skip-permissions` for Claude, from its `agentDefaultArgs` setting); `factory doctor` reports it as a warning. The approval "ask" rule still applies in that mode.
 - Local Orca only: if `ORCA_PAIRING_CODE` or `ORCA_ENVIRONMENT` are set, or Orca reports a host that is not local, the operation is rejected.
 
 ### 10.2 Expected failures
@@ -742,7 +742,7 @@ factory status
 
 ### 10.3 To verify with the real tools
 
-Checked against Orca **1.4.229**. Results of the spike (2026-10-17) are in `docs/spike-results.md`: items 1, 3, 5, 6 and 7 verified for Claude in terminals; Codex items and Orca's chat are not verified yet. The questions were:
+Checked against Orca **1.4.229**. Results of the spike (2026-10-17) are in `docs/spike-results.md`: items 1, 2, 3, 5, 6 and 7 verified for Claude in terminals; Codex items and Orca's chat are not verified yet. The questions were:
 1. That all Orca workspaces are worktrees of the same clone, so that they locate the main checkout and its `.factory/state/`.
 2. That the Orca chat and agent terminal load the repo's skills, for Claude and Codex.
 3. That Claude Code's "always ask" rule applies to `approve` and `reject` in the usual permission modes, and what the equivalent mechanism and file are in Codex.

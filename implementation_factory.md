@@ -223,7 +223,7 @@ Goal: answer design §10.3 with evidence and record real outputs for the fakes. 
 - [ ] T-17 `task claim` and `task launch`
   Depends: T-16, T-14, T-15 · Design: §5.1, §10.2 · Acceptance: A-10, A-11
   Files: `src/factory/tasks.py`, `tests/test_claim_launch.py`
-  Do: `claim`: check ready + approval commit on base → create claim lock → create workspace from base branch → write state (`in_progress`, attempt 1) → card. If workspace creation fails, release the claim (task back to `ready`). `launch --agent`: launch the lead agent with the brief `/factory-implement <id>` plus the review agent name; record the attempt's agent and model.
+  Do: `claim`: check ready + approval commit on base → create claim lock → create workspace from base branch → write state (`in_progress`, attempt 1) → card. If workspace creation fails, release the claim (task back to `ready`). `launch --agent`: launch the lead agent with the brief `/factory-implement <id>` plus the review agent name; record the attempt's agent, model (as passed), `operation_id` and `terminal` (design §1.4).
   Done when: tests: happy path; second claim → exit 4; workspace failure → claim released; launch records operationId and attempt.
 
 - [ ] T-18 [P] `checkpoint`, `note`, `block`, `unblock`
@@ -383,4 +383,4 @@ One line per completed task or session: date, task, what was done, what comes ne
 | Date | Task | Done | Next |
 |---|---|---|---|
 | 2026-10-17 | T-02 | D-01 (PyYAML) and D-02 (Python 3.11+, uv) confirmed; design updated. | T-01 spike with the person, then T-03. |
-| 2026-10-17 | T-01 | Spike with the person: §10.3 answered in `docs/spike-results.md` (Claude terminal verified; Codex and Orca chat not verified), 21 Orca fixtures recorded, 4 design changes approved and applied (design v1.5). Sandbox removed from Orca. | T-03 project skeleton. |
+| 2026-10-17 | T-01 | Spike with the person: §10.3 answered in `docs/spike-results.md` (Claude terminal verified; Codex and Orca chat not verified), 21 Orca fixtures recorded, 4 design changes approved and applied (design v1.5). The spike's sandbox repo and workspace were removed from Orca. M0 review: no blockers; fixes applied. | T-03 project skeleton. |
