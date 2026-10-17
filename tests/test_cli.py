@@ -68,19 +68,25 @@ def test_every_command_has_help(capsys, path):
     assert exc.value.code == 0
 
 
-def test_status_json_prints_one_envelope(capsys):
+@pytest.fixture
+def outside_git(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("GIT_CEILING_DIRECTORIES", str(tmp_path.parent))
+
+
+def test_status_json_prints_one_envelope(capsys, outside_git):
     code, out, _ = run(capsys, ["status", "--json"])
     envelope = json.loads(out)
     assert set(envelope) == {"ok", "error", "warnings"}
     assert envelope["ok"] is False
-    assert envelope["error"]["code"] == "not_implemented"
+    assert envelope["error"]["code"] == "not_a_git_repo"
     assert envelope["warnings"] == []
-    assert code == 1
+    assert code == 3
 
 
-def test_json_flag_before_subcommand(capsys):
+def test_json_flag_before_subcommand(capsys, outside_git):
     _, out, _ = run(capsys, ["--json", "status"])
-    assert json.loads(out)["error"]["code"] == "not_implemented"
+    assert json.loads(out)["error"]["code"] == "not_a_git_repo"
 
 
 def test_usage_error_with_json_is_an_envelope(capsys):

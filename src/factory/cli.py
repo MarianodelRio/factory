@@ -130,6 +130,14 @@ def task_publish(args: argparse.Namespace) -> Result:
     return tasks.publish(args.task, task_context())
 
 
+def task_recover(args: argparse.Namespace) -> Result:
+    return tasks.recover(args.task, args.confirm, task_context())
+
+
+def status(args: argparse.Namespace) -> Result:
+    return tasks.status(task_context())
+
+
 def task_finish(args: argparse.Namespace) -> Result:
     return tasks.finish(args.task, args.memory, task_context())
 
@@ -159,6 +167,8 @@ HANDLERS: dict[str, Handler] = {
     "task review": task_review,
     "task finish": task_finish,
     "task publish": task_publish,
+    "task recover": task_recover,
+    "status": status,
 }
 
 

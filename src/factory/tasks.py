@@ -15,12 +15,15 @@ Raises FactoryError with these codes:
 - review_invalid (EXIT_PRECONDITION): the reviewer JSON does not follow design §5.3.
 - review_agent_missing (EXIT_USAGE): a conformance review without `--agent` or a recorded reviewer.
 - gates_not_met (EXIT_PRECONDITION): `finish` with closing criteria unmet; `details` lists them.
+- session_alive (EXIT_PRECONDITION): `recover --confirm` while Orca says the agent is alive.
+- workspace_missing (EXIT_PRECONDITION): `recover --confirm` when the workspace no longer exists.
 Plus the codes of factory.orca (Orca unavailable, not local, ...).
 """
 
 from __future__ import annotations
 
 import copy
+import datetime
 import fnmatch
 import json
 import shlex
@@ -751,3 +754,196 @@ def pr_body(task: dict[str, Any], record: State) -> str:
     pending = [f"changed outside the task scope: `{p}`" for p in record.get("scope_warnings") or []]
     lines += [f"- {p}" for p in pending] or ["- nothing"]
     return "\n".join(lines) + "\n"
+
+
+STALE_MINUTES = 10
+ACTIVE = ("in_progress", "in_review", "blocked", "interrupted")
+
+
+def _liveness_and_interrupt(task: dict[str, Any], ctx: Context) -> tuple[str | None, State | None]:
+    """Ask Orca about the lead agent of an `in_progress` task; a finished session without
+    `submit` moves the task to `interrupted` now (design §7.2)."""
+    record = ctx.store.read_task(task["id"])
+    if record is None or record["state"] != "in_progress":
+        return None, record
+    liveness = orca.session_liveness(record["attempts"][-1].get("terminal"))
+    if liveness == "finished":
+        record = ctx.store.update_task(task["id"], _if_state(("in_progress",), "interrupt", None), "interrupted")
+        _card(task, record)
+    return liveness, record
+
+
+def _broken_link(record: State | None) -> bool | None:
+    """True if the task's workspace no longer exists in Orca; None when Orca cannot say."""
+    if record is None or record["state"] not in ACTIVE or not record.get("workspace"):
+        return False
+    try:
+        return not orca.workspace_exists(record["workspace"]["orca_id"])
+    except FactoryError:
+        return None
+
+
+def _minutes_since(timestamp: str | None) -> int | None:
+    if not timestamp:
+        return None
+    then = datetime.datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.UTC)
+    return int((datetime.datetime.now(datetime.UTC) - then).total_seconds() // 60)
+
+
+def status(ctx: Context) -> tuple[dict[str, Any], list[str]]:
+    """Summary, every task and what needs attention (design §7.1), with liveness from Orca."""
+    all_tasks = catalog(ctx)
+    cfg = _config(ctx)
+    rows: list[dict[str, Any]] = []
+    attention: list[str] = []
+    awaiting = _awaiting_approval(ctx)
+    attention += [f"{change} is awaiting approval" for change in awaiting]
+
+    for task in all_tasks.values():
+        liveness, record = _liveness_and_interrupt(task, ctx)
+        row = view(task, ctx)
+        attempt = (record or {}).get("attempts", [{}])[-1] if record and record["attempts"] else {}
+        checkpoint = (record or {}).get("last_checkpoint")
+        age = _minutes_since((checkpoint or {}).get("at") or attempt.get("started_at"))
+        acceptance = (record or {}).get("acceptance") or {}
+        broken = _broken_link(record)
+        reviews = (record or {}).get("reviews", [])
+        row.update(
+            agent=attempt.get("agent"),
+            liveness=liveness,
+            last_checkpoint=checkpoint,
+            minutes_since_checkpoint=age,
+            acceptance={"verified": sum(1 for a in acceptance.values() if a.get("status") == "verified"),
+                        "total": len(task["acceptance"])},
+            reviews=[{k: r[k] for k in ("type", "round", "verdict", "commit")} for r in reviews],
+            pull_request=(record or {}).get("pull_request"),
+            broken_link=broken,
+            next_step=_next_step(row, record, task, cfg),
+        )
+        rows.append(row)
+        attention += _attention(row)
+
+    counts: dict[str, int] = {}
+    for row in rows:
+        counts[row["state"]] = counts.get(row["state"], 0) + 1
+    summary = {"awaiting_approval": awaiting, "tasks": counts}
+    return {"summary": summary, "tasks": rows, "attention": attention}, []
+
+
+def _awaiting_approval(ctx: Context) -> list[str]:
+    waiting = []
+    for folder in sorted(ctx.changes_dir.glob("CHG-*")):
+        if not (folder / "design.md").exists() or (folder / "rejection.json").exists():
+            continue
+        approval = design.approval_of(folder)
+        current = design.digest((folder / "design.md").read_text(encoding="utf-8"))
+        if approval is None or approval.get("design_digest") != current:
+            waiting.append(folder.name)
+    return waiting
+
+
+def _attention(row: dict[str, Any]) -> list[str]:
+    task, state, reason = row["id"], row["state"], row["reason"]
+    notes = []
+    if state == "blocked":
+        notes.append(f"{task} is blocked: {reason}")
+    if state == "interrupted":
+        notes.append(f"{task} is interrupted: recover it with /factory-status")
+    if state == "pending" and reason and "merged" in reason:
+        notes.append(f"{task} is pending: {reason}")
+    if state == "in_progress" and (row["minutes_since_checkpoint"] or 0) > STALE_MINUTES:
+        notes.append(f"{task}: no checkpoint for {row['minutes_since_checkpoint']} minutes (only a warning)")
+    if row["broken_link"]:
+        notes.append(f"{task} has a broken link: its Orca workspace no longer exists")
+    return notes
+
+
+def _next_step(row: dict[str, Any], record: State | None, task: dict[str, Any], cfg: dict[str, Any]) -> str:
+    state = row["state"]
+    if state == "ready":
+        return f"/factory-implement {task['id']}"
+    if state == "pending":
+        return str(row["reason"])
+    if state == "in_progress":
+        return (card_detail(record) or "") if record else ""
+    if state == "in_review":
+        return "reviews: " + (", ".join(effective_reviews(task, cfg)) or "none required") + ", then finish"
+    if state == "blocked":
+        return f"resolve '{row['reason']}', then factory task unblock {task['id']}"
+    if state == "interrupted":
+        return f"factory task recover {task['id']}"
+    if state == "done" and not (record or {}).get("pull_request"):
+        return f"factory task publish {task['id']}"
+    return "nothing"
+
+
+def recover(task_id: str, confirm: bool, ctx: Context) -> tuple[dict[str, Any], list[str]]:
+    """Gather what an interrupted task left (design §7.4). With `confirm` (after the person
+    agrees), close the previous attempt as interrupted, open a new one and reassign the claim.
+    Files are never touched and nothing is launched."""
+    task, _ = _started(task_id, ctx)
+    liveness, current = _liveness_and_interrupt(task, ctx)
+    assert current is not None
+    record = current
+    if record["state"] not in ("in_progress", "interrupted"):
+        _reject(record, "recover", f"it is {record['state']}")
+    if record["state"] == "interrupted":
+        liveness = orca.session_liveness(record["attempts"][-1].get("terminal"))
+    broken = _broken_link(record)
+
+    if not confirm:
+        return _recovery_report(task, record, liveness, broken, ctx), []
+    if liveness == "alive":
+        raise FactoryError("session_alive", f"the lead agent of {task_id} is still alive: continue in it",
+                           EXIT_PRECONDITION)
+    if broken:
+        raise FactoryError("workspace_missing", f"the workspace of {task_id} no longer exists in Orca",
+                           EXIT_PRECONDITION)
+
+    def apply(state: State) -> State:
+        if state["state"] not in ("in_progress", "interrupted"):
+            _reject(state, "recover", f"it is {state['state']}")
+        state["attempts"][-1].update(ended_at=now(), result="interrupted")
+        state["attempts"].append(new_attempt(len(state["attempts"]) + 1))
+        return transition(state, "recover")
+
+    updated = ctx.store.update_task(task_id, apply, "recover")
+    attempt = updated["attempts"][-1]["id"]
+    ctx.store.reassign_claim(task_id, attempt)
+    warnings = _card(task, updated)
+    data = {"task": task_id, "state": updated["state"], "attempt": attempt,
+            "next_step": f"factory task launch {task_id} --agent <claude|codex>: it continues from the last checkpoint"}
+    return data, warnings
+
+
+def _recovery_report(
+    task: dict[str, Any], record: State, liveness: str | None, broken: bool | None, ctx: Context
+) -> dict[str, Any]:
+    report: dict[str, Any] = {
+        "task": task["id"],
+        "state": record["state"],
+        "liveness": liveness,
+        "broken_link": broken,
+        "workspace": record["workspace"]["orca_id"],
+        "branch": record["workspace"]["branch"],
+        "last_checkpoint": record.get("last_checkpoint"),
+        "acceptance": record.get("acceptance"),
+        "missing_acceptance": [ac for ac in task["acceptance"]
+                               if (record["acceptance"].get(ac) or {}).get("status") != "verified"],
+        "git_status": None,
+        "commits": None,
+    }
+    if not broken:
+        cwd = workspace_path(record)
+        report["git_status"] = git.run(["status", "--porcelain"], cwd).splitlines()
+        base = ctx.base()
+        if base:
+            report["commits"] = git.run(["log", "--oneline", f"{base}..HEAD"], cwd).splitlines()
+    if liveness == "alive":
+        report["proposal"] = "the previous session is alive: continue in it from the Orca sidebar"
+    elif liveness == "unknown":
+        report["proposal"] = ("Orca cannot say whether the previous session is alive; if it is gone, confirm to "
+                              "launch a new agent in the same workspace")
+    else:
+        report["proposal"] = "launch a new agent in the same workspace (confirm first)"
+    return report

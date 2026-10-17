@@ -256,7 +256,7 @@ Goal: answer design §10.3 with evidence and record real outputs for the fakes. 
   Do: push **only** the task branch (no `--force`); open a PR against the base branch with `gh` and a description built from the task (change, AC + evidence, reviews incl. minor findings, memory summary, pending items). Second publish → push only, same PR. No `gh` or push rejected → clear message, branch intact.
   Done when: tests with the bare remote and fake `gh`: branch pushed, PR body contains each section, re-publish does not create a second PR, no other refs pushed.
 
-- [ ] T-23 [P] `status` and `task recover`
+- [x] T-23 [P] `status` and `task recover`
   Depends: T-21 · Design: §7.1, §7.2, §7.4 · Acceptance: A-21, A-22, A-25
   Files: `src/factory/tasks.py`, `tests/test_status_recover.py`
   Do: `status`: summary, per task, attention list (design §7.1). For `in_progress` tasks ask Orca liveness: `finished` without submit → `interrupted`; `unknown` → shown as unknown; >10 min without checkpoint → warning only. Missing workspace → broken link. `recover`: gather context (git status, commits, last checkpoint, evidence); if the session is alive, propose continuing only; if it is `unknown`, say so and let the person decide; otherwise (or after the person decides) `recover --confirm` (called by the skill only after the person agrees; see §6) closes the previous attempt as `interrupted`, open a new one, reassign the claim. Uncommitted changes untouched.
@@ -350,11 +350,11 @@ Fill the "Test" column as tasks are completed. "Manual" criteria are checked in 
 | A-18 | T-26 | | ✔ |
 | A-19 | T-24, T-25, T-26 | | ✔ |
 | A-20 | T-18 (+ before submit in T-20) | `test_notes.py` (note from another worktree read at next checkpoint; pause → blocked), `test_review.py::test_submit_moves_to_in_review_and_reads_notes` | |
-| A-21 | T-23 | | |
-| A-22 | T-23 | | |
+| A-21 | T-23 | `test_status_recover.py` (finished → interrupted, unknown never dead, 10-minute warning only) | |
+| A-22 | T-23 | `test_status_recover.py::test_recover_confirm_opens_a_new_attempt_and_keeps_files` (new attempt, uncommitted files kept, nothing relaunched) | |
 | A-23 | T-15 | `test_cards.py::test_card_follows_the_table` (one case per row) | |
 | A-24 | T-13 | `test_orca.py` (closed, unreachable, remote variables, non-local host), `test_claim_launch.py::test_orca_unavailable_claims_nothing` | |
-| A-25 | T-23 | | |
+| A-25 | T-23 | `test_status_recover.py::test_deleted_workspace_is_a_broken_link` | |
 | A-26 | T-07, T-22, T-23 (no secrets written) | | |
 
 ---
@@ -420,3 +420,4 @@ One line per completed task or session: date, task, what was done, what comes ne
 | 2026-10-17 | T-20 | `submit` (reads pending notes; a pause blocks instead; card with pending reviews), `effective_reviews` (task field + config always/never), `review --type` (conformance: Orca agent in the workspace with the role text and context, agent = `--agent` or the attempt's reviewer; quality: subagent unless `--agent`), `review --record` (JSON with `type` per the person's choice, validated; verdict computed; round and HEAD stored; not `pass` at `max_rounds` → blocked with findings). 391 tests green. | T-21 finish. |
 | 2026-10-17 | T-21 | `task finish`: gates of §5.7 reported together (`gates_not_met`): every AC verified, checks passed, each effective review's latest verdict `pass` on a commit containing the last commit with code (docs/ and .factory/ ignored), non-empty `--memory`, approval valid; scope warning (outside globs, ignoring docs/.factory) stored as `scope_warnings` and returned; done → claim released, card completed. 407 tests green. | T-22 publish and T-23 status/recover (both edit tasks.py: sequential). |
 | 2026-10-17 | T-22 | `task publish` (only when done): `git push -u origin refs/heads/<b>:refs/heads/<b>` (never forced; rejection → `push_rejected`, branch intact), reuse the open PR (`gh pr list --head`) or `gh pr create --body-file` with change, AC + evidence, checks, reviews with every finding, memory, pending; no or failing `gh` → warning, PR left to the person; `pull_request` stored and shown on the card. 414 tests green. | T-23 status and recover. |
+| 2026-10-17 | T-23 | `status`: summary (changes awaiting approval, tasks by state), per task (state, reason, agent, liveness for in_progress, checkpoint and age, AC verified/total, reviews, PR, broken link, next step), attention list; a finished session moves the task to `interrupted`, unknown stays unknown, >10 min without checkpoint is a warning; viewable without Orca. `task recover`: report (liveness, git status, commits, checkpoint, missing AC, proposal) and `--confirm` (refused if alive or workspace missing; closes the attempt as interrupted, opens a new one, reassigns the claim; no files touched, nothing launched). 428 tests green. M5 done. | M5 review. |
