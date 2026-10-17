@@ -4,6 +4,7 @@ Raises FactoryError with these codes:
 - git_unavailable (EXIT_UNAVAILABLE): the git executable is not installed or not on PATH.
 - not_a_git_repo (EXIT_PRECONDITION): the working directory is not inside a Git repository.
 - git_failed (EXIT_ERROR): any other git failure; the message carries the command and stderr.
+- commit_failed (EXIT_PRECONDITION): `git commit` was refused (e.g. by a hook); nothing is committed.
 """
 
 from __future__ import annotations
@@ -46,3 +47,36 @@ def worktree_paths(cwd: Path | None = None) -> list[Path]:
     output = run(["worktree", "list", "--porcelain"], cwd)
     prefix = "worktree "
     return [Path(line[len(prefix) :]).resolve() for line in output.splitlines() if line.startswith(prefix)]
+
+
+def current_branch(cwd: Path | None = None) -> str:
+    """The checked-out branch, or "" when HEAD is detached."""
+    try:
+        return run(["symbolic-ref", "--short", "-q", "HEAD"], cwd)
+    except FactoryError as exc:
+        if exc.code == "git_failed":
+            return ""
+        raise
+
+
+def config_value(key: str, cwd: Path | None = None) -> str:
+    """`git config --get <key>`, or "" when it is not set."""
+    try:
+        return run(["config", "--get", key], cwd)
+    except FactoryError as exc:
+        if exc.code == "git_failed":
+            return ""
+        raise
+
+
+def commit_paths(paths: list[str], message: str, cwd: Path) -> str:
+    """Commit only `paths` (other staged or unstaged changes stay as they are); return the commit.
+    If the commit is refused, the paths are unstaged again and commit_failed is raised."""
+    run(["add", "--", *paths], cwd)
+    try:
+        run(["commit", "-q", "-m", message, "--", *paths], cwd)
+    except FactoryError as exc:
+        run(["reset", "-q", "--", *paths], cwd)
+        message = f"the commit was refused: {exc.message}"
+        raise FactoryError("commit_failed", message, EXIT_PRECONDITION) from exc
+    return run(["rev-parse", "HEAD"], cwd)

@@ -52,10 +52,25 @@ def design_show(args: argparse.Namespace) -> Result:
     return design.show(args.change, paths.changes_dir(), TaskStore(paths.state_dir())), []
 
 
+def design_approve(args: argparse.Namespace) -> Result:
+    if args.message is None:
+        typed = input(f"Type {args.change} to approve its current design: ")
+        message, method = typed, "terminal"
+    else:
+        message, method = args.message, "chat"
+    return design.approve(args.change, paths.changes_dir(), message, method, paths.main_checkout()), []
+
+
+def design_reject(args: argparse.Namespace) -> Result:
+    return design.reject(args.change, paths.changes_dir(), args.reason, paths.main_checkout()), []
+
+
 # Command name ("task launch") -> handler. Filled in as tasks are implemented.
 HANDLERS: dict[str, Handler] = {
     "design register": design_register,
     "design show": design_show,
+    "design approve": design_approve,
+    "design reject": design_reject,
 }
 
 

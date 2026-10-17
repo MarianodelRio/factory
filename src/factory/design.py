@@ -5,6 +5,12 @@ Raises FactoryError with these codes:
   `details` lists every problem found.
 - change_not_found (EXIT_PRECONDITION): the change folder or its `design.md` does not exist.
 - change_rejected (EXIT_PRECONDITION): the change was rejected; a new change must be created.
+- already_approved (EXIT_PRECONDITION): the current design is already approved.
+- approval_not_explicit (EXIT_PRECONDITION): the approval message does not name the change.
+- approval_not_confirmed (EXIT_PRECONDITION): the id typed in the terminal is not the change id.
+- not_on_base_branch (EXIT_PRECONDITION): approve and reject only run on the base branch.
+- git_identity_missing (EXIT_PRECONDITION): `git config user.email` is not set.
+Plus the codes of factory.git (commit_failed, ...) and factory.orca (base branch).
 """
 
 from __future__ import annotations
@@ -17,8 +23,9 @@ from typing import Any
 
 import yaml
 
+from factory import git, orca
 from factory.output import EXIT_PRECONDITION, FactoryError
-from factory.state import TaskStore
+from factory.state import TaskStore, now
 
 CHANGE_ID = re.compile(r"^CHG-(\d{4})$")
 TITLE = re.compile(r"^# (?:CHG-\d{4}\s*[—-]\s*)?(.+)$", re.MULTILINE)
@@ -307,3 +314,99 @@ def _read_json(path: Path) -> dict[str, Any] | None:
         return None
     data: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
     return data
+
+
+def approve(
+    change_id: str, changes_dir: Path, message: str, method: str, main_checkout: Path
+) -> dict[str, Any]:
+    """Approve the current design (design §4.4): on the base branch, with an explicit message
+    (`chat`) or the typed id (`terminal`); commit only the change folder."""
+    folder = _folder(change_id, changes_dir)
+    _refuse_rejected(change_id, folder)
+    text = _design_text(folder)
+    parsed = parse_design(text, change_id, known_tasks(changes_dir, exclude=change_id))
+    current = digest(text)
+    previous = _read_json(folder / "approval.json")
+    if previous and previous.get("design_digest") == current:
+        raise FactoryError("already_approved", f"{change_id} is already approved", EXIT_PRECONDITION)
+    if method == "terminal" and message.strip() != change_id:
+        message = f"typed '{message.strip()}', expected {change_id}: not approved"
+        raise FactoryError("approval_not_confirmed", message, EXIT_PRECONDITION)
+    if method == "chat" and not re.search(rf"\b{re.escape(change_id)}\b", message, re.IGNORECASE):
+        message = f"the approval message must name {change_id} explicitly (e.g. 'approve {change_id}')"
+        raise FactoryError("approval_not_explicit", message, EXIT_PRECONDITION)
+    email = _ready_to_commit(folder, main_checkout)
+
+    approval = {
+        "change": change_id,
+        "design_digest": current,
+        "approved_by": email,
+        "approved_at": now(),
+        "method": method,
+        "message": message,
+    }
+    tasks = {"change": change_id, "design_digest": current, "tasks": parsed["tasks"]}
+    files = {
+        "approval.json": json.dumps(approval, indent=2, ensure_ascii=False) + "\n",
+        "tasks.yaml": yaml.safe_dump(tasks, sort_keys=False, allow_unicode=True),
+    }
+    commit = _write_and_commit(folder, files, f"Approve {change_id}")
+    return {"change": change_id, "digest": current, "commit": commit, "tasks": parsed["tasks"]}
+
+
+def reject(change_id: str, changes_dir: Path, reason: str, main_checkout: Path) -> dict[str, Any]:
+    """Reject a change (final): write `rejection.json` on the base branch and commit it."""
+    folder = _folder(change_id, changes_dir)
+    _refuse_rejected(change_id, folder)
+    text = _design_text(folder)
+    email = _ready_to_commit(folder, main_checkout)
+    rejection = {
+        "change": change_id,
+        "design_digest": digest(text),
+        "rejected_by": email,
+        "rejected_at": now(),
+        "method": "chat",
+        "reason": reason,
+    }
+    files = {"rejection.json": json.dumps(rejection, indent=2, ensure_ascii=False) + "\n"}
+    commit = _write_and_commit(folder, files, f"Reject {change_id}")
+    return {"change": change_id, "commit": commit}
+
+
+def _refuse_rejected(change_id: str, folder: Path) -> None:
+    if (folder / "rejection.json").exists():
+        message = f"{change_id} was rejected; create a new change to take it up again"
+        raise FactoryError("change_rejected", message, EXIT_PRECONDITION)
+
+
+def _ready_to_commit(folder: Path, main_checkout: Path) -> str:
+    """The session is on the base branch and has a Git identity; return its email."""
+    base = orca.base_branch(main_checkout)
+    branch = git.current_branch(folder)
+    if branch != base:
+        where = branch or "a detached HEAD"
+        message = f"this session is on '{where}', not on the base branch '{base}'; run `git switch {base}`"
+        raise FactoryError("not_on_base_branch", message, EXIT_PRECONDITION)
+    email = git.config_value("user.email", folder)
+    if not email:
+        raise FactoryError("git_identity_missing", "set `git config user.email` first", EXIT_PRECONDITION)
+    return email
+
+
+def _write_and_commit(folder: Path, files: dict[str, str], message: str) -> str:
+    """Write `files` in the change folder and commit only that folder; undo the writes if the
+    commit fails."""
+    previous = {name: (folder / name).read_text(encoding="utf-8") if (folder / name).exists() else None
+                for name in files}
+    for name, content in files.items():
+        (folder / name).write_text(content, encoding="utf-8")
+    root = git.toplevel(folder)
+    try:
+        return git.commit_paths([str(folder.relative_to(root))], message, root)
+    except FactoryError:
+        for name, before in previous.items():
+            if before is None:
+                (folder / name).unlink(missing_ok=True)
+            else:
+                (folder / name).write_text(before, encoding="utf-8")
+        raise
