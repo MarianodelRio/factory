@@ -1,1411 +1,781 @@
-# design_factory.md — Diseño funcional y técnico de la Software Factory
+# design_factory.md — Software Factory Design
 
-> **Versión:** 1.0 — propuesta de diseño para revisión antes de implementar  
-> **Fecha de referencia:** 16 de octubre de 2026  
-> **Estado:** Decisiones funcionales consensuadas; este documento completo queda pendiente de aprobación final.  
-> **Objetivo:** Servir como especificación de partida para implementar una Factory reutilizable para proyectos personales y profesionales, en VS Code, Orca y terminal, con Claude Code y Codex.  
-> **Prioridades:** sencillez, robustez, portabilidad, recuperación, trazabilidad y ausencia de duplicidades.
+> **Version:** 1.4 — simplified design on top of Orca, pending final approval  
+> **Reference date:** October 17, 2026  
+> **Goal:** A simple, usable and powerful Factory to develop with agents (Claude Code and Codex) on **local Orca**, operated from the chat with four skills.  
+> **Approach:** start with the minimum that adds value and iterate. What is not here will be added when real use justifies it.
 
-## 0. Resumen ejecutivo y decisiones cerradas
+## 0. Summary
 
-Se construirá un **repositorio de herramientas y plantillas**, instalable mediante una CLI ligera, que convierta un repositorio Git existente o nuevo en un entorno preparado para el desarrollo asistido por agentes. La Factory no será un IDE, un modelo, un gestor remoto de agentes ni una segunda plataforma de Git.
+### 0.1 What it is
 
-Su cometido será dar un **contrato operativo común** a distintas herramientas: inicializar el proyecto, facilitar investigación y diseño, exigir aprobación antes de implementar cambios no triviales, gestionar tareas y dependencias, asignar worktrees, registrar progreso, facilitar recuperación y ofrecer un dashboard HTML local.
+A repository of skills, templates and a small CLI that prepares any Git repository to work with agents using a method: **design, approve, implement in an isolated workspace, review, publish a PR and remember what was learned**.
 
-### 0.1 Decisiones ya tomadas
+The Factory does not run agents or manage worktrees on its own: **Orca does that**. The Factory provides the method and keeps its state in readable files.
 
-| Área | Decisión |
+### 0.2 How it is used
+
+The person works in the Orca agent chat or terminal and uses four skills:
+
+| Skill | What for |
 |---|---|
-| Interfaces | VS Code y Orca con las mismas capacidades esenciales; terminal y CLI como alternativa. |
-| Proveedores | Claude Code y Codex, intercambiables entre investigación, implementación y revisión. |
-| OpenSpec | Enfoque híbrido: se probará como proveedor de especificaciones; podrá desactivarse o sustituirse sin perder tareas ni aprobaciones. |
-| Complejidad del flujo | Adaptativo: sin Planner obligatorio; se añade descomposición y Reviewer según complejidad y riesgo. |
-| Aprobación | Diseño técnico aprobado explícitamente por una persona antes de la implementación formal. |
-| Autonomía | Adaptativa: fases rutinarias automatizables; pausas ante decisiones de alcance, riesgos o acciones no autorizadas. |
-| Tareas | Adaptador local en uso personal y posibilidad de GitHub Issues u otra herramienta existente en equipos. |
-| Git | La Factory crea ramas y worktrees; se permite hacer commits; **no hace push, merge ni despliegue automático por defecto**. |
-| Recuperación | V1 manual: marcar una ejecución interrumpida y permitir reanudarla explícitamente. Sin reinicio automático. |
-| Memoria | Checkpoints operativos automáticos; documentación permanente propuesta/revisada, sin Memory Manager obligatorio. |
-| Dashboard | HTML local **actualizado**, inicialmente de solo lectura y sin backend complejo. |
-| Convivencia con equipos | Respetar repositorios, instrucciones, permisos y CI existentes. No reestructurar proyectos salvo aprobación. |
+| `/factory-init` | Prepare or update the repo: analyzes it, proposes what to create, change and delete, and applies it after one confirmation. |
+| `/factory-design` | Research and design a change, approve or reject it when the person says so, and generate its tasks. |
+| `/factory-implement` | Implement an approved task in its own Orca workspace, with tests, reviews, memory and PR. |
+| `/factory-status` | See how everything is going, leave notes or pause, recover interrupted tasks and review the memory. |
 
-### 0.2 Cinco pilares
+Under the hood, the skills use the `factory` CLI for everything that must be exact (claiming tasks, approving, recording state). The person does not need to use the CLI, but can.
 
-1. **Setup y configuración inteligente**: detectar lo existente y añadir lo mínimo necesario.
-2. **Investigación, diseño y aprobación**: crear una especificación verificable y bloquear implementación formal hasta aprobarla.
-3. **Flujo de agentes y orquestación ligera**: implementar, verificar, revisar y coordinar proveedores según la tarea.
-4. **Tareas, progreso, worktrees y dashboard**: conocer trabajo disponible, activo, bloqueado y recuperable.
-5. **Memoria y contexto**: conservar conocimiento útil y evitar inflar permanentemente el contexto.
+### 0.3 Split between Orca and the Factory
 
-### 0.3 Principios no negociables
+| Orca | Factory |
+|---|---|
+| Workspaces (worktrees) and branches | Changes, designs and approval |
+| Launching Claude/Codex agents with model and effort | Tasks, AC, dependencies and their state |
+| Knowing whether an agent is still alive | Reviews, evidence and the definition of "done" |
+| Workspace cards in the sidebar | What is shown on those cards |
+| Browser, computer use, session search | Project memory and documentation |
 
-- **Agnosticismo**: ningún artefacto de trabajo importante dependerá del historial privado de Claude, Codex, VS Code u Orca.
-- **Configuración por descubrimiento**: la Factory detectará herramientas y capacidades instaladas en vez de asumirlas.
-- **Una única fuente de verdad por dato**: no mantener simultáneamente varias listas de tareas editables o copias de la misma regla.
-- **Operaciones seguras por defecto**: `doctor` y `--dry-run` no alteran el repositorio; nada destructivo sin confirmación.
-- **Calidad demostrable**: «terminado» exige comprobaciones y evidencia, no solo la afirmación de un LLM.
-- **Eficiencia contextual**: instrucciones cortas y documentación consultada selectivamente.
-- **Trazabilidad**: diseño, versión aprobada, tarea, ejecución, rama, resultados y checkpoints estarán vinculados.
-- **Respeto a los equipos**: prevalecen las normas corporativas, el control de acceso y la protección de ramas.
-- **Configuración simple**: biblioteca estándar de Python como preferencia para la CLI; no introducir servicios permanentes ni dependencias por defecto.
-- **Degradación controlada**: sin OpenSpec, Orca, GitHub o algún hook, la Factory debe seguir permitiendo trabajar localmente.
+### 0.4 Principles
 
-### 0.4 Fuera del alcance de la V1
+- **Simple on the outside**: four skills and natural language. Any complexity stays inside.
+- **Delegate to Orca before building**: if Orca does it, the Factory does not reimplement it.
+- **Readable files**: all state is Markdown, YAML or JSON that can be opened and read.
+- **One source of truth per datum**: Orca rules over workspaces and sessions; the Factory over designs, tasks and evidence.
+- **Nothing without confirmation**: nothing is deleted, overwritten or approved unless the person sees it and accepts it.
+- **Done means proven**: a task is done when every acceptance criterion has evidence, not when the agent says so.
+- **Reviewed memory**: project memory changes only with human review: what tasks generate goes in their PR; what `/factory-init` and maintenance generate is shown as a diff and the person makes the commit.
+- **Neutral between Claude and Codex**: any artifact can be continued by the other provider without the original chat.
+- **Respect what exists**: the repo's rules, CI and protections always prevail.
 
-No se implementarán: agentes IA propios que sustituyan a Claude/Codex; RAG o base vectorial de memoria; panel remoto multiusuario; motor de despliegue; fusión automática de PR; reintentos automáticos de tareas interrumpidas; facturación/cuotas por API; entrenamiento o benchmark continuo de modelos; un sistema propio de permisos que pretenda sustituir los del SO/IDE/GitHub; edición de tareas desde el dashboard; ni una plataforma distribuida de workers.
+### 0.5 Out of scope for now
+
+These may be added later if needed: coordination of several tasks in parallel under an orchestrator; OpenSpec; GitHub Issues or another task manager; HTML dashboard; team profiles; remote Orca hosts; scheduled automations; automatic task retries; starting a task before its dependencies are integrated. Never part of it: automatic merge or deployment, or support for IDEs other than Orca.
 
 ---
 
-## 1. Producto y arquitectura general
+## 1. Architecture and files
 
-### 1.1 Usuario y escenarios principales
-
-- **Proyecto personal nuevo**: instalar la Factory, detectar stack y herramientas, configurar documentación mínima, diseñar funcionalidad, aprobarla, implementarla con cualquier proveedor, revisar cambios y mantener un dashboard.
-- **Proyecto personal existente**: no romper configuraciones previas, reutilizar tests y convenciones, incorporar las capacidades que faltan.
-- **Proyecto profesional individual dentro de un equipo**: utilizar las mismas skills y reglas, pero sin tocar política de ramas, CI, secretos ni herramientas corporativas. El trabajo de implementación sigue siendo local hasta que se elija publicar.
-- **Proyecto colaborativo**: tareas y decisiones compartidas mediante Git y tracker existente cuando se configure; cada desarrollador tiene su estado de ejecución local, sin sincronizar transcripciones ni preferencias personales.
-- **Trabajo paralelo**: una persona investiga y aprueba otras funcionalidades mientras uno o más agentes trabajan en distintas ramas/worktrees sobre tareas ya disponibles.
-
-### 1.2 Arquitectura lógica
+### 1.1 Components
 
 ```text
-Usuario (chat VS Code / chat Orca / terminal)
-                   |
-          Skills / CLI Factory
-                   |
-+--------------------------------------------------+
-| FACTORY CORE                                     |
-| Diagnóstico | Configuración | Contratos           |
-| Diseños/aprobación | Tareas/estados | Checkpoints |
-| Política de ejecución | Verificaciones           |
-+--------------------------------------------------+
-     |             |            |              |
- Planificación   Runners       Git          Persistencia
- OpenSpec o      Claude /      branches /   estado local
- plantilla       Codex         worktrees    y adaptador remoto
-     |             |            |              |
-     +-------------+------------+--------------+
-                   |
-         Dashboard HTML local
+Person (chat / agent terminal in Orca)
+            |
+   4 Factory skills  ── query Orca directly (guides, browser, search)
+            |
+   factory CLI (Python, standard library)
+     ├── Factory files (.factory/)
+     ├── Orca client (operations that change state: workspaces, agents, cards)
+     └── git / gh
 ```
 
-**Responsabilidades y límites**:
+- **Skills**: talk to the person, research, write and decide. They can use Orca directly to **query or interact** (load its guides with `orca skills get orca-cli`, browser, `orca search`), without copying its guides.
+- **CLI**: exact, repeatable operations. It validates, claims, records and answers the skills in `--json`. It does not call models. It is the **only one that writes** Factory state.
+- **Orca client**: part of the CLI and the only code that performs **Orca operations that change state** (create workspaces, launch agents, update cards). It always uses `--json` and checks that commands exist with `orca agent-context --json`.
+- **Requirements**: Git, Orca (minimum version in config), Python 3.11+, and at least Claude Code or Codex available in Orca. `gh` is optional (without it, PRs are not opened automatically).
 
-- **Core**: reglas deterministas, validaciones, estados, versiones, locks y contratos de resultados. No invoca un LLM para tareas que puede resolver con código.
-- **Skills**: procedimientos semánticos para investigar, diseñar, ejecutar o reanudar. Se activan desde el chat y llaman a la CLI para operaciones deterministas.
-- **Adaptadores de agentes**: descubrimiento de CLI, selección de modelo, lanzamiento opcional, detección de estado y captura de salida cuando el cliente lo permita.
-- **Adaptadores de planificación**: OpenSpec o plantilla propia, convertidos a un contrato de cambio común.
-- **Adaptadores de tareas**: local como base; GitHub/otros cuando sea conveniente. No reimplementar GitHub Issues.
-- **Git**: ramas, worktrees, diffs, commits, logs y comprobaciones nativas.
-- **Dashboard**: visualiza datos del Core y de adaptadores; no mantiene una segunda base de datos.
-
-### 1.3 Repositorio de la Factory (fuente distribuible)
-
-Estructura orientativa, susceptible de compactarse sin alterar contratos:
+### 1.2 Factory repository
 
 ```text
 software-factory/
-├── pyproject.toml
-├── README.md
+├── pyproject.toml           # installs the `factory` command (pipx)
 ├── src/factory/
 │   ├── cli.py
-│   ├── config.py
-│   ├── doctor.py
-│   ├── installer.py
-│   ├── planning.py
-│   ├── approval.py
-│   ├── tasks.py
-│   ├── execution.py
-│   ├── worktrees.py
-│   ├── events.py
-│   ├── dashboard.py
-│   └── adapters/
-│       ├── claude.py
-│       ├── codex.py
-│       ├── openspec.py
-│       ├── orca.py
-│       └── github.py
+│   ├── init.py              # analysis, plan, apply, backups
+│   ├── design.py            # registration, digest, approval, tasks
+│   ├── tasks.py             # state, claim, reviews, closing
+│   ├── memory.py
+│   ├── orca.py              # Orca client
+│   └── git.py               # commits, push, PR
 ├── templates/
-│   ├── project/
-│   ├── skills/
-│   ├── planning/
-│   └── dashboard/
-├── tests/
-└── docs/
+│   ├── skills/              # the 4 skills (for .claude/ and .agents/)
+│   ├── roles/               # instructions for each role (§5.3)
+│   ├── design/              # design template
+│   └── docs/                # documentation and memory templates
+└── tests/                   # includes a fake `orca` with recorded JSON responses
 ```
 
-**Implementación propuesta**: Python 3.11+, `argparse` o equivalente, `subprocess`, `pathlib`, `tomllib`, `sqlite3`, `json`, `hashlib` y `http.server`. No son obligatorias dependencias externas para el núcleo. OpenSpec, Claude, Codex, Orca y `gh` serán ejecutables externos **opcionales** y detectados. `pyproject.toml` publicará el *entry point* `factory` para poder instalar el paquete localmente con `pipx install <ruta-del-repo>` o una herramienta Python equivalente. La Factory no deberá requerir que el proyecto destino tenga un entorno virtual Python específico.
-
-### 1.4 Archivos generados en un proyecto
+### 1.3 Files in a project
 
 ```text
-mi-repositorio/
-├── AGENTS.md                       # instrucciones comunes, breve
-├── CLAUDE.md                       # solo si se necesita puente compatibilidad
-├── .factory/
-│   └── config.toml                 # configuración compartida y versionada
-├── .agents/skills/
-│   ├── factory-design/SKILL.md
-│   ├── factory-implement/SKILL.md
-│   └── factory-resume/SKILL.md
-├── .claude/skills/
-│   ├── factory-design/SKILL.md
-│   ├── factory-implement/SKILL.md
-│   └── factory-resume/SKILL.md
-├── openspec/                       # solo si planificación=openspec
-│   ├── config.yaml
-│   ├── schemas/                    # solo si personalización resulta útil
-│   └── changes/...
-└── docs/
-    ├── architecture.md             # si el proyecto necesita este documento
-    └── decisions.md                # si hay decisiones duraderas
+my-repository/
+├── AGENTS.md                         # short index, commands, critical rules
+├── CLAUDE.md                         # minimal: @AGENTS.md
+├── .claude/
+│   ├── skills/factory-*/SKILL.md     # the 4 skills
+│   └── settings.json                 # adds the "ask" rule for approve and reject (§4.4)
+├── .agents/skills/factory-*/SKILL.md # the 4 skills for Codex
+├── (Codex config)                    # equivalent approval rule; file to be confirmed (§10.3)
+├── docs/
+│   ├── product.md
+│   ├── architecture.md
+│   ├── conventions.md
+│   ├── working-agreements.md
+│   └── decisions/
+│       ├── README.md
+│       └── 0001-*.md
+└── .factory/
+    ├── config.toml                   # versioned
+    ├── changes/                      # versioned
+    │   └── CHG-0012/
+    │       ├── design.md
+    │       ├── tasks.yaml            # only after approval
+    │       ├── approval.json         # only after approval
+    │       └── rejection.json        # only if rejected
+    └── state/                        # NOT versioned (.gitignore)
+        ├── CHG-0012-01.json
+        ├── CHG-0012-01.events.jsonl
+        ├── CHG-0012-01.lock
+        ├── evidence/CHG-0012-01/...
+        └── backups/<YYYYMMDD-HHMMSS>/...
 ```
 
-Si `planning.provider = "builtin"`, los diseños se almacenan como `.factory/changes/<id>/design.md` y, si procede, `proposal.md`, `spec.md` y `tasks.md`. Si se usa OpenSpec, estos artefactos residen en **su estructura nativa** y la Factory almacena solo sus referencias. **No se crearán ambas estructuras a la vez.**
+- **Versioned** (`.factory/config.toml`, `.factory/changes/`, `docs/`): what defines what is done and why. It is visible in Git and travels with the repo.
+- **Live state** (`.factory/state/`): ignored by Git. It lives **in the main checkout** and all workspaces write there through the CLI, which locates it with `git worktree list --porcelain` (first worktree = main checkout). This way there is a single state, visible in the editor, without dirtying any branch.
+- The structure of `docs/` adapts to the repo (§6.2): in a small one, `AGENTS.md` and `conventions.md` may be enough.
 
-Los ficheros de ejecución **no versionados** (SQLite, locks, eventos operativos, `progress.md`, logs y preferencias locales) se guardarán en el directorio Git común, según `git rev-parse --git-common-dir`, dentro de `<git-common-dir>/factory/`. Así se ven desde todos los worktrees del mismo clon y no contaminan ramas ni commits. El directorio Git común puede estar fuera del checkout; la ruta siempre debe resolverse mediante Git, nunca presuponerse `.git/`.
+### 1.4 File formats
 
-**Limitación deliberada**: este estado operacional no se sincroniza entre máquinas. Los estados compartidos de equipo provendrán de GitHub/otro tracker y de los artefactos de diseño versionados. No asumir que un `progress.md` local puede sustituir la coordinación remota.
+**Design digest**: SHA-256 of the content of `design.md` with line breaks normalized to LF. It is the only thing that is approved: the tasks are part of `design.md` (§4.3), and `tasks.yaml` is just a copy generated on approval. The CLI recalculates it whenever it needs to compare.
 
----
+**IDs**: when registering a change, the CLI assigns it the next free number by looking at `.factory/changes/` (`CHG-0013`). Tasks are `<change>-NN` and their ids do not change if the change is approved again (a new task gets a new number). ADRs are numbered the same way when written. If two branches create the same id, the conflict shows up on integration and is resolved by hand.
 
-## 2. Pilar I — Setup y configuración inteligente
-
-### 2.1 Objetivo funcional
-
-Con uno o dos comandos, preparar cualquier repo sin forzar una estructura corporativa, sin duplicar reglas y sin romper las herramientas ya utilizadas.
-
-### 2.2 Diagnóstico: `factory doctor`
-
-El comando genera un inventario **sin modificar archivos**:
-
-1. Verifica que está en un repositorio Git e identifica raíz, rama, directorio Git común, estado de cambios y worktrees.
-2. Detecta sistema operativo, versión de Python, `git`, `claude`, `codex`, `openspec`, `orca` y `gh` con comprobaciones de existencia/versiones **sin solicitar login ni imprimir credenciales**.
-3. Detecta configuración preexistente: `AGENTS.md`, `CLAUDE.md`, skills de ambos proveedores, hooks, MCP, reglas internas del repositorio y OpenSpec.
-4. Inspecciona stack por manifiestos y estructura: Python, Node, Go, Rust, Java, monorepo, Docker, bases de datos y frontend. Muestra *evidencia*, no adivina tecnologías.
-5. Encuentra comandos de tests, lint, typecheck y build a partir de `pyproject.toml`, `package.json`, Makefile, CI o documentación; en ausencia de evidencia, propone confirmación.
-6. Detecta tracker/CI/host Git si existe (`origin`, `.github/`, configuración `gh`), y si un proyecto ya incorpora reglas y hooks que podrían entrar en conflicto.
-7. Informa sobre compatibilidad del adaptador, capacidades observables (chat, hooks, CLI programática), dependencias opcionales y riesgos.
-8. Devuelve informe legible y `--json` para pruebas/automatización. No debe introducir secretos en los resultados.
-
-La falta de Orca o OpenSpec es una **capacidad no disponible**, no un error de inicialización; la ausencia de Git sí impide gestionar worktrees.
-
-### 2.3 Inicialización: `factory init --profile personal|team`
-
-Flujo:
-
-1. Ejecuta internamente `doctor`.
-2. Elige perfil (`personal` o `team`), detecta proveedores, configuración previa y proveedor de planificación disponible.
-3. Prepara un **plan de cambios** de archivos nuevos, editados, respetados y conflictos.
-4. Muestra diff y solicita confirmación antes de escribir. `--dry-run` siempre produce el plan sin cambios.
-5. Crea la configuración común y skills mínimas; añade información verificada del repositorio a `AGENTS.md` o propone un parche conservador.
-6. Instala integración OpenSpec **solo cuando esté seleccionada y disponible**, con revisión de los cambios generados. No ejecuta instalaciones globales sin permiso.
-7. Opcionalmente configura hooks locales del proveedor tras mostrar lo que ejecutarán y el mecanismo de confianza del cliente.
-8. Registra en un manifiesto interno qué archivos creó o gestionó la Factory, su versión de plantilla y su hash de origen.
-9. Ejecuta validación posterior: rutas, frontmatter de skills, lectura de instrucciones por los proveedores, esquema de configuración, backend local y comandos seguros del proyecto si se autorizan.
-10. Entrega instrucciones concretas para abrir VS Code/Orca, invocar skills y iniciar una primera tarea.
-
-**Idempotencia**: repetir `init` no duplica reglas ni skills. Si un archivo gestionado cambió manualmente, no se sobrescribe: mostrar diff y pedir decisión. Archivos ajenos nunca se sobrescriben. No instalar hooks silenciosamente.
-
-### 2.4 Perfiles y precedencia
-
-- **`personal`**: tracker local, commits permitidos, aprobación humana local, preferencia de proveedores local, OpenSpec opcional, dashboard local.
-- **`team`**: priorizar reglas existentes, advertir sobre modificaciones compartidas, usar tracker corporativo si se configura, trabajar con permisos mínimos, mantener preferencias individuales fuera de Git.
-- **Precedencia**: políticas obligatorias de la organización > instrucciones y configuración ya aprobadas del proyecto > configuración compartida Factory > configuración local del desarrollador > valores por defecto.
-- No existe una «política propia de Factory» que dé permiso para eludir restricciones del repositorio o del proveedor.
-
-### 2.5 Actualización: `factory upgrade --dry-run`
-
-La CLI detecta versión de plantillas, compatibilidad de schema y cambios realizados manualmente; propone los mínimos cambios para actualizar, conserva personalizaciones y ofrece copia de seguridad de los archivos que sí deban regenerarse. Nunca modifica las versiones aprobadas de diseños activos.
-
-### 2.6 Contratos de uso
-
-```bash
-factory doctor
-factory doctor --json
-factory init --profile personal --dry-run
-factory init --profile personal
-factory init --profile team
-factory upgrade --dry-run
-factory upgrade
-```
-
-**Criterios de aceptación**: instalar dos veces produce el mismo resultado; un repositorio preexistente queda funcional sin perder reglas; detectar una instalación parcial permite completar lo que falta; `--dry-run` deja árbol y configuración intactos; funcionar sin Orca y sin OpenSpec.
-
----
-
-## 3. Pilar II — Investigación, diseño y aprobación
-
-### 3.1 Cambio y diseño como artefactos independientes
-
-Una **change** es una iniciativa funcional/técnica con identificador estable (`CHG-0012`) y documentos asociados. Una **task** es una unidad ejecutable (`CHG-0012-01`). Un diseño puede producir una o muchas tareas. Las tareas siempre referencian la change y la versión del diseño.
-
-La investigación y el diseño **no modifican código de producto** salvo autorización explícita y separada para una prueba o experimento. Pueden crear documentos de planificación y registros de estado.
-
-### 3.2 Skill `factory-design` (chat-first)
-
-Invocación esperada:
-- Claude Code: `/factory-design Descripción del cambio`.
-- Codex: `$factory-design Descripción del cambio`.
-- En Orca, desde su chat o terminal del agente con la misma skill.
-
-Contrato operativo:
-
-1. Obtener snapshot y contexto **relevante** del repo (no leerlo entero sin necesidad).
-2. Aclarar requisitos ambiguos que afecten el diseño; cuando sea posible, investigar y proponer opciones antes de preguntar.
-3. Identificar problema, objetivos, fuera de alcance, restricciones, usuarios afectados y comportamientos actuales comprobados.
-4. Considerar alternativas y documentar trade-offs; proponer la solución mínima coherente.
-5. Diseñar componentes, contratos, errores, persistencia, compatibilidad, concurrencia, despliegue y seguridad **solo cuando correspondan**.
-6. Definir criterios de aceptación numerados y verificables, con comandos o pruebas que aportarán evidencia.
-7. Registrar riesgos, supuestos y preguntas bloqueantes. No rellenar vacíos mediante suposiciones ocultas.
-8. Generar los documentos del proveedor seleccionado y registrar la change como `awaiting_approval`.
-9. Presentar al usuario resumen de decisiones, riesgos y vínculo/ruta del diseño; **no lanzar implementación**.
-
-### 3.3 Tamaños de diseño
-
-Se evitará producir cuatro documentos grandes para todas las tareas:
-
-| Categoría | Regla inicial | Documentación |
-|---|---|---|
-| Trivial | Cambios seguros y delimitados, sin nuevas decisiones de arquitectura | Una tarea con criterios de cierre; «fast path» autorizado explícitamente por el humano. |
-| Normal | Funcionalidad o bug significativo con alcance claro | `design.md` conciso y criterios de aceptación; lista de tareas cuando proceda. |
-| Compleja | Varias capas, interfaces públicas, seguridad, datos/migraciones, concurrencia o múltiples responsables | `proposal.md`, una o varias `spec.md`, `design.md` y tareas con dependencias. |
-
-La categoría es una **recomendación**, no una regla basada exclusivamente en número de líneas o archivos. Riesgo alto puede elevar un cambio de tamaño pequeño.
-
-### 3.4 OpenSpec: integración híbrida y reversible
-
-- El adaptador detecta versión y capacidades de OpenSpec, lo inicializa si se ha elegido y respeta la estructura existente.
-- Emplea sus conceptos de propuesta, specs, diseño y tareas; puede utilizar un schema personalizado ligero **cuando se haya verificado compatibilidad de la versión instalada**.
-- `factory-design` puede delegar la generación de artefactos a OpenSpec, pero devuelve siempre una referencia normalizada `{change_id, provider, artifact_paths, design_digest, status}`.
-- **No se usan los checkboxes de `tasks.md` como estado autoritativo de ejecución**. Pueden reflejar hitos al cerrar una tarea, pero el tracker mantiene propiedad, dependencias y estado.
-- OpenSpec no se convierte en guardia de aprobación; la aprobación reside en el Core.
-- Si se desactiva OpenSpec, los diseños ya creados siguen siendo Markdown legible y se conservan; el adaptador `builtin` gestiona los cambios futuros. No migrar ni duplicar documentos sin petición explícita.
-- Una change usa **un solo proveedor de planificación**, fijado al crearla. Cambiar de proveedor solo afecta a nuevas changes salvo migración consciente.
-
-### 3.5 Plantilla de diseño — contrato mínimo
-
-`design.md` se ajustará al siguiente esquema (secciones no aplicables pueden omitirse con justificación breve):
-
-```markdown
-# CHG-0012 — Título
-
-## 1. Contexto y problema
-Situación actual verificada, limitaciones y referencias al código.
-
-## 2. Objetivo y alcance
-Resultado esperado. Incluye / no incluye.
-
-## 3. Requisitos y aceptación
-- AC-01: [comportamiento medible, test o verificación]
-- AC-02: [error, borde, compatibilidad o seguridad]
-
-## 4. Solución y decisiones
-Alternativas consideradas, decisión adoptada y trade-offs.
-
-## 5. Diseño técnico
-Componentes, archivos o módulos, interfaces y contratos.
-Persistencia, concurrencia, seguridad, compatibilidad,
-despliegue o migraciones si aplican.
-
-## 6. Plan de verificación
-AC -> prueba/comando/evidencia esperada.
-Casos negativos, regresiones y validaciones manuales.
-
-## 7. Riesgos y mitigaciones
-Dependencias, suposiciones, rollback cuando corresponda.
-
-## 8. Preguntas y aprobaciones pendientes
-Solo decisiones no resueltas, con impacto señalado.
-
-## 9. Definición de terminado
-Condiciones necesarias para declarar el cambio completo.
-```
-
-**Reglas de redacción del agente**: distinguir hecho verificado de suposición; rutas reales cuando se citan archivos; nada de pseudocontratos incompatibles con el repo; describir conductas observables antes de soluciones; evitar especificar cada línea de código; una decisión relevante debe poder entenderse sin conocer el chat.
-
-### 3.6 Puerta de aprobación obligatoria
-
-Una change pasa por `draft -> awaiting_approval -> approved` o vuelve a `draft` si hay comentarios.
-
-La aprobación se registra **mediante operación explícita**:
-
-```bash
-factory design show CHG-0012
-factory design approve CHG-0012
-factory design reject CHG-0012 --reason "..."
-```
-
-**Interacción humana prevista**: `approve` mostrará el resumen de requisitos, rutas y huella exacta de los artefactos que se van a aprobar; requerirá confirmación interactiva en terminal/flujo humano y rechazará invocaciones no interactivas. La skill `factory-design` puede indicar cómo aprobar, **pero no llamará ella misma a `approve`**. Los procesos gestionados por Factory tampoco aprobarán sus propios diseños. La CLI no incluirá en V1 un `approve --yes` automático. En equipo, la prueba de aprobación podrá vincularse al revisor de un PR, según política del proyecto. Esta separación reduce errores accidentales, aunque una CLI local no constituye por sí sola una frontera de seguridad frente a un agente o proceso malicioso con acceso total a la máquina; las políticas del proveedor y permisos del SO deben mantenerse.
-
-El guardado de aprobación requiere:
-
-- ID de change, identidad local o identificador del revisor autorizado.
-- Fecha UTC de aprobación y **hash SHA-256 canónico del conjunto de artefactos normativos** (proposal/specs/design, excluyendo `progress.md` y el estado mutable de tareas).
-- Referencia Git al commit cuando exista; si no, una copia inmutable de los artefactos aprobados en el área runtime local.
-- Registro de mecanismo `local` o adaptador del flujo corporativo (por ejemplo, PR revisada).
-- Ausencia de preguntas bloqueantes no resueltas y validación estructural.
-
-**Bloqueo efectivo**: `factory task claim`, `factory run` y la skill de implementación comprueban el hash y no inician trabajo si el diseño no está aprobado o ha cambiado. Esta garantía cubre los comandos gestionados por la Factory; no puede impedir que un usuario o agente modifique archivos manualmente fuera de ella. Los hooks compatibles pueden añadir controles adicionales.
-
-**Diseños sin commit**: en modo personal puede aprobarse una snapshot local, que el Core facilitará como contexto inmutable al agente en otro worktree. Se recomendará su commit. En equipo, el perfil puede exigir que el diseño esté versionado y aprobado según la política Git/PR existente. Así un worktree no depende de documentos sin commit que solo existen en otro checkout.
-
-**Cambio tras aprobar**: modificar cualquier artefacto normativo invalida la aprobación para tareas nuevas. Las ejecuciones en curso se marcan `requires_reassessment`; no se borran ni se modifican silenciosamente. Se solicita revisión del alcance y nueva aprobación si afecta a requisitos, decisiones o verificaciones.
-
-**Fast path trivial**: se autoriza explícitamente una tarea con criterios mínimos sin `design.md` completo. El evento de autorización y motivo quedan registrados; nunca se usa de manera automática para eludir riesgos.
-
-### 3.7 Del diseño a la planificación ejecutable
-
-Tras aprobar:
-
-1. El sistema evalúa si la implementación es una tarea indivisible o conviene separarla.
-2. Si es sencilla, genera una task vinculada al diseño.
-3. Si es compleja, el Planner (capacidad nativa o agente independiente) propone tareas con IDs, dependencias, pruebas y propiedad sugerida de módulos.
-4. Se comprueba que la suma de tareas cubra cada `AC-xx` y que no exista ciclo de dependencias.
-5. Se registran tareas en el backend configurado. Una tarea puede quedar `ready` cuando sus dependencias estén satisfechas.
-6. **No es necesaria segunda aprobación del plan** si mantiene el alcance y las decisiones aprobadas. Toda modificación arquitectónica sustancial exige volver al diseño.
-
-Las tareas son lo suficientemente pequeñas para poder verificar su cierre, pero no se dividen en microacciones sin valor independiente.
-
-**Criterios de aceptación**: el diseño creado por Claude se puede aprobar y ejecutar con Codex sin chat original; un hash cambiado bloquea nuevas ejecuciones; el modo sin OpenSpec produce el mismo contrato; los requisitos tienen cobertura en tareas y verificaciones.
-
-
----
-
-## 4. Pilar III — Gestión de tareas, flujo de agentes y orquestación ligera
-
-### 4.1 Modelo de tarea normalizado
-
-Cada tarea tendrá como mínimo este contrato de datos, sea cual sea el backend:
+`tasks.yaml` (versioned, copied from the design on approval):
 
 ```yaml
-id: CHG-0012-02
-change_id: CHG-0012
-title: Integrar reservas recurrentes con calendario
-description: Comportamiento concreto que se implementará
-design_digest: sha256:...
-acceptance_ids: [AC-03, AC-04]
-depends_on: [CHG-0012-01]
-state: ready
-risk: medium
-assigned_to: null
-run_id: null
-branch: null
-worktree: null
-verification:
-  commands: ["pytest tests/integration/test_calendar.py"]
-source:
-  kind: local                # local | github | external
-  external_id: null
+change: CHG-0012
+design_digest: sha256:3f1c...
+tasks:
+  - id: CHG-0012-01
+    title: Add recurrence model and validation
+    depends_on: []
+    complexity: normal              # trivial | normal | complex
+    review: [quality]               # [] | [quality] | [conformance] | [quality, conformance]
+    scope: ["src/bookings/**", "tests/bookings/**"]   # optional
+    acceptance:
+      AC-01: "pytest tests/bookings/test_recurrence.py::test_weekly"
+      AC-02: manual                 # manual or visual evidence
+  - id: CHG-0012-02
+    title: Sync recurring bookings with calendar
+    depends_on: [CHG-0012-01]
+    complexity: complex
+    review: [quality, conformance]
+    acceptance:
+      AC-03: "pytest tests/integration/test_calendar.py"
 ```
 
-- `state` y `assigned_to` se gestionan por el tracker; las pruebas y evidencias por el Core.
-- La referencia al diseño es obligatoria salvo *fast path* autorizado.
-- No habrá `assigned_to` simultáneo para dos agentes escritores en una misma tarea.
-- `run_id` identifica un intento concreto; una tarea puede tener más de un intento sin perder el historial.
-- Las dependencias se expresan como IDs, no como frases; se validan antes de pasar a `ready`.
-- `risk` se determina de forma explicable (seguridad, datos, alcance, usuario final, despliegue, etc.) y es modificable por el humano.
-
-### 4.2 Estados diferenciados para cambios, tareas y ejecuciones
-
-**Estados de una change**:
-
-`idea -> researching -> draft -> awaiting_approval -> approved -> implementing -> completed -> archived`.
-
-Excepciones: `rejected`, `on_hold`. Se puede volver de `awaiting_approval` a `draft`. Las tareas no pueden pasar a ejecución si la change no está aprobada.
-
-**Estados de una task**:
-
-| Estado | Significado | Siguientes habituales |
-|---|---|---|
-| `backlog` | Definida pero aún no ejecutable | `ready`, `cancelled` |
-| `ready` | Aprobada, sin dependencias pendientes y disponible | `running`, `blocked`, `cancelled` |
-| `running` | Un run tiene responsabilidad de ejecución | `review`, `blocked`, `interrupted` |
-| `review` | Implementada, pendiente de verificaciones/revisión | `running`, `done`, `blocked` |
-| `done` | Condiciones de cierre verificadas | Final; reabrible por nueva evidencia |
-| `blocked` | Falta decisión, dependencia externa o condición de ejecución | `ready`, `running`, `cancelled` |
-| `interrupted` | El intento dejó de ejecutar antes de terminar | `ready`, `running`, `cancelled` |
-| `cancelled` | Trabajo abandonado explícitamente | Final salvo reapertura intencional |
-
-El estado `ready` puede calcularse desde `backlog` + dependencias satisfechas + aprobación vigente. El tablero podrá visualizarlo como estado materializado para comodidad. No permitir marcar manualmente `ready` si quedan dependencias.
-
-**Estado de una ejecución (run)**, distinto del estado de la task:
-
-`created`, `starting`, `active`, `waiting_for_input`, `pause_requested`, `paused`, `finished`, `failed`, `interrupted`, `unknown`.
-
-Una ejecución puede estar `unknown` por falta de señales sin implicar fallo. El dashboard no equiparará ausencia de actividad con interrupción confirmada.
-
-### 4.3 Persistencia local y atomicidad
-
-Para V1, implementar SQLite en `<git-common-dir>/factory/state.sqlite` con transacciones y migraciones de esquema sencillas. Debe incluir lógicamente las siguientes entidades:
-
-- `changes`: id, proveedor de diseño, rutas, digest vigente, estado, revisión.
-- `approvals`: change_id, digest, revisor, método, fecha, referencia Git, estado.
-- `tasks`: id, change_id, estado, título, riesgo, criterios, asignación y origen externo.
-- `dependencies`: task_id, prerequisite_id.
-- `runs`: id, task_id, proveedor, modelo realmente usado (si se conoce), modo de observabilidad, timestamps, proceso/sesión/worktree, resultado.
-- `events`: evento inmutable con secuencia, hora, actor, tipo y metadatos reducidos.
-- `verifications`: tarea, ejecución, comando, código de salida, duración y evidencia.
-- `worktree_links`: tarea, rama, ruta, base ref, commit inicial y marca de propiedad.
-
-SQLite es el estado autoritativo **para el modo local**. Las modificaciones se realizan mediante comandos del Core y eventos auditables; no se editan tablas a mano desde las skills.
-
-**Adquisición de tareas**: operación atómica de *claim*: verificar `ready`, no bloqueos, aprobación vigente, y reservar la tarea/crear el run en una única transacción. Si otro proceso se adelantó, devolver conflicto claro. Evitar duplicidades si la llamada se reintenta accidentalmente usando `request_id` opcional.
-
-**Concurrencia**: habilitar transacciones apropiadas y `busy_timeout`; prohibir dos claims activos sobre el mismo ID y validar en pruebas con procesos simultáneos. El `run_id` será único por intento.
-
-### 4.4 Backend colaborativo
-
-Una interfaz común `TaskBackend` deberá exponer, como mínimo:
-
-- `list(filters)`, `get(id)`, `create(task)`, `claim(id, owner)`, `transition(id, from, to, reason)`, `add_note(id, note)`, `link_artifact(id, path_or_url)` y `sync()`.
-- `LocalBackend`: SQLite del clon.
-- `GitHubBackend` opcional: issue/PR como registro compartido de estado, responsable y referencias; mantener datos de ejecución exclusivamente locales cuando no convenga publicarlos.
-- Otros trackers fuera de V1, diseñados para poder incorporarse sin modificar skills.
-
-**Regla crítica de sincronización**: con un backend remoto no existen dos autoridades equivalentes. El tracker remoto manda sobre el estado compartido; SQLite es caché/supervisión local. Actualizar mediante API/CLI con control de conflictos cuando sea posible; si no hay red, indicar `sync_pending`, nunca inventar que la tarea remota se actualizó. En caso de divergencia entre estado local y remoto, mostrar conflicto, no sobrescribirlo automáticamente.
-
-El diseño y decisiones técnicas permanentes siguen en archivos versionados del repositorio. No introducir transcripciones completas de agentes en GitHub.
-
-### 4.5 Comandos de tareas
-
-Superficie funcional propuesta (CLI exacta a conservar durante V1):
-
-```bash
-factory task list [--state ready|running|review|blocked|...]
-factory task show CHG-0012-02
-factory task ready
-factory task claim CHG-0012-02 --provider codex
-factory task checkpoint CHG-0012-02 --done "..." --next "..."
-factory task note CHG-0012-02 --text "Revisar caso X"
-factory task block CHG-0012-02 --reason "..."
-factory task interrupt CHG-0012-02 --reason "..."
-factory task resume CHG-0012-02
-factory task verify CHG-0012-02
-factory task finish CHG-0012-02
-factory status [--json]
-```
-
-`task finish` se niega si falta verificación exigida o revisión requerida. El humano autorizado puede registrar una excepción explícita y trazada para una prueba no ejecutable, **sin marcarla falsamente como aprobada**.
-
-Las skills invocarán estos mismos comandos de manera estructurada. No habrá un segundo motor de estados oculto dentro de los prompts.
-
-### 4.6 Selección del workflow: política adaptativa
-
-| Perfil de tarea | Flujo | Condiciones |
-|---|---|---|
-| Trivial / bajo riesgo | `Coder -> checks` | Cambio muy localizado y aceptaciones claras; sin Reviewer separado. |
-| Normal | `Coder (con plan interno) -> checks -> Reviewer` | Nueva lógica, interfaz, integración o bug significativo. |
-| Compleja / alto riesgo | `Planner -> Coders -> checks -> Reviewer` | Varias dependencias, arquitectura, seguridad, concurrencia, datos o refactorización amplia. |
-
-El **diseño aprobado es previo al workflow de implementación** salvo fast path. El Planner, si existe, organiza tareas aprobadas; no reemplaza el Research/Design ni puede introducir cambios de arquitectura sin señalarlo.
-
-Reglas adicionales:
-
-- Coder trabaja una unidad verificable, no toda una épica inabarcable.
-- Un Reviewer independiente recibe diseño aprobado, criterios, diff, evidencias y contexto pertinente **sin heredar necesariamente la conversación del Coder**.
-- Máximo inicial de **dos ciclos correctivos** tras hallazgos del Reviewer; si no converge, marcar bloqueo o pedir revisión humana.
-- Los hallazgos se clasifican por severidad y deben referirse a un defecto concreto. Estilo subjetivo no bloquea por defecto.
-- Si falla una prueba relevante, `done` está prohibido.
-- La Factory puede recomendar otro modelo, pero nunca debe ocultar cuál ejecutó realmente.
-
-### 4.7 Proveedores, modelos y esfuerzo
-
-No codificar identificadores de modelos como verdad permanente. Los alias, catálogo y compatibilidad se obtienen de las herramientas instaladas cuando sea posible.
-
-La configuración distingue roles lógicos:
-
-- `research_design`: modelo de gran capacidad, esfuerzo adecuado al riesgo.
-- `planner`: modelo competente en descomposición y dependencias.
-- `coder`: modelo equilibrado, salvo tarea muy difícil.
-- `reviewer`: contexto separado, opcionalmente otro proveedor.
-- `helper`: modelo más rápido para exploraciones menores.
-
-Defaults funcionales **no vinculantes**: Claude para diseño, Codex para implementación y Claude/Codex para revisión cruzada según disponibilidad. Todos deben ser sobrescribibles por tarea o persona. En caso de modelo no disponible, preguntar o usar un fallback **explícitamente permitido**; nunca sustituir silenciosamente.
-
-No se obliga a consumir API por clave: pueden utilizarse sesiones de los clientes autenticados mediante sus licencias y herramientas oficiales. El alcance de cuotas y automatización dependerá de los permisos reales del usuario.
-
-### 4.8 Skills mínimas de V1
-
-La Factory tendrá inicialmente **tres skills** propias y reutilizables:
-
-1. **`factory-design`**: investigar, generar/actualizar diseño, registrar change y solicitar aprobación.
-2. **`factory-implement`**: leer diseño aprobado, seleccionar o reclamar tarea, activar workflow adecuado, generar checkpoints, ejecutar tests y enviar a revisión.
-3. **`factory-resume`**: inspeccionar estado, diff, logs pertinentes y último `progress.md`, presentar diagnóstico y reanudar tarea interrumpida tras acción explícita del usuario.
-
-El Reviewer independiente podrá ejecutarse con una capacidad nativa de Claude/Codex invocada desde `factory-implement`, sin introducir desde el inicio una cuarta skill permanente. Si las pruebas indican necesidad, se añade `factory-review` posteriormente.
-
-Las skills deben seguir el formato `SKILL.md` con descripción precisa; el contenido común vive en plantillas de Factory y se genera para `.agents/skills/` y `.claude/skills/` sin duplicar manualmente la lógica. **No usar enlaces simbólicos a rutas externas** como requisito de funcionamiento en proyectos profesionales.
-
-### 4.9 Qué significa exactamente «orquestar» en V1
-
-La orquestación ligera del Core es una **máquina de estados con acciones controladas**:
-
-1. Elegir tarea ejecutable.
-2. Verificar aprobación, dependencias, riesgo y asignación.
-3. Vincular rama y worktree.
-4. Elegir proveedor/rol, ejecutarlo o dar instrucciones al agente ya abierto.
-5. Recoger resultados de tests, progreso y revisión.
-6. Transicionar el estado o detenerse con motivo claro.
-7. Entregar el resultado y esperar integración manual.
-
-Dos modalidades complementarias:
-
-- **Modo conversación (principal)**: usuario trabaja dentro del chat de la extensión VS Code o de Orca y usa skills. La CLI registra tareas y checkpoints; la observación detallada depende de hooks/eventos disponibles. El orquestador no puede leer siempre el estado interno de una sesión manual.
-- **Modo gestionado (opcional)**: `factory run <task> --provider claude|codex` lanza un proceso mediante la interfaz programática disponible, registra PID/sesión y salida de estado, y permite supervisión más fiable. El usuario puede alternarlo con el modo chat, sin prometer que sean la misma conversación.
-
-**Orca** será un adaptador opcional para leer worktrees/sesiones y aprovechar su coordinación nativa cuando sea estable y esté disponible. No será dependencia del Core. **VS Code** seguirá funcionando con Git, CLI, skills y hooks.
-
-No se programará una cadena automática multiagente extensa si el proveedor o el IDE ya ofrece mecanismos adecuados; se aprovecharán sus capacidades nativas y se instrumentarán solo los pasos esenciales.
-
-### 4.10 Commits, seguridad de ejecución y entrega
-
-- Crear worktree y rama no equivale a fusionar ni desplegar.
-- El agente puede crear commits si se le permite en la tarea o el usuario lo solicita. Guardar hashes de commits en el run.
-- **Sin `git push`, `merge`, `rebase` destructivo, borrado de ramas o despliegue automático por defecto**. Esas operaciones son responsabilidad del usuario en V1.
-- Un cambio «terminado» en Factory significa implementado y verificado **en su rama**, no necesariamente integrado en la rama principal.
-- En proyectos profesionales, pruebas CI, revisión de PR y protecciones de ramas existentes prevalecen sobre la revisión local del agente.
-- Se debe informar si se hicieron cambios no solicitados o fuera de alcance, y no ocultar pruebas no ejecutadas.
-
-### 4.11 Criterios de cierre de una tarea
-
-Para pasar de `review` a `done`, verificar:
-
-1. Todos los criterios de aceptación vinculados tienen una evidencia asociada: test superado, verificación manual registrada o excepción justificada.
-2. Las pruebas exigidas se han ejecutado y no presentan fallos relevantes sin resolver.
-3. El diff corresponde al alcance y no contiene cambios ajenos sin explicación.
-4. La revisión independiente se completó si la política la exige.
-5. Hay registro de resultado, decisiones y bloqueos restantes (si los hubiera).
-6. Se conoce la rama/worktree y el último commit, o se declara explícitamente que quedan cambios sin confirmar.
-7. La memoria duradera se ha **evaluado** para actualización (no significa obligar a editarla).
-8. La tarea no tiene dependencias sin satisfacer ni diseño invalidado.
-
-Un modelo no puede «autoaprobar» criterios manuales inventando evidencia.
-
----
-
-## 5. Git Worktrees, paralelismo e integración
-
-### 5.1 Creación y ownership
-
-Al reclamar una tarea de escritura:
-
-1. Verificar repositorio Git válido, rama base y conflictos con otras tareas activas.
-2. Determinar nombre seguro, por ejemplo `factory/CHG-0012-02-calendar`.
-3. Crear rama + worktree con Git nativo, o delegar en Orca si la sesión lo gestiona y registrar el resultado.
-4. Verificar worktree sin errores y asociar su ruta al `run_id`.
-5. Seleccionar un responsable de escritura, `provider/session` o humano. Los agentes auxiliares de solo lectura no necesitan worktree propio.
-6. Registrar commit base y comandos seguros de setup del proyecto. **No ejecutar setup arbitrario por el simple hecho de que aparezca en un repo desconocido**; se necesita confianza/autorización.
-
-V1 sugiere worktrees fuera del checkout principal (ruta local configurable). El trabajo en paralelo no modifica el checkout del usuario sin que este lo solicite.
-
-### 5.2 Dependencias y conflictos
-
-- Dos tareas independientes pueden ejecutarse en worktrees distintos.
-- Tareas dependientes se desbloquean solo cuando el estado prerequisito configurado se cumple (`done` en rama o integración, según política). No asumir que estar `done` implica que el código ya existe en la rama base de otra tarea.
-- **Regla de integración**: si una tarea depende del código de otra todavía no integrado, arrancará desde la rama/commit de la dependencia o esperará su integración explícita. El Planner debe señalarlo.
-- Si dos tareas modifican rutas o componentes de alto solapamiento, advertir del riesgo antes de ejecutarlas paralelamente; no asumir que worktrees eliminan conflictos de merge.
-- Contenedores, puertos, bases de datos locales y credenciales pueden compartirse aunque el código esté aislado. La Factory debe ofrecer aislamiento configurable de recursos por worktree si el proyecto lo necesita; no introducirlo de forma universal.
-
-### 5.3 Finalización y limpieza
-
-- El agente entrega diff, commit(s), tests, revisión y reporte de los cambios.
-- El worktree permanece disponible para revisión y commits.
-- En V1 **no se elimina automáticamente ningún worktree ni rama**.
-- Si posteriormente se implementa limpieza: exigir confirmación y verificar cambios sin confirmar, commits no integrados, procesos activos y vinculación con tareas abiertas.
-- La integración por PR, cherry-pick, rebase o merge sigue siendo manual o parte de procedimientos aprobados del proyecto.
-
-### 5.4 Comandos mínimos
-
-```bash
-factory worktree create CHG-0012-02
-factory worktree list
-factory worktree show CHG-0012-02
-```
-
-No crear una CLI que replique cada opción de Git. Para operaciones avanzadas, utilizar `git worktree` y los controles de Orca/VS Code.
-
----
-
-## 6. Pilar V — Memoria y contexto
-
-### 6.1 Niveles de contexto
-
-| Nivel | Contenido | Fuente y carga |
-|---|---|---|
-| 1. Instrucciones globales del proyecto | Qué hace el repo, comandos, reglas críticas, mapa de documentación | `AGENTS.md`, breve, inicio de sesión |
-| 2. Conocimiento duradero | Arquitectura, decisiones, contratos y convenciones por área | `docs/`, lectura solo cuando sea relevante |
-| 3. Memoria de change/task | Diseño aprobado, criterios, eventos, checkpoints, archivos afectados | Resolver mediante ID de tarea al comenzar o reanudar |
-| 4. Aprendizajes reutilizables | Errores repetidos, decisiones nuevas, cambios de arquitectura | Propuestas de actualización revisables, no incorporación masiva |
-
-### 6.2 Contrato de `AGENTS.md`
-
-Se generará o adaptará un archivo corto con:
-
-- propósito y estructura principal del proyecto;
-- comandos verificados de instalación, build, test y lint;
-- reglas de seguridad y edición que siempre se apliquen;
-- localización de arquitectura, decisiones y diseños;
-- instrucciones para usar skills y **CLI de Factory** cuando corresponda;
-- obligación de no declarar `done` sin evidencias y de registrar checkpoints.
-
-Objetivo orientativo: 60–120 líneas o menos si el proyecto es sencillo; no imponer un límite que obligue a ocultar información crítica. No copiar diseños completos en las instrucciones.
-
-`AGENTS.md` será la fuente común. Claude Code podrá leerlo cuando la versión/configuración lo soporte. Si el proyecto requiere `CLAUDE.md`, mantener uno mínimo que enlace/importa las instrucciones comunes, respetando un `CLAUDE.md` preexistente y evitando contradicciones. El `doctor` debe comprobar cuál está tomando realmente cada cliente.
-
-### 6.3 Documentación duradera
-
-- Crear `docs/architecture.md` solo si la arquitectura tiene contenido estable que no se deduce fácilmente de los archivos.
-- Crear `docs/decisions.md` o ADR específicos solo cuando existan decisiones importantes. Cada decisión: contexto, alternativas, decisión, consecuencias y fecha.
-- Documentación de módulos, contratos o reglas por carpeta cuando un monorepo lo justifique.
-- Priorizar referencias a código y configuración como fuente actual; no duplicar READMEs ni documentación corporativa preexistente.
-- No crear un Memory Manager separado para cada run; tras implementar, la skill **evalúa si existe conocimiento nuevo permanente** y prepara el cambio mínimo.
-- En modo profesional, los cambios de instrucciones y arquitectura se someten al proceso normal de revisión del repositorio.
-
-### 6.4 `progress.md`: contexto para reanudar, no tracker duplicado
-
-Cada tarea con ejecución activa tendrá un archivo operativo:
-
-`<git-common-dir>/factory/tasks/<task-id>/progress.md`
-
-Contenido generado a partir de eventos + resumen consolidado de agente:
-
-```markdown
-# CHG-0012-02 — Integración calendario
-
-Última actualización: 2026-10-16T15:30:00Z
-Run: RUN-0037
-Estado: running
-Worktree: /ruta/local/worktrees/CHG-0012-02
-Rama: factory/CHG-0012-02-calendar
-
-## Hecho y comprobado
-- API implementada; tests unitarios correctos.
-
-## Pendiente
-- Pruebas de integración del calendario.
-- AC-04 sin verificar.
-
-## Cambios relevantes
-- src/calendar/service.py
-- tests/integration/test_calendar.py
-
-## Bloqueos o riesgos
-- Ninguno.
-
-## Próxima acción
-- Ejecutar integración, comprobar idempotencia y revisar diff.
-```
-
-El encabezado operativo se construye desde el Core. El agente aporta el resumen semántico y las evidencias. No mantener manualmente un segundo estado independiente en el Markdown: es una **vista de recuperación** del run.
-
-**Cuándo actualizar**: inicio, después de una unidad significativa, antes de solicitar aprobación o pausa, al superar una verificación relevante, al bloquearse, al terminar y antes de una compactación o cierre cuando el hook lo permita. No después de cada tool call ni cada línea de código.
-
-### 6.5 Compactación e higiene
-
-- No persistir chats completos ni logs extensos como memoria del modelo.
-- Capacidad para resumir un progreso demasiado largo dejando: decisiones, resultado verificado, bloqueos y siguiente acción.
-- Los eventos y logs de runtime tienen retención local configurable; los artefactos duraderos permanecen en Git.
-- Al reanudar, cargar primero encabezado de tarea, diseño, `progress.md`, diff y tests; consultar documentación secundaria solo si se necesita.
-- No almacenar rutas privadas, credenciales, datos de clientes o contenido confidencial en documentos compartidos.
-
-**Criterios de aceptación**: un agente de otro proveedor puede continuar con el diseño y el estado de una tarea sin acceder al chat anterior; al crecer el proyecto, el contexto inicial no crece proporcionalmente a todo el historial; no se crean decisiones contradictorias por defecto.
-
-
----
-
-## 7. Pilar IV — Seguimiento de ejecuciones, interrupciones y recuperación
-
-### 7.1 Dos fuentes de información que no deben confundirse
-
-**Progreso semántico**: lo que el agente ha terminado o cree que falta, registrado mediante `factory task checkpoint` y evidencias. Puede estar incompleto o ser incorrecto.
-
-**Actividad observada**: proceso que sigue vivo, eventos/hooks del proveedor, mensajes del sistema de ejecución, estado de Orca y resultados de pruebas. Son señales técnicas de distinta fiabilidad.
-
-La Factory debe mostrar ambas por separado. `task=running` no garantiza que una sesión siga viva; `process=alive` no demuestra que un AC esté completado.
-
-### 7.2 Niveles de observabilidad
-
-El Core registrará el origen y calidad de la observación de cada run:
-
-| Nivel | Qué conocemos | Qué podemos afirmar |
-|---|---|---|
-| `managed` | Proceso iniciado desde Factory, salida y finalización observables | Vivo/finalizado/fallido con confianza del proceso |
-| `native` | Eventos de Orca o integración de proveedor documentada | Estado publicado por ese proveedor en el instante observado |
-| `hook` | Hooks instalados y aceptados por el cliente | Eventos conocidos; posible pérdida de eventos |
-| `self_reported` | Checkpoints que ejecuta el propio agente desde chat | Último progreso declarado, no salud de sesión |
-| `unknown` | No hay señales suficientes | No afirmar que el agente sigue trabajando o está colgado |
-
-**Regla de UI**: jamás representar como «Running (confirmado)» una sesión cuya única evidencia sea un checkpoint antiguo. Mostrar `último progreso` y `actividad: desconocida` cuando corresponda.
-
-### 7.3 Observación desde VS Code, Orca y CLI
-
-- **VS Code chat nativo**: skills llaman a `factory task...`. Cuando el proveedor permita hooks de sesión/herramientas, se pueden instalar para transmitir eventos ligeros. No prometer control del proceso de una extensión que no exponga API pública adecuada.
-- **Orca**: usar su CLI para consultar sesiones/worktrees y, opcionalmente, usar su infraestructura nativa de workers; el adaptador debe detectar versiones/capacidades y no parsear pantallas mediante heurísticas frágiles.
-- **`factory run`**: el Core inicia un proceso hijo soportado por el proveedor, registra su ciclo de vida, salida estructurada si existe y finalización. **No debe desactivar automáticamente sandbox ni políticas de aprobación** para evitar fricción.
-- **Hooks**: eventos útiles como inicio/fin, parada, interrupción y subagentes pueden enriquecer el estado. Hooks opcionales, pequeños, rápidos, revisables y compatibles con el mecanismo de confianza de cada cliente. No bloquear la edición porque falló el sistema de telemetría.
-
-En una sesión de chat que ya está abierta y no fue lanzada por Factory, la Factory puede conocer checkpoints y algunos eventos, pero **no está garantizado** que pueda suspenderla, recuperar su ID o detectar un cuelgue real.
-
-### 7.4 Checkpoints y eventos
-
-Cada checkpoint debe incluir:
+`approval.json` (versioned):
 
 ```json
 {
-  "event_type": "task.checkpoint",
-  "task_id": "CHG-0012-02",
-  "run_id": "RUN-0037",
-  "actor": "codex",
-  "timestamp_utc": "2026-10-16T15:30:00Z",
-  "summary": "Implementado el adaptador de calendario",
-  "completed": ["Modelo y validaciones"],
-  "pending": ["AC-04", "Pruebas de integración"],
-  "next_action": "Ejecutar tests de integración",
-  "evidence_refs": ["git:abc123", "test:RUN-0037:integration"]
+  "change": "CHG-0012",
+  "design_digest": "sha256:3f1c...",
+  "approved_by": "user@example.com",
+  "approved_at": "2026-10-17T10:42:00Z",
+  "method": "chat",
+  "message": "apruebo CHG-0012"
 }
 ```
 
-La validación rechaza IDs inexistentes, transiciones ilegales, eventos sin referencia al run y payloads desproporcionados. Los campos libres se tratan como texto no confiable para evitar comandos o HTML ejecutables.
+`approved_by` is the Git `user.email`. `method` is `chat` if it was approved from the skill and `terminal` if it was confirmed by typing the id. `message` stores the person's literal text, in the language they wrote it in (here, Spanish: "apruebo CHG-0012" means "approve CHG-0012"). `rejection.json` has the same format with `reason` instead of `message`.
 
-Al registrar un evento:
-1. validar y anexar de forma transaccional a SQLite;
-2. actualizar el resumen `progress.md` de forma atómica (`write-temp` + replace);
-3. notificar al dashboard en su siguiente refresco;
-4. intentar sincronizar estado resumido con tracker remoto si está configurado.
+`state/CHG-0012-01.json` (local):
 
-Si falla el renderizado de `progress.md`, el evento de SQLite sigue siendo válido y la vista puede regenerarse.
-
-### 7.5 Detector de inactividad y semántica de bloqueo
-
-- Configurar umbral inicial de **10 minutos sin eventos significativos** únicamente para mostrar un aviso de «sin actualización reciente», no para declarar caída ni terminar procesos.
-- Distinguir `waiting_for_input` y `paused` de `stale`. Una sesión que espera respuesta no está colgada.
-- Si un proceso gestionado terminó con error/senal, registrar estado confirmado `failed` o `interrupted`.
-- Si la aplicación desaparece y el PID ya no existe, el siguiente inicio del Core reconcilia el registro y muestra `interrupted`, preservando datos.
-- Si el run no era gestionado y el último checkpoint envejeció, mostrar `unknown/stale` y ofrecer inspección manual, no reiniciar automáticamente.
-- Si un proceso fue relanzado fuera de Factory, permitir **reconciliación explícita** con un nuevo run o vínculo de sesión, no reutilizar IDs de manera ciega.
-
-### 7.6 Cambiar instrucciones durante una ejecución
-
-Necesidad funcional: poder introducir un comentario, pausar o modificar el rumbo al detectar un problema.
-
-- `factory task note <id> --text "..."`: añade nota operativa con autor/fecha; una nota nueva se ve en el dashboard.
-- `factory task pause <id>`: deja una solicitud persistente; agentes cooperativos deben revisarla antes del siguiente checkpoint/acción significativa.
-- En ejecución gestionada, la CLI puede intentar una interrupción segura **solo tras orden explícita** y guardando estado; en chat manual, no prometer una interrupción remota garantizada.
-- `factory task resume <id>`: tras una pausa, permite reanudar; el agente debe releer notas y estado.
-- Si la nueva instrucción **cambia requisitos o arquitectura**, no se aplica silenciosamente: marcar `requires_reassessment`, ajustar el diseño, volver a aprobar y reconsiderar tareas pendientes.
-- Nunca borrar el trabajo ya realizado al cambiar el alcance.
-
-### 7.7 Recuperación manual V1
-
-Contrato de la skill `factory-resume` y del comando equivalente:
-
-1. Localizar tarea, último run, rama/worktree y versión del diseño.
-2. Comprobar si hay ejecución viva o pendiente de input; si existe, no iniciar otra que pueda escribir en el mismo worktree.
-3. Inspeccionar `git status`, commits, cambios sin confirmar y conflictos.
-4. Leer último `progress.md`, eventos, pruebas y errores; no fiarse ciegamente del resumen.
-5. Comparar criterios del diseño con evidencias ya existentes y clasificar lo que falta.
-6. Proponer al usuario: reanudar en sesión existente cuando sea posible, iniciar sesión nueva en el mismo worktree, o recuperar desde una rama concreta.
-7. Tras decisión explícita, crear **nuevo run** vinculado a la misma tarea si hace falta; conservar histórico de intentos.
-8. Inyectar un contexto de reanudación compacto al proveedor elegido; no volver a ejecutar cambios destructivos ni reinstalar dependencias por defecto.
-9. Registrar el nuevo estado y continuar con checkpoints.
-
-**No se harán reintentos automáticos en V1.** El Core puede sugerir el punto seguro de reanudación, pero no declarar una acción idempotente sin evidencia.
-
-### 7.8 Comandos mínimos de supervisión
-
-```bash
-factory status
-factory status --json
-factory task note CHG-0012-02 --text "Verificar carrera de escrituras"
-factory task pause CHG-0012-02
-factory task resume CHG-0012-02
-factory task interrupt CHG-0012-02 --reason "El proceso terminó"
-factory recover CHG-0012-02
+```json
+{
+  "task": "CHG-0012-01",
+  "state": "in_review",
+  "blocked_reason": null,
+  "workspace": {"orca_id": "repo-123::/home/me/orca/CHG-0012-01", "branch": "<assigned by Orca>"},
+  "attempts": [
+    {"id": 1, "agent": "codex", "model": null, "started_at": "...", "ended_at": null, "result": null}
+  ],
+  "last_checkpoint": {"at": "...", "done": ["Model and tests"], "next": "Run full suite"},
+  "acceptance": {
+    "AC-01": {"status": "verified", "evidence": "evidence/CHG-0012-01/AC-01.txt"},
+    "AC-02": {"status": "pending", "evidence": null}
+  },
+  "checks": {"status": "passed", "at": "..."},
+  "reviews": [
+    {"type": "quality", "reviewer": "codex-subagent", "round": 1, "commit": "abc123", "verdict": "pass", "findings": []}
+  ],
+  "notes": [{"at": "...", "text": "...", "read": false}],
+  "memory": null,
+  "commits": ["abc123"],
+  "pull_request": null
+}
 ```
 
-La CLI deberá resolver duplicaciones de verbos: `task resume` efectúa transición de estado; `recover` inspecciona y prepara un nuevo run. El comando interactivo puede invocar ambos, pero sus semánticas no se confunden.
+**State writing**:
+- Only the CLI writes to `.factory/state/`. Each write takes a short lock on that task's file, reads, modifies and writes atomically (temp file + rename). This way the lead agent, the reviewer and the person (notes, pauses) can write without overwriting each other.
+- `CHG-0012-01.lock` is the task's **claim**: it is created exclusively on `claim` and contains the attempt number and the date. If it already exists, the task is taken. It is deleted when the task moves to `done`, and only `recover` reassigns it, with confirmation.
+- `events.jsonl` is the append-only history. If the JSON gets corrupted, a rebuild from it is attempted.
 
-### 7.9 Requisitos verificables de seguimiento
+### 1.5 States
 
-- Dos agentes en ramas distintas actualizan estados sin sobrescribirse.
-- Un agente desaparece inesperadamente y conserva diff, checkpoints, pruebas y siguiente acción.
-- Tras reiniciar VS Code u Orca, la Factory sigue mostrando el último estado conocido.
-- Un run sin eventos durante 10 minutos no se marca falsamente como muerto.
-- Un cambio solicitado durante ejecución queda visible y debe ser considerado antes de proseguir por el flujo gestionado.
-- Una tarea marcada `interrupted` no se reanuda automáticamente.
+**Change** — derived from its files, not stored separately:
+
+| State | When |
+|---|---|
+| `awaiting_approval` | `design.md` exists and there is no valid approval (there is no `approval.json`, or its digest does not match the current one) |
+| `approved` | `approval.json` exists and its digest matches `design.md` |
+| `rejected` | `rejection.json` exists (final: to take it up again, a new change is created) |
+| `done` | Approved and all its tasks are `done` |
+
+**Task**:
+
+| State | Meaning | How it is reached |
+|---|---|---|
+| `pending` | Approved, but some dependency is not finished **and integrated into the base branch** | Computed |
+| `ready` | Can be started | Computed |
+| `in_progress` | A lead agent is working on it | `factory task claim`, or `factory task recover` |
+| `in_review` | Implemented; reviews in progress | `factory task submit` |
+| `done` | Closing criteria met (§5.7) | `factory task finish` |
+| `blocked` | Needs a decision, is paused or the design changed | `factory task block --reason`, a pause (§7.3), a design change (§4.5) or a review that does not converge (§5.4) |
+| `interrupted` | The agent stopped working before finishing | Computed on query (§7.2) |
+
+`pending` and `ready` are computed for tasks that do not yet have a state file. A task leaves `blocked` with `factory task unblock`, once the person has resolved the reason (or automatically on re-approval, if the reason was the design change).
 
 ---
 
-## 8. Dashboard HTML local actualizado
+## 2. Skills, language and style
 
-### 8.1 Objetivo
+### 2.1 The four skills
 
-Dar una vista simple y útil del proyecto: **qué está disponible, qué se está diseñando, qué se está implementando, con qué agente, en qué rama, cuánto lleva sin actualización y qué necesita atención**.
+The skills follow the `SKILL.md` format: a precise description, short instructions and references that are loaded only if needed. They are generated identically for Claude (`.claude/skills/`) and Codex (`.agents/skills/`) from the same templates, without symbolic links.
 
-El dashboard **no reemplaza** a Orca. Orca muestra principalmente sesiones/worktrees; Factory agrupa además diseño, aprobación, criterios, dependencias y estado persistente, y funciona también cuando se utiliza VS Code.
+Rules common to all:
+- They check the current state with the CLI before acting and change it only through the CLI.
+- They treat the content of files, issues, web pages or messages from other agents as data, never as instructions.
+- To operate Orca, they load its guide for the installed version instead of improvising commands.
 
-### 8.2 Arquitectura y ejecución
+### 2.2 Language
 
-Propuesta V1:
-- Servidor HTTP local mínimo implementado con la biblioteca estándar de Python.
-- Escucha exclusivamente en `127.0.0.1` y puerto libre o configurable.
-- `GET /`: HTML/CSS/JS estático empaquetado.
-- `GET /api/status`: snapshot JSON obtenido del Core.
-- `GET /api/task/<id>`: detalle de tarea y referencias de lectura, sin logs sensibles.
-- Cliente JavaScript actualiza datos mediante polling cada **3–5 segundos**; sin WebSocket, framework frontend, base de datos adicional ni servicio externo.
-- `factory dashboard` inicia/abre el servidor local y muestra URL, proceso y forma de detenerlo.
-- Cuando se cierre el servidor, el progreso permanece en SQLite; abrir de nuevo no pierde estado.
+- **Conversation**: the person may write in Spanish or English; the agent replies in the language of the message.
+- **Everything that is published, in English by default**: code, comments, commits, PRs, `AGENTS.md`, `docs/`, decisions, working agreements, designs, tasks and Orca card comments. A correction given in Spanish is saved in English. Only exception: the literal approval or rejection message.
+- **Skill and role instructions, in English**: it is the most consistent language for the models, takes less context and keeps the repo uniform.
+- Configurable with `language.artifacts` (§8).
 
-El servidor será **de solo lectura** en V1. Botones para mutar estado y edición interactiva se aplazan. Los comandos `factory task ...` permiten intervenir desde un terminal o una skill.
+---
 
-### 8.3 Información presentada
+## 3. `/factory-init` — prepare the repository
 
-**Cabecera**: nombre de repo, rama base detectada, perfil, tracker, fecha/hora de última sincronización y avisos de integraciones ausentes.
+### 3.1 What it does
 
-**Resumen**: contadores de `awaiting_approval`, `ready`, `running`, `review`, `blocked`, `interrupted`, sin confundir tareas y runs.
+1. **Analyzes** without changing anything:
+   - Git: root, branch, pending changes, worktrees.
+   - Orca: installed, minimum version, open, local, repo registered, Orca skills installed and up to date.
+   - Agents available in Orca (Claude, Codex) and `gh`.
+   - Stack and commands for test, lint, typecheck and build (from manifests, Makefile or CI; if there is no evidence, it asks). They are saved in `[checks]` of the config.
+   - Existing instructions and documentation: `AGENTS.md`, `CLAUDE.md`, skills, README, `docs/`, previous decisions.
+   - A previous installation of the Factory.
+2. **Proposes a plan** in four lists:
+   - **Create**: config, skills, `AGENTS.md`, minimal `CLAUDE.md`, `docs/` adapted to the repo, approval permission rules, `.gitignore` entry.
+   - **Modify**: small patches to existing files, with diff.
+   - **Delete**, each item with its reason: leftovers from earlier Factory versions, duplicated or contradictory instructions (consolidated into `AGENTS.md`), files of tools that are no longer used, empty or outdated documentation. **Never** code, tests, CI, secrets or anything whose purpose it cannot explain.
+   - **Respect**: what is left untouched and why.
 
-**Vista principal de tareas**:
-- ID, título, change asociada y diseño aprobado/pendiente.
-- Estado de tarea y de última ejecución.
-- Proveedor/agente, modelo si se conoce y nivel de observabilidad.
-- Rama/worktree, último checkpoint y antigüedad.
-- Progreso resumido, siguiente acción, bloqueo e indicadores de tests/revisión.
-- Dependencias que impiden comenzar.
-- Filtros por estado, agente, rama, change y actividad.
+   And the actions in Orca: register the repo and install or update its skills (global installation, stated clearly).
+3. The person **confirms once** or excludes items ("todo menos borrar X", or "everything except deleting X").
+4. **Applies**: saves a copy of everything it deletes or modifies in `.factory/state/backups/<YYYYMMDD-HHMMSS>/`, writes the files, generates the initial documentation from evidence (marking what it could not confirm) and validates that everything works.
+5. **Summarizes** what was done, what remains to be completed in `docs/` and how to start. It leaves the changes uncommitted: the person reviews the diff and makes the commit (or asks the agent to).
 
-**Detalle por tarea**:
-- objetivo/AC, referencia al diseño, versión de aprobación;
-- línea temporal compacta de eventos significativos;
-- evidencias de verificación (comando, estado y fecha);
-- notas y solicitudes de pausa/cambio;
-- links/rutas a diff, worktree, PR/Issue si existe;
-- botón **copiar comando** de reanudación o inspección, no botón que ejecute sin control.
+### 3.2 Rules
 
-**Señales**: `confirmed_running`, `waiting_input`, `recent_checkpoint`, `stale`, `unknown`, `interrupted`, con iconos/leyendas claros y tiempos reales observados. No inventar porcentajes de avance basados en heurística de texto; opcionalmente mostrar AC verificados / AC totales.
+- **Idempotent**: repeating it does not duplicate anything.
+- **Update without overwriting**: each file installed from a template carries a `factory-template: <name>@<version>` mark, and the config stores the hash of what was installed. If a file no longer matches that hash, it is considered customized: the diff is shown and it is not overwritten without confirmation. Approved designs, decisions and working agreements are never touched.
+- If Git or Orca is missing, it stops and explains what is needed.
+- Asking for "only the analysis" ("solo el análisis") shows the plan without applying anything.
+- What was deleted can be restored from the backup.
+- It does not install hooks in Claude or Codex: Orca already installs its own.
 
-### 8.4 Interfaz, seguridad y performance
+---
 
-- Diseño limpio, responsive, tablas compactas y acceso rápido al detalle; usable en navegadores de escritorio.
-- El dashboard debe seguir abriendo sin Orca ni GitHub.
-- Sanitizar todo texto mostrado; no insertar Markdown de tareas como HTML sin escape.
-- No servir rutas arbitrarias, ni exponer `.env`, tokens, transcripciones o directorios personales.
-- Sin CORS abierto ni binding a `0.0.0.0` por defecto; no exponer servidor a red corporativa.
-- Aplicar cabeceras de seguridad razonables y evitar caché de datos operativos sensibles.
-- Las peticiones solo leen una snapshot consistente; no hacer llamadas costosas a modelos ni Git en cada refresco.
-- Objetivo de rendimiento de aceptación: 100 tareas con refresco fluido en un portátil normal, medido con prueba sintética y sin consultas bloqueantes.
+## 4. `/factory-design` — design and approve
 
-### 8.5 Reporte exportable: fuera de V1
+### 4.1 Change and tasks
 
-No se necesita otro generador de informes al comienzo. El HTML local actualizado es el entregable. Una exportación estática para compartir capturas o reportes podrá incorporarse más adelante, cuidando eliminar rutas y datos sensibles.
+A **change** (`CHG-0012`) is what is researched, designed and approved. Its design includes one or more **tasks** (`CHG-0012-01`), which are what gets implemented. The design does not modify product code.
 
-### 8.6 Comandos
+For truly trivial changes the Factory is not needed: just ask an agent directly.
 
-```bash
-factory dashboard
-factory dashboard --port 8765
-factory status --json
+### 4.2 How the skill works
+
+1. **Reads the project context**: `AGENTS.md` and whatever applies from `docs/` (product, architecture, conventions, current decisions, working agreements).
+2. **Researches the real code**: locates the files that will be touched, the existing patterns worth imitating and the current tests. It distinguishes what was verified from what was assumed.
+3. **Clarifies** what is ambiguous: it first researches and proposes options; it asks only what changes the design.
+4. **Writes the design** with the template (§4.3), proportional to the size of the change. For each task it decides its complexity and reviews, using the table in §5.4 as a guide.
+5. **Self-reviews** with a critical subagent (*Design critic* role, §5.3) that answers one question: *could another agent implement this correctly without having seen this conversation?* The agent fixes issues before presenting.
+6. **Registers** the change (`factory design register`): the CLI assigns it an id and validates that the task block has the right format and that every AC is covered by some task.
+7. **Presents** a summary (goal, decisions, risks, AC, tasks), opens the design in Orca and says how to approve.
+8. If the person asks for changes, it applies them in the same conversation; the digest changes with every modification.
+
+### 4.3 Design template
+
+````markdown
+# CHG-0012 — Title
+
+## Context
+Verified current behaviour, with file references.
+
+## Goal and scope
+What changes. In scope / out of scope.
+
+## Acceptance criteria
+- AC-01: Given …, when …, then … — verified by: test/command
+- AC-02: Given …, when …, then … — verified by: manual/visual step
+
+## Approach
+Chosen solution and alternatives considered, with trade-offs.
+Decisions to record as ADR. Existing decisions respected or superseded.
+
+## Implementation notes
+Files and modules to touch, patterns to follow (with paths),
+interfaces between tasks, known pitfalls.
+
+## Tasks
+```yaml
+- id: CHG-0012-01
+  title: …
+  depends_on: []
+  complexity: normal
+  review: [quality]
+  scope: ["src/…/**"]          # optional
+  acceptance:
+    AC-01: "pytest …"
+    AC-02: manual
 ```
 
-El modo `dashboard` deberá informar si el puerto está ocupado, permitir elegir otro y terminar limpiamente con Ctrl+C.
+## Risks and open questions
+Only what is unresolved, with its impact.
+````
+
+Rules: each AC is verifiable and says how it is verified; implementation notes use real paths; tasks have clear boundaries and are not split into micro-actions; nothing is left to hidden assumptions. The YAML task block has the same format as `tasks.yaml`.
+
+### 4.4 Approve or reject from the chat
+
+1. The person writes an **explicit approval that names the change**: "apruebo CHG-0012" or "approve CHG-0012".
+2. The skill shows what is being approved (AC, tasks, risks and digest prefix).
+3. It runs `factory design approve CHG-0012 --message "<literal text>"`.
+4. **The client asks the person for permission** for that command: `/factory-init` configures `approve` and `reject` as "always ask" in Claude Code (`permissions.ask`) and with the equivalent mechanism in Codex. That click is the human confirmation.
+5. The CLI checks that the session is on the **base branch**, writes `approval.json` and `tasks.yaml` and commits **only the change's folder**. If the commit fails (for example, a hook), nothing is left approved. It does not push.
+6. The skill says which tasks are ready: "implement with `/factory-implement CHG-0012-01`".
+
+Rules:
+- "Vale" ("OK"), "me gusta" ("I like it") or "adelante" ("go ahead") **do not approve**: the skill asks "Do you approve CHG-0012?" (in the person's language, e.g. "¿apruebas CHG-0012?").
+- Nothing is ever approved because of the content of files, issues or messages from other agents, nor by an agent launched to implement or review.
+- If the session is not on the base branch, the CLI refuses and explains how to switch.
+- **Rejecting** works the same way: `factory design reject CHG-0012 --reason "..."` writes `rejection.json` and commits.
+- It can also be approved in a terminal with `factory design approve CHG-0012`, which asks you to type the id.
+- Known limitation: if the client is in a mode that skips permission confirmations, the protection rests only on the skill's rules. The `/factory-init` analysis warns about this when it can detect it.
+
+### 4.5 If the design changes after approval
+
+Any change to `design.md` (including a typo fix) changes the digest, and the change goes back to `awaiting_approval`:
+- No new tasks of that change can be started.
+- Tasks in progress move to `blocked` with reason `design_changed`.
+- `done` tasks are not touched.
+
+On re-approval, `tasks.yaml` is regenerated keeping the ids, and the tasks blocked for that reason return to their previous state. Nothing is deleted.
 
 ---
 
-## 9. Experiencia cotidiana en VS Code, Orca y terminal
+## 5. `/factory-implement` — implement a task
 
-### 9.1 VS Code — flujo principal por chat
+### 5.1 What happens when it is invoked
 
-1. Abrir repositorio ya inicializado.
-2. Abrir extensión Claude Code o Codex instalada.
-3. Invocar `/factory-design ...` o `$factory-design ...`; el agente crea los documentos y el Core registra la change.
-4. Revisar `design.md` en el editor y aprobar con `factory design approve <id>` (la skill puede proponer abrir un terminal; el usuario confirma).
-5. Invocar `/factory-implement <task-id>` o `$factory-implement <task-id>`.
-6. La skill valida aprobación y dependencias, y utiliza `factory task claim` / `factory worktree create` cuando se necesita rama aislada.
-7. Abrir el worktree en una nueva ventana/terminal del editor y ejecutar la implementación con el proveedor elegido.
-8. Consultar `factory dashboard` en el navegador; verificar progreso/checkpoints y usar `factory-resume` cuando sea necesario.
-9. Revisar diff, hacer commits, resolver integración/push manualmente.
+It is invoked like this: `/factory-implement CHG-0012-01 con codex, revisa claude` (in English: "with codex, review claude"). "con" ("with") names the lead agent; "revisa" ("review") names the agent for the conformance review. If either is missing, the skill asks once and suggests the last choice. There is no fixed value: it depends on each task and on quotas.
 
-En V1 la skill puede necesitar que el usuario cambie al worktree o abra un terminal; **no prometer un traspaso automático de contexto entre dos chats distintos de VS Code si las extensiones no exponen la operación**.
+**From the main checkout** (the usual case):
+1. It checks that the change is approved, that the approval commit is on the base branch and that **all dependencies are `done` and integrated into the base branch**. If any is not, the task stays `pending` and the skill explains why.
+2. `factory task claim CHG-0012-01`: claims the task and Orca creates a **new workspace with its branch** from the base branch (`orca worktree create`), which appears in the sidebar. If creation fails, the claim is undone.
+3. `factory task launch CHG-0012-01 --agent codex`: Orca opens the lead agent in that workspace (`orca agent launch`) with a brief that is literally `/factory-implement CHG-0012-01` and the chosen review agent.
+4. The main session does not move: it reports "CHG-0012-01 launched; open it from the sidebar" and is free.
 
-### 9.2 Orca — mismo contrato, más asistencia visual
+**Inside the task's workspace** (the skill detects it with Git): the session acts directly as the lead agent and does not launch another.
 
-1. Abrir el repositorio y usar su Chat UI o terminal.
-2. Invocar las mismas skills por proveedor.
-3. Si se decide implementar, crear worktree desde Orca o la CLI; Factory registra su vinculación con la tarea.
-4. Ejecutar el agente en ese workspace y revisar su diff/sesión desde Orca.
-5. Dashboard Factory ofrece la vista transversal de tareas/diseños además de las sesiones nativas.
-6. Si Orca no está disponible, Git + CLI hacen exactamente el mismo trabajo esencial.
+Uncommitted changes in the main checkout do not carry over to the workspace, because it starts from a commit of the base branch.
 
-No mantener una segunda copia de worktrees ni tareas nativas de Orca si puede leerse mediante su CLI. Un adaptador Orca comprobará qué comandos/capacidades expone la versión instalada.
+The person can enter the workspace whenever they want: watch the agent work, write to it, correct it or work on the branch themselves.
 
-### 9.3 Terminal — automatización explícita
+### 5.2 Lead agent flow
 
-Se utilizará para:
-- instalación y diagnóstico;
-- aprobación/operaciones del Core;
-- consulta de estados;
-- ejecución gestionada opcional cuando se necesite monitorización del proceso;
-- dashboard;
-- mantenimiento de Git.
+While working, the lead agent is the one who writes in the workspace (the person can also do so if they enter). It adapts the flow to the complexity:
 
-Ejemplo de flujo **ilustrativo de la CLI Factory propuesta**, no de comandos existentes hoy:
+| Complexity | Flow |
+|---|---|
+| `trivial` | Implement → checks |
+| `normal` | Short plan → tests first → implement → checks → reviews (§5.4) |
+| `complex` | Plan with a *Planner* subagent → small steps with checkpoints → checks → reviews |
 
-```bash
-factory doctor
-factory init --profile personal
-# Desde el chat: /factory-design "Añadir reservas recurrentes"
-factory design show CHG-0012
-factory design approve CHG-0012
-factory task ready
-factory worktree create CHG-0012-01
-# Desde un agente: /factory-implement CHG-0012-01
-factory dashboard
-factory status
+During the work:
+- **Checkpoints** (`factory task checkpoint`) after each significant step: what is done and what comes next. At each checkpoint, and always before `submit`, it reads the person's pending notes.
+- Frequent **commits** on the task branch, one per coherent step.
+- If something forces a design change, it stops and moves the task to `blocked` with the reason (`factory task block`): it does not improvise architecture.
+- When the implementation is finished: `factory task verify` (checks and AC), `factory task submit` (moves to `in_review`) and the reviews that apply.
+
+### 5.3 Instructions for each role
+
+Short, professional instructions, in English, in `templates/roles/`. Each one is complemented by the project's `docs/conventions.md` and `docs/working-agreements.md`.
+
+**Designer**
+> You are a senior software architect. Ground every statement in the actual code: read the files you will touch and the patterns already in use. Prefer the smallest design that fully meets the goal. Write acceptance criteria that a test can prove. Give implementers concrete file paths, the patterns to follow and the pitfalls to avoid. Separate verified facts from assumptions.
+
+**Design critic**
+> You review a design before a human approves it. Ask one question: could another engineer implement this correctly without the original conversation? Flag acceptance criteria that cannot be verified, missing information, contradictions with accepted decisions and badly bounded tasks. Be concrete and brief.
+
+**Lead (implementer)**
+> You are a senior engineer who owns this task end to end. Read the approved design, its acceptance criteria, the conventions and the working agreements before writing code. Find and follow existing patterns. Work in small steps: write a failing test for each acceptance criterion where it makes sense, make it pass with the simplest code, then refactor with tests green. Keep the change within scope; no drive-by edits. Handle errors explicitly. Run the full checks before submitting. Commit each coherent step with a clear message. Re-read your whole diff before asking for review. Never claim something works without evidence.
+
+**Planner**
+> You plan a complex task before any code is written. Break it into small, verifiable steps in a sensible order, each with the test that proves it. Point out risks and the existing code each step depends on. Do not write code.
+
+**Quality reviewer**
+> You are a meticulous code reviewer. Review only the diff, for maintainability: readability, naming, structure, duplication, unnecessary complexity, error handling, adherence to the project conventions and meaningful tests. Ignore formatting and anything linters already check. Report only concrete defects. Do not edit files.
+
+**Conformance reviewer**
+> You verify that the implementation matches the approved design. For every acceptance criterion, confirm it is implemented and that real evidence proves it. Flag anything out of scope, any deviation from the design and any violated decision record. Do not judge style. Do not edit files.
+
+Both reviewers finish with this JSON, which the lead agent records with `factory task review --record`:
+
+```json
+{"verdict": "pass", "findings": [{"severity": "major", "file": "src/x.py", "line": 42, "problem": "...", "fix": "..."}]}
 ```
 
-### 9.4 Compatibilidad de skills
+### 5.4 Reviews
 
-Los directorios `.claude/skills/...` y `.agents/skills/...` contienen envoltorios adaptados a las convenciones de cada cliente, pero ambos llaman a la misma CLI y cumplen el mismo contrato semántico.
+Two types, independent. Syntax and formatting are always covered by the checks (linters, typecheck, tests).
 
-**Alcance V1**: portátil en versiones probadas de Claude Code y Codex, con pruebas reales en extensiones VS Code, CLI y Orca. No prometer soporte automático para todas las versiones futuras sin `doctor` y pruebas de compatibilidad.
+| Type | Question | Who does it |
+|---|---|---|
+| **Quality** | Is the code well written? | A subagent of the lead agent, read-only. If its client has no subagents, an Orca agent from the same provider as the reviewer. |
+| **Conformance** | Was what was approved done, with evidence? | An Orca agent in the same workspace, from the provider given with "revisa" ("review") (ideally the other one), read-only. It appears as another session in the workspace. |
+
+**Which reviews each task gets** is set by the designer in the `review` field, with this guide:
+
+| Task | Reviews |
+|---|---|
+| Trivial | none |
+| Normal without new visible behavior | quality |
+| Changes visible behavior or has several AC | quality and conformance |
+| Complex or risky (security, data, public interfaces) | quality and conformance |
+
+The config can force a type (`always`) or disable it (`never`), and the person can ask for more when invoking ("revisa también conformidad", or "also review conformance").
+
+**Verdict and rounds**:
+- `pass` if there are no `blocker` or `major` findings. `minor` findings do not block and are listed in the PR.
+- Each review stores the commit it reviewed.
+- If there are blocking findings, the lead agent fixes them and that review is repeated. At most **two rounds** per type: if the second one is not `pass` either, the task moves to `blocked` and the card raises a notice.
+- Reviewers never edit or approve.
+
+### 5.5 Verification and evidence
+
+- `factory task verify` runs the project's **checks** (`[checks]` in the config) and each AC's command. It marks the AC `verified` only if its command finishes successfully, and saves the output in `.factory/state/evidence/<task>/`.
+- A `manual` AC is recorded with `factory task verify --manual AC-02 --evidence <file>` (a note, a capture from the Orca browser with `orca screenshot`, a snapshot with `orca snapshot`…). Computer use only when there is no programmatic way.
+- A command that could not be run is recorded as not run, never as passed.
+
+### 5.6 Commits, push and PR
+
+- The agent makes commits on the task branch while it works.
+- After `finish`, `factory task publish` **pushes the task branch** and opens the **PR** with `gh` against the base branch. According to `git.pr_on_done`, the agent offers it (`offer`, the default), always does it (`always`) or never does (`never`). If the person asks for it, it does it directly.
+- If there are more commits on the branch afterwards, `publish` pushes them again to the same PR.
+- The PR description is generated from the task: change, AC with their evidence, reviews (with the `minor` findings), memory changes and what remains pending.
+- It does not `push --force`, push to other branches, merge, or delete branches or workspaces. The person decides that.
+- The repo's branch protections and CI rule. If CI fails, it is shown on the card and in the status.
+
+### 5.7 When a task is done
+
+`factory task finish CHG-0012-01 --memory "<summary>|none"` moves the task to `done` only if:
+1. every AC of the task is `verified`;
+2. the project checks pass;
+3. the reviews in the `review` field have a `pass` verdict **on the last commit with code** (if afterwards only `docs/` or `.factory/` changed, it still holds);
+4. memory has been evaluated (the `--memory` argument is mandatory, §6.5);
+5. the approval is still valid.
+
+If the task has `scope`, the CLI warns about files changed outside it (except `docs/` and `.factory/`); it does not block, but the warning stays in the state and in the PR, and the conformance review decides whether it is a deviation.
+
+The PR is not a requirement for `done`, but its status is shown next to the task.
 
 ---
 
-## 10. GitHub y entornos colaborativos
+## 6. Memory and documentation
 
-### 10.1 Integración GitHub opcional
+### 6.1 What is stored and where
 
-En caso de elegirse `tasks.backend = "github"`:
+| What | Where | When agents read it |
+|---|---|---|
+| Index, commands and critical rules | `AGENTS.md` (60–120 lines) | Always |
+| What the product is, who it is for and what it is not | `docs/product.md` | When designing |
+| Modules, flows, stack and integrations | `docs/architecture.md` | When designing and implementing in that area |
+| How we write code and tests, and **known pitfalls** | `docs/conventions.md` | When implementing and reviewing |
+| How we want agents to work | `docs/working-agreements.md` | When implementing and reviewing |
+| Why the system is the way it is | `docs/decisions/NNNN-*.md` | When designing and in the conformance review |
+| State of each task | `.factory/state/` | When working on or resuming that task |
 
-- Detectar `gh`, sesión autenticada y repositorio remoto sin exponer tokens.
-- Crear o vincular Issues a tasks locales; manejar sus estados y responsables mediante convenciones configurables del repositorio.
-- Añadir referencias a change, diseño, rama, commit y PR.
-- Registrar comentarios resumidos de progreso solo si el usuario/equipo lo permite.
-- Consultar estado de PR/CI cuando haya PR, sin simular aprobaciones inexistentes.
-- No crear Issues para cada microcheckpoint; sincronizar cambios significativos.
-- Los cambios remotos se realizan con permisos y controles del usuario autenticado.
-- Trabajar offline en modo local y dejar una cola de operaciones pendientes para reconciliar, mostrando conflictos antes de aplicar sobre estado remoto cambiado.
+Everything in `docs/` and `AGENTS.md` is in English and versioned, and changes only with human review (§0.4). `CLAUDE.md` is limited to importing `AGENTS.md`.
 
-La elección de labels/estados compartidos se mapea por configuración. No asumir que todas las empresas utilizan el mismo Project board o los mismos nombres de etiquetas.
+### 6.2 Adapting to the repository
 
-### 10.2 Conectores extra
+- **Small repo**: `AGENTS.md` and `conventions.md`; the rest when there is content.
+- **Normal repo**: the full structure.
+- **Monorepo**: a root `AGENTS.md` as index and a short one per package or area, without repeating what is common.
+- **Existing documentation**: it is linked and completed; never duplicated.
 
-V1 solo requiere detección y contratos, no integración completa con Slack, Drive, Jira, Linear, Azure DevOps, MCP remoto, etc. Añadir un conector cuando exista una necesidad real y permisos adecuados.
+What gets written is what is **not easily deduced from the code**, with real paths and principles instead of exhaustive lists that go stale.
 
-Los MCP pueden ser útiles para **lectura de documentación y herramientas corporativas**, pero cada proyecto elige cuál instalar. La Factory no habilitará conectores de forma global sin revisión de permisos.
+### 6.3 Decisions (ADR)
 
-### 10.3 Participación humana en el equipo
+```markdown
+# 0007 — Use per-task JSON files for local state
 
-- Distintas personas pueden usar Claude o Codex según su licencia.
-- Las reglas comunes se versionan; preferencias personales de modelo, binarios y rutas permanecen locales.
-- El tracker del equipo muestra propietario y estado compartido; el dashboard local muestra los trabajos que ejecuta esta máquina, junto con tareas remotas cuando el adaptador lo permita.
-- El registro de aprobación puede ser local o apoyarse en revisión de PR de diseño si el proyecto lo exige.
-- El Core no salta branch protection, CODEOWNERS, CI ni revisiones requeridas.
-- No ejecutar comandos de setup o hooks de un repositorio recién clonado antes de revisarlos.
+Status: accepted            # accepted | superseded by 0012
+Date: 2026-10-17
+Change: CHG-0012
+
+## Context
+## Options considered
+## Decision
+## Consequences
+```
+
+- One decision per file, sequential numbering and a one-line index entry per decision in `docs/decisions/README.md`.
+- **Immutable except the `Status` line**: if a decision changes, another one is written that supersedes it, and in the old one only its status changes to `superseded by NNNN`.
+- The design points out the lasting decisions; the lead agent writes them during implementation, on the task branch.
+- ADRs are warranted for: technologies, architecture patterns, public contracts, data models and security or performance trade-offs. Not for local implementation details.
+
+### 6.4 Working agreements and pitfalls
+
+**Working agreements** (`working-agreements.md`): rules about how to work, grouped by topic (process, code, tests, communication). One line per agreement, with date and origin:
+
+```markdown
+- Ask before adding a new dependency. (2026-10-17, correction in CHG-0012-02)
+```
+
+They can arise from the person's corrections during a session, from review findings that repeat, or from instructions like "from now on…" ("a partir de ahora…"). In all cases they are proposed and **only saved if the person accepts** (in the conversation or when reviewing the PR).
+
+**Known pitfalls** (final section of `conventions.md`): repo quirks that have caused errors ("test X is flaky", "never edit files under `gen/` by hand").
+
+### 6.5 How memory is updated
+
+When closing each task, the lead agent asks itself these questions:
+
+| Question | Destination |
+|---|---|
+| Was a lasting decision made? | New ADR (or one that supersedes another) |
+| Did the person or a reviewer correct something that will recur? | Working agreement |
+| Did a repo pitfall appear? | Known pitfalls |
+| Did the structure, a flow or an integration change? | `architecture.md` |
+| Did the visible product or its scope change? | `product.md` |
+| Did commands or critical rules change? | `AGENTS.md` |
+
+Rules when writing:
+1. **Read before writing**: if something similar already exists, edit or extend it; do not duplicate.
+2. **Minimal change with the why**: each entry includes its reason and its origin.
+3. **One destination per entry**: if it fits none in the table, it is not written.
+4. **Fixed template** for ADRs and agreements; the decisions index is updated.
+5. **No contradictions**: if a new entry clashes with an existing one, it proposes replacing the old one.
+6. **Contain the size**: if a document grows too much, it proposes summarizing instead of adding.
+7. **Everything on the task branch and listed in the PR**: the person reviews it alongside the code.
+
+The result is passed to `finish` with `--memory`: a summary of what was proposed, or `none` if there was nothing to add. There is no separate memory agent.
+
+### 6.6 Maintenance
+
+When the person asks ("¿cómo está la memoria?", or "how is the memory?"), `/factory-status` runs `factory memory check`, which reviews:
+- `AGENTS.md` above 120 lines;
+- superseded decisions that are still cited, and repeated ADR numbers;
+- links to files that no longer exist.
+
+With that and its own reading (contradictory agreements, outdated documents), the skill proposes concrete changes. They are shown as a diff and the person commits if they agree.
 
 ---
 
-## 11. Configuración y contratos estables de interoperabilidad
+## 7. `/factory-status` — tracking and recovery
 
-### 11.1 Ejemplo de `.factory/config.toml` compartido
+### 7.1 Viewing the state
 
-Los nombres de campos constituyen **diseño de nuestro producto**, no opciones nativas de Claude/Codex/Orca:
+It is asked in natural language ("¿cómo va todo?", "¿qué está bloqueado?", "¿cómo va CHG-0012-01?", or in English: "how is everything going?", "what is blocked?", "how is CHG-0012-01 going?"). The skill answers from the state files and what Orca reports at that moment:
+
+- **Summary**: changes awaiting approval and tasks by state.
+- **Per task**: state (and reason if blocked), agent, workspace and branch, last checkpoint and its age, AC verified / total, reviews, PR and next step.
+- **Attention**: pending approvals, blocked or interrupted tasks, reviews that do not converge, `pending` tasks waiting for a dependency to be integrated, agents with no checkpoint for more than 10 minutes.
+
+### 7.2 Whether an agent is alive
+
+On query, the CLI asks Orca about the session of the lead agent of each `in_progress` task:
+- **Alive**: shown as active.
+- **Finished without `submit`**: the task moves to `interrupted` at that moment.
+- **No information**: shown as "unknown", never as dead.
+
+`interrupted` is only detected when querying the state or when recovering. More than 10 minutes without a checkpoint only produces a warning, and is never interpreted as a crash.
+
+### 7.3 Notes and pauses
+
+The most direct way is to enter the workspace and talk to the agent. From any session you can also ask:
+- "deja una nota en CHG-0012-01: …" ("leave a note on CHG-0012-01: …") (`factory task note`): the agent reads it at its next checkpoint or before `submit`;
+- "pausa CHG-0012-01" ("pause CHG-0012-01") (`factory task note --pause`): when the agent reads it, it moves the task to `blocked` with reason `paused` and stops. To continue, `factory task unblock`.
+
+If a note changes requirements or architecture, the agent blocks the task; the design is adjusted and approved again.
+
+### 7.4 Recovering an interrupted task
+
+1. `factory task recover CHG-0012-01` gathers the task, workspace, branch, `git status`, commits, last checkpoint and evidence. If needed, the skill adds excerpts from the previous session (`orca search`).
+2. It compares the AC with the evidence and summarizes what is missing.
+3. If the previous session is still alive, it only proposes continuing in it. If not, it proposes launching a new agent in the same workspace.
+4. After the person confirms, it closes the previous attempt (`result: interrupted`), records a new one, reassigns the claim and the agent continues from the last checkpoint. Uncommitted changes from the previous attempt are kept as they are.
+
+The Factory never relaunches anything without confirmation.
+
+### 7.5 Orca cards
+
+On each state change, the CLI updates the workspace card (`orca worktree set`):
+
+| Task state | Card state | Comment | Unread notice |
+|---|---|---|---|
+| `in_progress` | `in-progress` | Next action | no |
+| `in_review` | `in-review` | Pending reviews | no |
+| `done` | `completed` | "N/N AC verified · PR #123" | no |
+| `blocked` | `in-progress` | Reason for the block | yes |
+| `interrupted` | `in-progress` | "Interrupted: use /factory-status" | yes |
+
+The card name is the task's id and title. If Orca does not support a value, only the comment is updated. If the update fails, the task is not affected.
+
+---
+
+## 8. Configuration
+
+`.factory/config.toml`, with few fields and good defaults:
 
 ```toml
 schema_version = 1
-profile = "personal"                 # personal | team
 
-[planning]
-provider = "openspec"               # openspec | builtin
-default_depth = "adaptive"          # adaptive | compact | full
-require_approval = true
-allow_trivial_fast_path = true
+[orca]
+min_version = "1.4.229"
 
-[tasks]
-backend = "local"                   # local | github
-default_risk = "medium"
+[checks]                    # detected by /factory-init
+test = "pytest"
+lint = "ruff check ."
+typecheck = "mypy src"
 
-[workflow]
-mode = "adaptive"                   # adaptive | simple | standard | complex
-reviewer_on_normal = true
-max_review_fix_rounds = 2
-parallel_writers = 2
+[review]
+quality = "auto"            # auto (whatever the task says) | always | never
+conformance = "auto"
+max_rounds = 2
 
 [git]
-base_ref = "auto"                    # resolución segura desde el repo
-branch_prefix = "factory/"
-create_worktree_on_run = true
-allow_commits = true
-auto_push = false
-auto_merge = false
-auto_cleanup = false
+pr_on_done = "offer"        # offer | always | never
 
-[observability]
-stale_after_minutes = 10
-dashboard_refresh_seconds = 4
-enable_optional_hooks = false
-
-[dashboard]
-host = "127.0.0.1"
-port = 0                            # asignar puerto libre
-read_only = true
-
-[agents]
-design_provider = "claude"
-implementation_provider = "codex"
-review_provider = "claude"
-allow_provider_override = true
+[language]
+artifacts = "en"            # language of everything publishable
 ```
 
-**Configuración local no versionada** en `<git-common-dir>/factory/local.toml` para rutas absolutas, selección de modelos disponibles, preferencias de esfuerzo, puerto fijo, límites locales y ejecutables personalizados. Nunca almacenar aquí credenciales si ya las gestiona el proveedor; la Factory solo utiliza los mecanismos de autenticación existentes.
+The base branch is the one the repo has in Orca; branch names are set by Orca. There are no fixed agents: they are chosen when invoking `/factory-implement`. The hashes of the installed templates (§3.2) are stored in a section managed by `/factory-init`.
 
-Orden efectivo: políticas de la organización + configuración del repositorio + preferencias locales + overrides explícitos permitidos. Los campos de seguridad corporativa no se relajan mediante overrides.
+---
 
-La validación rechaza valores desconocidos cuando afecten al Core; para cambios de versión existe migración explícita de `schema_version`. `factory doctor --json` incluye configuración efectiva con valores sensibles omitidos.
+## 9. CLI
 
-### 11.2 Contrato de ejecución común
+It is used by the skills; it is also available to the person. All output supports `--json`.
 
-No importa qué proveedor implemente. Toda ejecución normalizada deberá entregar:
+```bash
+factory doctor                                   # analysis without changes
+factory init --plan | --apply | --restore <backup>
 
-```json
-{
-  "run_id": "RUN-0037",
-  "task_id": "CHG-0012-02",
-  "design_digest": "sha256:...",
-  "provider": "codex",
-  "model": "id-real-si-se-conoce",
-  "observability": "self_reported",
-  "branch": "factory/CHG-0012-02-calendar",
-  "worktree": "/ruta/local/...",
-  "result": "needs_review",
-  "changed_files": ["src/calendar/service.py"],
-  "commits": ["abc123"],
-  "checks": [
-    {"name": "integration", "status": "passed", "evidence_id": "EV-019"}
-  ],
-  "acceptance": [
-    {"id": "AC-03", "status": "verified", "evidence_id": "EV-019"},
-    {"id": "AC-04", "status": "pending", "evidence_id": null}
-  ],
-  "next_action": "Revisar AC-04"
-}
+factory design register|show <CHG>
+factory design approve <CHG> [--message "..."]   # without --message, asks you to type the id
+factory design reject <CHG> --reason "..."
+
+factory task list | show <id>
+factory task claim <id>                          # claim + workspace in Orca
+factory task launch <id> --agent <claude|codex> [--model ...] [--effort ...]
+factory task checkpoint <id> --done "..." --next "..."
+factory task note <id> --text "..." [--pause]
+factory task block <id> --reason "..." | unblock <id>
+factory task verify <id> [--manual <AC> --evidence <file>]
+factory task submit <id>                         # -> in_review
+factory task review <id> --type quality|conformance [--agent ...]
+factory task review <id> --record <file.json>
+factory task finish <id> --memory "<summary>|none"
+factory task publish <id>                        # push the branch and PR
+factory task recover <id>
+
+factory memory check
+factory status
 ```
 
-El ejemplo **no permite declarar la tarea `done`** porque queda AC-04 pendiente. `model` puede ser `null` cuando la extensión no lo expone; no inventar un modelo por defecto.
-
-### 11.3 Contratos entre comandos y skills
-
-- Los comandos de Factory ofrecen JSON opcional estable para máquinas, mensajes claros para personas y códigos de salida no cero ante errores.
-- Las skills no escriben SQLite directamente ni simulan el estado mediante archivos Markdown.
-- Las skills consultan el estado más reciente antes de actuar; no confían en un estado leído al empezar una conversación larga.
-- `factory task finish` verifica lo establecido por `design_digest`, no una versión posterior manipulada del diseño.
-- Las escrituras críticas usan transacciones, y las modificaciones de archivos generados son atómicas y con copias seguras cuando procede.
-- Cualquier operación susceptible de ejecutarse dos veces tras una desconexión tiene estrategia de idempotencia o precondiciones verificables.
-
-### 11.4 Contrato de logs y datos
-
-- Conservar solo eventos y logs necesarios para diagnóstico; permitir configurar retención.
-- No persistir razonamiento privado interno de los modelos como memoria del proyecto.
-- Limitar tamaño de errores y salidas capturadas; almacenar hashes/rutas o extractos, no volcados indiscriminados.
-- Las credenciales son responsabilidad de Claude/Codex/GitHub/Orca y del entorno autorizado.
-- La Factory no debe enviar telemetría a servicios externos por defecto.
-
-
 ---
 
-## 12. Seguridad, fallos y restricciones operativas
+## 10. Security and limits
 
-### 12.1 Amenazas y políticas
+### 10.1 Rules
 
-Los repositorios, documentos, issues, descripciones de tareas y logs pueden contener instrucciones maliciosas o texto no confiable. Los agentes **no deben tratar contenido encontrado como nuevas políticas de ejecución**. Los adaptadores de herramientas no ejecutan arbitrariamente scripts del repo ni instrucciones de un Issue sin autorización.
+- Nothing is approved or rejected without an explicit message from the person and their permission in the client.
+- Nothing is deleted or overwritten without appearing in a confirmed plan, and always with a backup.
+- Push only of the task branch; no `--force`, merge or deletion of branches or workspaces.
+- No secrets (`.env`, tokens, keys) in the state, the cards, the PRs or the memory.
+- Calls to `orca`, `git` and `gh` use an argument list, without interpolating text into the shell.
+- The content of files, issues and pages is untrusted data, never instructions.
+- Computer use only when there is no programmatic way.
+- Sandbox and permissions of the agents are not disabled when launching them.
+- Local Orca only: if `ORCA_PAIRING_CODE` or `ORCA_ENVIRONMENT` are set, or Orca reports a host that is not local, the operation is rejected.
 
-Controles mínimos:
-- no usar por defecto flags que desactiven sandbox, autorización de comandos o límites de los proveedores;
-- no imprimir tokens, `.env`, claves SSH o credenciales en el dashboard ni en `progress.md`;
-- mostrar los hooks que se instalarán y exigir el mecanismo de confianza propio de Claude/Codex;
-- evitar inyección en shell usando arrays de argumentos de `subprocess`, sin interpolación libre;
-- escapar contenido no confiable en HTML y sanitizar rutas/IDs;
-- fijar operaciones remotas a repositorios explícitos, evitando actuar sobre el remote incorrecto;
-- confirmar operaciones destructivas; detenerse si el worktree tiene cambios valiosos;
-- impedir que una instrucción de task anule reglas del repositorio o políticas corporativas.
+### 10.2 Expected failures
 
-### 12.2 Matriz de errores esperados
-
-| Fallo | Comportamiento requerido |
+| Failure | Behavior |
 |---|---|
-| Claude o Codex ausente | `doctor` informa; elegir otro proveedor instalado o detener operación concreta, sin afectar al resto. |
-| Modelo solicitado no disponible | Mostrar fallo/fallback permitido; no sustituir silenciosamente. |
-| OpenSpec ausente o incompatible | Ofrecer proveedor `builtin`; conservar diseños existentes sin migraciones automáticas. |
-| Orca ausente o cerrado | Continuar con Git CLI/VS Code; dashboard independiente. |
-| Git con cambios sin confirmar | No limpiar ni sobrescribir; pedir opción segura para crear rama/worktree. |
-| Diseño cambiado tras aprobación | Invalidar permiso de ejecución de tareas nuevas y pedir reevaluación. |
-| Dos agentes reclaman misma tarea | Solo gana uno; al otro devolver conflicto y estado actual. |
-| Run se interrumpe | Guardar último estado/evidencias; no reiniciar solo. |
-| Hook no autorizado/no disponible | Mostrar observabilidad reducida, no asumir vida del proceso. |
-| SQLite bloqueado/transacción fallida | Reintento acotado de transacción y error coherente; no escritura parcial. |
-| Tracker remoto no disponible | Trabajar localmente cuando la política lo permita y mostrar pendiente de sync. |
-| Tests no ejecutables | Marcar `not_run` y motivo; nunca `passed`. |
-| Reviewer no converge | Bloquear/escalar tras límite de rondas, preservando los hallazgos. |
-| Dashboard cerrado | No afecta a ejecución ni persistencia. |
-| Rama/worktree borrados externamente | Marcar vínculo roto, pedir conciliación; no recrear automáticamente encima de otra rama. |
-| Fuente externa cambia de permisos | Detener sincronización externa; conservar progreso local y avisar. |
+| Orca closed, missing or below the minimum version | Tasks are not claimed or launched; it explains how to fix it. State and designs remain viewable. |
+| Agent or model not available | It reports it and asks for another; it is never replaced silently. |
+| Launch response lost | The same operation is resent with Orca's `operationId`, which does not launch a second agent. It is not a task retry. |
+| Workspace creation fails | The claim is undone; the task goes back to `ready`. |
+| Two agents claim the same task | The claim file lets only one through. |
+| Approving outside the base branch or the commit fails | It is not approved; the reason is explained. |
+| Design changed after approval | New tasks blocked until re-approved; those in progress move to `blocked`. |
+| Dependency finished but not integrated | The task stays `pending` until the dependency is on the base branch. |
+| Tests cannot be run | They are recorded as not run; the task cannot be closed. |
+| Review that does not converge | `blocked` after two rounds, with the findings saved. |
+| `gh` missing or push rejected | It reports it and the branch stays intact; the PR is left to the person. |
+| Workspace deleted outside the Factory | The task is marked with a broken link and it asks what to do. |
 
-### 12.3 Suposiciones de V1
+### 10.3 To verify with the real tools
 
-- La Factory se ejecuta principalmente en máquina de desarrollo local con Git instalado.
-- Hay un único desarrollador propietario de cada **clon local**; múltiples agentes pueden actuar de forma concurrente dentro de él.
-- El estado SQLite local no se comparte por red entre diferentes clones.
-- Las acciones de proveedores pueden cambiar entre versiones; por eso se aíslan en adaptadores y se prueban en `doctor`.
-- Las versiones y licencias de los proveedores no garantizan todos los modelos o límites de uso.
-- El usuario revisa los cambios antes de integrarlos y decide cuándo hacer push/merge.
-- Una tarea de código puede requerir revisión humana aunque el Reviewer automático no encuentre fallos.
+Checked against Orca **1.4.229**. Before implementing, these must be verified:
+1. That all Orca workspaces are worktrees of the same clone, so that they locate the main checkout and its `.factory/state/`.
+2. That the Orca chat and agent terminal load the repo's skills, for Claude and Codex.
+3. That Claude Code's "always ask" rule applies to `approve` and `reject` in the usual permission modes, and what the equivalent mechanism and file are in Codex.
+4. How Codex offers subagents, for the quality review.
+5. That two agents (lead and reviewer) can coexist in the same Orca workspace.
+6. Which states Orca cards support, what Orca reports about the model used, and how it indicates that a host is not local.
+7. The real `--json` responses of the commands used, for the tests' fake `orca`.
 
 ---
 
-## 13. Pruebas y criterios de aceptación de la Factory completa
+## 11. Acceptance criteria
 
-### 13.1 Estrategia de pruebas
-
-**Unitarias**: parser/config, cálculo de digest, transición de estados, dependencias, política de complejidad/riesgo, regeneración de `progress.md`, normalización de IDs/rutas y renderizado seguro de HTML.
-
-**Integración local**: repositorios Git temporales, worktrees reales, SQLite con múltiples procesos, CLI en `subprocess`, instalación idempotente, compatibilidad con configuraciones existentes, reinicio de servidor HTML.
-
-**Contrato de adaptadores**: mocks de Claude/Codex/OpenSpec/Orca/GitHub y pruebas *smoke* con herramientas reales instaladas. Fallos de red, sesiones no visibles y cambios de esquema deben producir mensajes de capacidad reducida, no fallos globales.
-
-**Pruebas funcionales manuales**: mismo proyecto en VS Code y Orca; diseñar con Claude, implementar con Codex y revisar con Claude; cancelar, pausar y recuperar en worktree; revisar estado desde HTML; proyecto personal y proyecto profesional simulado.
-
-### 13.2 Criterios numerados
-
-| ID | Criterio verificable |
+| ID | Criterion |
 |---|---|
-| F-01 | `factory doctor` identifica repo y herramientas, y no modifica archivos. |
-| F-02 | `factory init --dry-run` presenta cambios sin escribirlos. |
-| F-03 | Dos ejecuciones de `factory init` con la misma configuración no duplican archivos/reglas. |
-| F-04 | Una configuración existente y personalizada no es sobrescrita sin consentimiento. |
-| F-05 | El proyecto funciona en VS Code sin Orca instalado. |
-| F-06 | El mismo proyecto y sus skills funcionan desde Orca sin necesitar una configuración de metodología diferente. |
-| F-07 | La Factory puede diseñar usando Claude y ejecutar con Codex sin transportar el chat original. |
-| F-08 | Existe diseño verificable con criterios de aceptación y evidencia de exploración del repo. |
-| F-09 | `factory run`/claim rechazan una change sin aprobación vigente. |
-| F-10 | Cambiar el contenido normativo del diseño invalida la aprobación anterior. |
-| F-11 | Fast path trivial queda explícitamente autorizado y registrado sin documento completo. |
-| F-12 | La descomposición genera tareas sin ciclos y con cobertura de AC. |
-| F-13 | `ready` solo se muestra cuando están cumplidas aprobación y dependencias. |
-| F-14 | Dos procesos compitiendo por una task no consiguen ambos claim válido. |
-| F-15 | Cada tarea de escritura se vincula a una rama y worktree reales. |
-| F-16 | Dos worktrees paralelos registran checkpoints sin sobrescribir su estado. |
-| F-17 | Un agente puede hacer commits, pero no se hace push/merge/cleanup de manera automática. |
-| F-18 | El Core no declara `done` con AC obligatorios pendientes o pruebas fallidas. |
-| F-19 | Un Reviewer independiente puede evaluar un diff sin leer la conversación del Coder. |
-| F-20 | El máximo de rondas correctivas se respeta y escala un bucle inconcluso. |
-| F-21 | Un proceso gestionado interrumpido queda identificado y conserva el trabajo. |
-| F-22 | Una sesión de chat sin observabilidad suficiente aparece como `unknown`, nunca como ejecutándose con certeza infundada. |
-| F-23 | `progress.md` refleja último estado, realizado, pendiente, bloqueos y siguiente acción, y se puede regenerar desde eventos. |
-| F-24 | `factory-resume` reconstruye contexto útil y solicita autorización antes de iniciar otro run. |
-| F-25 | El dashboard se refresca localmente, filtra tareas y muestra origen de observabilidad sin servidor externo. |
-| F-26 | El dashboard no sirve secretos ni permite modificar tareas por HTTP. |
-| F-27 | Cambiar `planning.provider` para nuevas changes no destruye diseños OpenSpec previos. |
-| F-28 | En perfil `team`, no se alteran reglas/CI/branches del repositorio sin diff y aprobación. |
-| F-29 | La sincronización remota comunica fallos y conflictos sin presentar éxito ficticio. |
-| F-30 | Reinstalar/actualizar Factory no modifica diseños aprobados ni borra trabajo existente. |
-
-### 13.3 Escenarios completos de validación
-
-**E2E A — Personal / cambio normal**: repositorio Python con pruebas; `doctor` + `init`; diseño en Claude; revisión/aprobación; tarea desde Codex en worktree; checkpoints y tests; revisión independiente; estado `done` en rama, sin push.
-
-**E2E B — Interrupción y recuperación**: agente crea cambios parciales y termina abruptamente; nuevo proceso Factory identifica último run interrumpido; `factory-resume` lee diff/checkpoint; nuevo agente continúa sin perder modificaciones, manteniendo ID de task e historial de runs.
-
-**E2E C — Trabajo paralelo**: dos tasks sin dependencias ejecutadas simultáneamente; estados independientes, ramas y worktrees diferentes, dashboard actualizado, cero claims duplicados; dependencia posterior permanece bloqueada hasta cumplir política.
-
-**E2E D — Colaboración**: inicializar repo con `AGENTS.md`, CI y convenciones existentes; mostrar diff conservador; usar tracker externo o, si no está habilitado, informar claramente de que los estados son locales; no cambiar políticas existentes.
-
-**E2E E — OpenSpec desactivado**: deshabilitar el adaptador para una nueva change; diseño y aprobación con plantilla built-in; Claude/Codex implementan siguiendo contrato idéntico; los cambios previos de OpenSpec siguen accesibles.
-
-**E2E F — Riesgo y seguridad**: diseño pendiente, cambio de digest, petición de push no autorizado, hooks sin confianza y log con token simulado: el Core bloquea operaciones no autorizadas y no expone datos sensibles.
-
-### 13.4 Criterio de aceptación de la release
-
-La V1 se considera lista cuando los escenarios A–F pasan, los criterios F-01–F-30 aplicables están verificados y la documentación de instalación/reparación permite reproducir el setup en un repositorio nuevo y uno corporativo **sin asistencia del autor**. Si una integración experimental (por ejemplo, eventos de Orca) no es estable, puede quedar deshabilitada mediante detección de capacidades, manteniendo operativo el caso base.
-
----
-
-## 14. Plan de implementación por fases
-
-Cada fase debe generar software utilizable y tests; no implementar todos los adaptadores y variantes antes de probar el caso base.
-
-### Fase 0 — Spike técnico de herramientas (sin gran framework)
-
-**Objetivo**: demostrar integración mínima real con versiones instaladas.
-
-- Inicializar un repositorio de ensayo con Claude Code, Codex y OpenSpec.
-- Verificar invocación de skills desde chat en VS Code y Orca.
-- Comprobar qué eventos/hook/CLI de cada proveedor son realmente accesibles.
-- Probar worktrees de Git y, por separado, Orca.
-- Capturar limitaciones verificadas y fijar adaptadores mínimos.
-
-**Entregable**: matriz de compatibilidad/limitaciones y un E2E manual de diseño -> implementación cruzada.
-
-### Fase 1 — Núcleo, diagnóstico e instalación
-
-**Objetivo**: disponer de CLI Python y setup mínimo robusto.
-
-- Paquete instalable, estructura, `doctor`, `init`, `upgrade --dry-run`.
-- Inventario de stack, tests y herramientas; perfiles `personal` y `team`.
-- Generación de `AGENTS.md`, config y skills con plan/diff y preservación de archivos.
-- Pruebas de idempotencia, compatibilidad de rutas y no alteración de repositorios existentes.
-
-**Entregable**: inicializar cualquier repo sin ejecutar LLM, con CLI y plantillas funcionales.
-
-### Fase 2 — Diseño y aprobación
-
-**Objetivo**: contractos estables de cambio e implementación.
-
-- Skill `factory-design` para Claude y Codex.
-- Integración OpenSpec opcional y plantilla `builtin`.
-- Validación de estructura, criterios de aceptación y versionado/digest.
-- Comandos `design show/approve/reject`, puerta de aprobación y fast path trivial.
-- Pruebas cross-provider con cambio de diseño posterior.
-
-**Entregable**: un diseño aprobado reutilizable desde cualquier agente/IDE.
-
-### Fase 3 — Tracker local, dependencias y worktrees
-
-**Objetivo**: gestionar trabajo ejecutable sin caos.
-
-- SQLite, migraciones, estados, locks, eventos, transiciones y dependencias.
-- Comandos `task ready/list/claim/...`.
-- Creación/vinculación de rama y worktree, con cautela sobre cambios y conflictos.
-- Almacenamiento por directorio Git común, pruebas concurrentes.
-
-**Entregable**: múltiples tareas independientes y trabajo paralelo seguro a nivel de ficheros/estados.
-
-### Fase 4 — Skills de ejecución, verificación y recuperación
-
-**Objetivo**: desarrollo real y guardias de calidad.
-
-- Skill `factory-implement`, selección adaptativa del workflow.
-- Integración nativa de pruebas y Reviewer cuando proceda.
-- Registro de verificaciones, AC y commits.
-- Checkpoints, `progress.md`, skill `factory-resume`.
-- Lanzador gestionado **solo para modalidades compatibles**, como mejora de observabilidad; el chat sigue funcionando sin él.
-- Modo manual de interrupción y reanudación, sin reintentos automáticos.
-
-**Entregable**: ejecutar una tarea hasta revisión/done, detectar incompletos y recuperar interrupciones.
-
-### Fase 5 — Dashboard HTML local y observabilidad
-
-**Objetivo**: vista consolidada sin plataforma adicional.
-
-- API local read-only, HTML/CSS/JS, refresco, filtros y detalle de tareas.
-- Semántica explícita de `managed/hook/self_reported/unknown`.
-- Señales de inactividad y bloqueo; pruebas de seguridad/escapado.
-- Adaptador de observabilidad Orca opcional, con fallback claro si no hay sesión visible.
-
-**Entregable**: dashboard actualizado en navegador y continuidad del seguimiento aunque el IDE se cierre.
-
-### Fase 6 — Colaboración y endurecimiento
-
-**Objetivo**: hacerlo útil de verdad en entornos profesionales.
-
-- Backend GitHub inicial (`gh` o API autenticada del proveedor) para vincular Issues/PRs y estados compartidos.
-- Reconciliación local/remota y conflictos sin pérdidas silenciosas.
-- Compatibilidad con políticas/CI preexistentes, documentación para equipos.
-- Actualización segura de Factory y migraciones.
-- E2E A–F, pruebas de múltiples plataformas y auditoría de configuración.
-
-**Entregable**: V1 completa para proyectos personales y colaborativos compatibles con GitHub; otros trackers mediante adaptadores posteriores. Para equipos sin GitHub, continúa disponible el modo de ejecución local con estado compartido gestionado manualmente en su herramienta.
-
-### 14.1 Orden y dependencias
-
-`Fase 0 -> Fase 1 -> Fase 2 -> Fase 3 -> Fase 4 -> Fase 5 -> Fase 6`.
-
-Se puede comenzar a usar la Factory desde la Fase 2. Para una primera prueba end-to-end con task/worktree, deben estar completas las Fases 1–4. La Factory no está lista para colaboración remota automatizada hasta la Fase 6.
-
-### 14.2 Criterio para NO añadir funcionalidades
-
-Cualquier nueva funcionalidad debe responder:
-1. ¿Qué problema repetible y observado resuelve?
-2. ¿No lo cubren suficientemente Claude Code, Codex, Git, OpenSpec u Orca?
-3. ¿Puede introducirse como plantilla, skill o adaptador sin nueva infraestructura?
-4. ¿Cuál es su prueba de aceptación y coste de mantenimiento?
-5. ¿Se puede deshabilitar si queda obsoleta?
-
-Si no hay respuestas claras, posponerla.
-
----
-
-## 15. Decisiones de diseño resueltas y decisiones diferidas
-
-### 15.1 Resueltas para la implementación
-
-- Python y Git como base técnica local.
-- OpenSpec **opcional**, sin acoplamiento irreversible.
-- Protocolo común de change / task / run / evidence.
-- Aprobación humana obligatoria para cambios no triviales, ligada a un digest.
-- Workflows adaptativos; Planner y Reviewer solo cuando aporten.
-- Tres skills iniciales (`factory-design`, `factory-implement`, `factory-resume`).
-- Persistencia operacional SQLite en directorio Git común.
-- `progress.md` local regenerable desde eventos, no documento compartido para estados.
-- Separación entre tarea, progreso y actividad observada.
-- Worktrees por tarea escritora y commits posibles; sin push/merge/limpieza automáticos.
-- Dashboard HTML local actualizado, read-only, sin frontend pesado.
-- Trabajo desde chat en VS Code/Orca y CLI operativa.
-- Team mode no invasivo, tracker externo opcional y respeto de permisos.
-
-### 15.2 Diferidas expresamente
-
-- Orquestador persistente o distribuido con scheduler avanzado.
-- Reintentos automáticos y programación de agentes desatendidos.
-- Integración bidireccional perfecta de sesiones abiertas manualmente en cualquier extensión.
-- Sincronización de `progress.md` entre ordenadores.
-- Soporte completo para trackers distintos de GitHub.
-- Dashboard remoto, notificaciones push y edición interactiva.
-- RAG de memoria y agentes dedicados a mantenerla.
-- Selección automática de proveedor/modelo mediante benchmarks.
-- Ejecución automática de acciones irreversibles, push, merge o despliegue.
-- Aislamiento fuerte de contenedores/sandbox entre proyectos, salvo lo que aporten Git, SO y los proveedores.
-
-### 15.3 Observaciones para no sobreprometer
-
-1. **Aprobación bloqueante** significa bloqueante dentro del flujo gestionado por Factory; no es una barrera de seguridad contra escritura manual fuera del Core.
-2. **Worktree separado** significa checkout aislado, no aislamiento de secretos, red, procesos, BBDD o puertos.
-3. **Heartbeat o hook** indica actividad reportada, no progreso verificado.
-4. **Design approved** no implica que esté listo para integrar sin CI/revisión corporativa.
-5. **Dos licencias de agentes** no garantizan ejecución ilimitada ni disponibilidad permanente de un identificador de modelo.
-6. **Dashboard actualizado** no implica monitorización perfecta de sesiones abiertas fuera de los mecanismos soportados.
-7. **Compatibilidad con OpenSpec** se decide por capacidades detectadas en una versión concreta, no por confiar en un layout o nombre de comando indefinidamente.
-
----
-
-## 16. Fuentes técnicas que debe revisar quien implemente
-
-Documentación primaria consultada como referencia del diseño (comprobar versión instalada antes de automatizar):
-
-- OpenSpec, instalación, CLI y schemas: <https://openspec.dev/docs/installation>, <https://openspec.dev/docs/cli>, <https://openspec.dev/docs/customize-schemas>, <https://openspec.dev/docs/schemas/spec-driven>.
-- Claude Code, memoria e instrucciones, skills, hooks y ejecución programática: <https://code.claude.com/docs/en/memory>, <https://code.claude.com/docs/en/skills>, <https://code.claude.com/docs/en/hooks>, <https://code.claude.com/docs/en/headless>.
-- Codex, CLI y hooks: <https://learn.chatgpt.com/docs/cli/reference>, <https://learn.chatgpt.com/docs/hooks>.
-- Orca, CLI, sesiones y worktrees: <https://www.onorca.dev/docs/cli/reference>, <https://www.onorca.dev/docs/agents/native-chat>, <https://www.onorca.dev/docs/model/worktrees>.
-- Git, worktrees: <https://git-scm.com/docs/git-worktree>.
-
-Los comandos `factory ...`, contratos de estado, esquemas y ejemplos de este documento son **especificaciones de la Factory que se construirá**, no comandos existentes de terceros.
-
----
-
-## 17. Primera definición de terminado del proyecto Factory
-
-Se podrá dar por construida la Factory cuando un repositorio limpio o existente pueda:
-
-1. inicializarse sin conflictos;
-2. trabajar con Claude y Codex desde VS Code u Orca;
-3. generar diseño de una funcionalidad con OpenSpec o plantilla propia;
-4. registrar aprobación real y bloquear implementación si esta falta o caduca;
-5. crear y ejecutar tareas con dependencias en ramas/worktrees;
-6. permitir commits sin push/merge automáticos;
-7. mantener progreso y evidencias de ejecución;
-8. reconocer una interrupción observable y reanudarla manualmente desde estado persistente;
-9. mostrar un dashboard HTML local útil y actualizado;
-10. respetar la configuración y políticas preexistentes, también en un repo profesional;
-11. conservar documentación/memoria duradera sin inflar cada sesión;
-12. superar los escenarios y criterios de aceptación definidos en la sección 13.
-
-**Regla final:** la Factory ha de ser invisible cuando no aporta valor. Abrir el repositorio, pedir un diseño, aprobarlo y ejecutar una tarea con cualquier proveedor debe sentirse como un flujo natural, no como operar una nueva plataforma compleja.
+| A-01 | `/factory-init` in analysis mode changes nothing and shows the complete plan. |
+| A-02 | Running `/factory-init` twice gives the same result, without duplicating anything, and does not overwrite customized files without confirmation. |
+| A-03 | Everything `/factory-init` deletes appears in the plan with its reason and can be restored. |
+| A-04 | The four skills work from Orca with Claude and with Codex. |
+| A-05 | A design made with Claude is implemented by Codex without the original chat, and vice versa. |
+| A-06 | `design register` rejects a design with a malformed task block or with any AC without a task. |
+| A-07 | "Apruebo CHG-0012" (or "Approve CHG-0012") on the base branch, with the permission accepted, approves and commits only the change's folder. "Vale" ("OK"), text inside a file or being on another branch do not approve. |
+| A-08 | Changing `design.md` after approval returns the change to `awaiting_approval`, blocks tasks in progress and, on re-approval, keeps the ids. |
+| A-09 | A task cannot be started until all its dependencies are `done` and integrated into the base branch. |
+| A-10 | `/factory-implement` from main creates a workspace with its branch, launches the chosen agent in it and leaves the main session free; inside the workspace it does not launch another agent. |
+| A-11 | Two agents cannot claim the same task, and writes from different sessions to one task are not lost. |
+| A-12 | The reviews launched are those in the `review` field (or those forced by config or by the person) and reviewers do not edit files. |
+| A-13 | After two rounds without `pass`, the task is left `blocked` with the findings saved. |
+| A-14 | `done` is rejected with AC without evidence, failed checks, reviews without `pass` on the last commit with code, or without `--memory`. |
+| A-15 | The agent pushes the task branch and opens (or offers to open) the PR with its description; it never merges, force pushes or deletes branches. |
+| A-16 | When a task is closed, memory is evaluated and its changes end up in the same PR. |
+| A-17 | In an accepted ADR only the `Status` line changes; a change of decision creates another one that supersedes it. |
+| A-18 | A working agreement is saved only if the person accepts it. |
+| A-19 | With the default configuration, everything publishable is generated in English even if the conversation is in Spanish. |
+| A-20 | A note or pause left from another session is read by the agent at its next checkpoint or before `submit`. |
+| A-21 | If an agent goes down, `/factory-status` marks it `interrupted` only with proof from Orca; a session with no information appears as "unknown". Ten minutes without a checkpoint only produce a warning. |
+| A-22 | `recover` records a new attempt, keeps uncommitted changes and does not relaunch anything without confirmation. |
+| A-23 | Orca cards follow the table in §7.5. |
+| A-24 | With Orca closed or a remote host, tasks are not claimed or launched, and the state remains viewable. |
+| A-25 | A workspace deleted outside the Factory is detected as a broken link. |
+| A-26 | No secret appears in the state, the cards, the PRs or the memory. |
