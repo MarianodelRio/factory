@@ -1,0 +1,142 @@
+#!/usr/bin/env python3
+"""Fake `orca` for tests: answers from the recorded fixtures and logs every call.
+
+Controlled through the directory in $FAKE_ORCA_DIR:
+- calls.jsonl: one JSON line per call, {"argv": [...], "cwd": "..."} (written by this script).
+- responses/<command with spaces as dashes>.json: {"exit": int, "stdout": <json or text>}
+  replaces the default answer for that command (e.g. responses/terminal-show.json).
+`worktree create` really creates a Git worktree under $FAKE_ORCA_DIR/workspaces/<name>, so the
+code under test sees a real workspace.
+"""
+
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+FIXTURES = Path(__file__).resolve().parent.parent / "fixtures" / "orca"
+STATE = Path(os.environ["FAKE_ORCA_DIR"])
+
+DEFAULTS = {
+    "status": "status",
+    "agent-context": "agent-context",
+    "host list": "host-list",
+    "repo show": "repo-show-with-base-ref",
+    "repo set-base-ref": "repo-set-base-ref",
+    "worktree list": "worktree-list",
+    "worktree current": "worktree-current",
+    "worktree set": "worktree-set",
+    "agent launch": "agent-launch",
+    "terminal list": "terminal-list",
+    "terminal show": "terminal-show-alive",
+    "terminal close": "terminal-close",
+    "search": "search-disabled",
+}
+
+
+def load(name):
+    return json.loads((FIXTURES / f"{name}.json").read_text())
+
+
+def flag(argv, name):
+    if name in argv:
+        i = argv.index(name)
+        if i + 1 < len(argv):
+            return argv[i + 1]
+    return None
+
+
+def command_of(argv):
+    paths = {tuple(c["path"]) for c in load("agent-context")["commands"]}
+    words = []
+    for arg in argv:
+        if arg.startswith("-"):
+            break
+        words.append(arg)
+    for n in range(len(words), 0, -1):
+        if tuple(words[:n]) in paths:
+            return " ".join(words[:n])
+    return " ".join(words)
+
+
+def answer(exit_code, stdout):
+    if isinstance(stdout, str):
+        print(stdout)
+    else:
+        print(json.dumps(stdout, indent=2))
+    sys.exit(exit_code)
+
+
+def error(code, message):
+    return {"id": "fake", "ok": False, "error": {"code": code, "message": message}, "_meta": {"runtimeId": None}}
+
+
+def git(*args, cwd=None):
+    return subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True, text=True).stdout.strip()
+
+
+def worktree_record(body, path, branch, repo_id):
+    wt = body["result"]["worktree"]
+    wt["id"] = f"{repo_id}::{path}"
+    wt["repoId"] = repo_id
+    wt["path"] = wt["git"]["path"] = str(path)
+    wt["branch"] = wt["git"]["branch"] = f"refs/heads/{branch}"
+    head = git("rev-parse", "HEAD", cwd=path)
+    wt["head"] = wt["git"]["head"] = head
+    wt["displayName"] = Path(path).name
+    return body
+
+
+def create_worktree(argv):
+    name = flag(argv, "--name")
+    base = flag(argv, "--base-branch") or "origin/main"
+    path = STATE / "workspaces" / name
+    branch = f"user/{name}"
+    try:
+        git("worktree", "add", "-b", branch, str(path), base)
+    except subprocess.CalledProcessError as exc:
+        answer(1, error("worktree_create_failed", exc.stderr.strip()))
+    body = load("worktree-create")
+    repo_id = body["result"]["worktree"]["repoId"]
+    worktree_record(body, path, branch, repo_id)
+    body["result"]["worktree"]["baseRef"] = f"refs/remotes/{base}" if not base.startswith("refs/") else base
+    if flag(argv, "--comment") is not None:
+        body["result"]["worktree"]["comment"] = flag(argv, "--comment")
+    return body
+
+
+def show_worktree(argv):
+    selector = flag(argv, "--worktree") or ""
+    path = Path(selector.split("::", 1)[1]) if "::" in selector else None
+    if path is None or not path.is_dir():
+        answer(1, error("selector_not_found", f"No worktree matches {selector}"))
+    body = load("worktree-show")
+    repo_id = selector.removeprefix("id:").split("::", 1)[0]
+    branch = git("rev-parse", "--abbrev-ref", "HEAD", cwd=path)
+    return worktree_record(body, path, branch, repo_id)
+
+
+def main():
+    argv = sys.argv[1:]
+    STATE.mkdir(parents=True, exist_ok=True)
+    with (STATE / "calls.jsonl").open("a") as log:
+        log.write(json.dumps({"argv": argv, "cwd": os.getcwd()}) + "\n")
+
+    command = "version" if argv[:1] == ["--version"] else command_of(argv)
+    override = STATE / "responses" / f"{command.replace(' ', '-')}.json"
+    if override.exists():
+        spec = json.loads(override.read_text())
+        answer(spec.get("exit", 0), spec.get("stdout", ""))
+    if command == "version":
+        answer(0, "1.4.229")
+    if command == "worktree create":
+        answer(0, create_worktree(argv))
+    if command == "worktree show":
+        answer(0, show_worktree(argv))
+    if command in DEFAULTS:
+        answer(0, load(DEFAULTS[command]))
+    answer(1, error("unknown_command", f"fake orca has no answer for '{command}'"))
+
+
+main()

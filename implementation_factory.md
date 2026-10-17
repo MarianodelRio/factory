@@ -134,7 +134,7 @@ Goal: answer design §10.3 with evidence and record real outputs for the fakes. 
   Do: package with entry point `factory`, Python ≥ 3.11, PyYAML runtime dependency, dev dependencies (pytest, ruff, mypy). `factory --version` and `factory --help` with all subcommands of design §9 registered (bodies may raise "not implemented" with exit 1). JSON envelope and exit codes of §3.
   Done when: `uv tool install .` works; `factory --help` lists every command of design §9; `factory status --json` prints a valid envelope; `pytest`, `ruff check .`, `mypy src` pass.
 
-- [ ] T-04 Test harness: temp repos and fake tools
+- [x] T-04 Test harness: temp repos and fake tools
   Depends: T-03, T-01 · Design: §1.2 (tests)
   Files: `tests/conftest.py`, `tests/fakes/orca`, `tests/fakes/gh`
   Do: fixtures that create a temporary Git repo with a main checkout, a bare "remote" and extra worktrees. A fake `orca` executable (Python script put first on `PATH`) that answers from the recorded fixtures, records every call to a log file, and can be told to fail or return "unknown" liveness. A fake `gh` that records PR creation.
@@ -385,3 +385,4 @@ One line per completed task or session: date, task, what was done, what comes ne
 | 2026-10-17 | T-02 | D-01 (PyYAML) and D-02 (Python 3.11+, uv) confirmed; design updated. | T-01 spike with the person, then T-03. |
 | 2026-10-17 | T-01 | Spike with the person: §10.3 answered in `docs/spike-results.md` (Claude terminal verified; Codex and Orca chat not verified), 21 Orca fixtures recorded, 4 design changes approved and applied (design v1.5). The spike's sandbox repo and workspace were removed from Orca. M0 review: no blockers; fixes applied. | T-03 project skeleton. |
 | 2026-10-17 | T-03 | Package skeleton (uv_build, Python 3.11 pinned for dev, PyYAML), `factory` CLI with every design §9 command registered (not implemented → exit 1), JSON envelope and exit codes of §3, README. `uv` reinstalled on the machine (link was broken). 52 tests, ruff, mypy green. | T-04 test harness (fake orca/gh), then T-05/T-06. |
+| 2026-10-17 | T-04 | `tests/conftest.py` (isolated Git identity, no ORCA_* vars, temp repo with bare remote and worktrees), fake `orca` (fixtures, call log, per-command overrides, real `git worktree add` on `worktree create`) and fake `gh` (PR create/list, failure switch). 59 tests green. | T-05 and T-06 in parallel. |

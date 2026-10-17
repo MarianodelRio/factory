@@ -1,0 +1,67 @@
+#!/usr/bin/env python3
+"""Fake `gh` for tests: records calls and pull requests in $FAKE_GH_DIR.
+
+- calls.jsonl: one JSON line per call.
+- prs.json: pull requests created with `gh pr create` ({number, url, head, base, title, body}).
+- fail: if this file exists, every call fails with its content on stderr and exit 1.
+Supports `gh --version`, `gh auth status`, `gh pr create`, `gh pr list --head <branch>`.
+"""
+
+import json
+import os
+import sys
+from pathlib import Path
+
+STATE = Path(os.environ["FAKE_GH_DIR"])
+
+
+def flag(argv, name):
+    if name in argv:
+        i = argv.index(name)
+        if i + 1 < len(argv):
+            return argv[i + 1]
+    return None
+
+
+def main():
+    argv = sys.argv[1:]
+    STATE.mkdir(parents=True, exist_ok=True)
+    with (STATE / "calls.jsonl").open("a") as log:
+        log.write(json.dumps({"argv": argv, "cwd": os.getcwd()}) + "\n")
+    fail = STATE / "fail"
+    if fail.exists():
+        print(fail.read_text(), file=sys.stderr)
+        sys.exit(1)
+
+    prs_file = STATE / "prs.json"
+    prs = json.loads(prs_file.read_text()) if prs_file.exists() else []
+    if argv[:1] == ["--version"]:
+        print("gh version 2.0.0 (fake)")
+    elif argv[:2] == ["auth", "status"]:
+        print("Logged in to github.com (fake)")
+    elif argv[:2] == ["pr", "create"]:
+        if flag(argv, "--body-file"):
+            body = Path(flag(argv, "--body-file")).read_text()
+        else:
+            body = flag(argv, "--body") or ""
+        number = len(prs) + 1
+        pr = {
+            "number": number,
+            "url": f"https://github.com/example/repo/pull/{number}",
+            "head": flag(argv, "--head"),
+            "base": flag(argv, "--base"),
+            "title": flag(argv, "--title"),
+            "body": body,
+        }
+        prs.append(pr)
+        prs_file.write_text(json.dumps(prs, indent=2))
+        print(pr["url"])
+    elif argv[:2] == ["pr", "list"]:
+        head = flag(argv, "--head")
+        print(json.dumps([{"number": p["number"], "url": p["url"]} for p in prs if p["head"] == head]))
+    else:
+        print(f"fake gh: unsupported command {argv}", file=sys.stderr)
+        sys.exit(1)
+
+
+main()
