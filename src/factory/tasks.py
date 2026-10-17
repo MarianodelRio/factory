@@ -7,10 +7,11 @@ Raises FactoryError with these codes:
 from __future__ import annotations
 
 import copy
+from collections.abc import Callable
 from typing import NoReturn
 
 from factory.output import EXIT_PRECONDITION, FactoryError
-from factory.state import State
+from factory.state import State, TaskStore
 
 # Reasons for `blocked` that the CLI sets itself; any other text comes from `task block --reason`.
 PAUSED = "paused"
@@ -33,6 +34,8 @@ TRANSITIONS: dict[tuple[str, str], str] = {
     ("in_progress", "interrupt"): "interrupted",  # status/recover: the lead agent finished
 }
 RETURNS = {"unblock", "reapprove"}
+# States that a design change blocks (design §4.5).
+BLOCKED_BY_DESIGN_CHANGE = ("in_progress", "in_review", "interrupted")
 
 
 def transition(task: State, action: str, current: str | None = None, reason: str | None = None) -> State:
@@ -61,3 +64,31 @@ def transition(task: State, action: str, current: str | None = None, reason: str
 def _reject(task: State, action: str, why: str) -> NoReturn:
     message = f"cannot {action} {task['task']}: {why}"
     raise FactoryError("invalid_transition", message, EXIT_PRECONDITION)
+
+
+def sync_with_design(task_ids: list[str], approved: bool, store: TaskStore) -> None:
+    """Apply design §4.5 to the approved tasks of a change: while the design does not match its
+    approval, tasks in progress are blocked (`design_changed`); once it matches again (re-approval
+    or a reverted edit), those tasks return to their previous state. `done` tasks are not touched."""
+    for task_id in task_ids:
+        stored = store.read_task(task_id)
+        if stored is None:
+            continue
+        if not approved and stored["state"] in BLOCKED_BY_DESIGN_CHANGE:
+            block = _if_state(BLOCKED_BY_DESIGN_CHANGE, "block", DESIGN_CHANGED)
+            store.update_task(task_id, block, "design_changed")
+        elif approved and stored["state"] == "blocked" and stored["blocked_reason"] == DESIGN_CHANGED:
+            store.update_task(task_id, _if_state(("blocked",), "reapprove", None), "reapproved")
+
+
+def _if_state(states: tuple[str, ...], action: str, reason: str | None) -> Callable[[State], State]:
+    """A transition applied inside the task lock only if the state is still one of `states`."""
+
+    def apply(task: State) -> State:
+        if task["state"] not in states:
+            return task
+        if action == "reapprove" and task["blocked_reason"] != DESIGN_CHANGED:
+            return task
+        return transition(task, action, reason=reason)
+
+    return apply

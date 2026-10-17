@@ -186,7 +186,7 @@ Goal: answer design §10.3 with evidence and record real outputs for the fakes. 
   Do: check current branch == base branch (`orca.base_branch()` from T-13). Without `--message`: interactive, the person must type the change id. Write `approval.json` (fields of design §1.4, `approved_by` = `git config user.email`) and `tasks.yaml`, then commit **only** `.factory/changes/<id>/`. If the commit fails, remove what was written. `reject --reason` writes `rejection.json` and commits.
   Done when: tests: approve on base branch commits only the change folder (other staged and unstaged files untouched); approve on another branch → exit 3; failing pre-commit hook → nothing approved; interactive mode rejects a wrong id; reject works.
 
-- [ ] T-12 Design changed after approval
+- [x] T-12 Design changed after approval
   Depends: T-11, T-08 · Design: §4.5 · Acceptance: A-08
   Files: `src/factory/design.py`, `src/factory/tasks.py`, `tests/test_design_change.py`
   Do: whenever the CLI reads a change, compare digests. On mismatch: change is `awaiting_approval`; `in_progress`/`in_review`/`interrupted` tasks move to `blocked` (`design_changed`); `done` untouched. On re-approval: keep task ids, new tasks get new numbers, tasks blocked by `design_changed` return to their previous state.
@@ -337,7 +337,7 @@ Fill the "Test" column as tasks are completed. "Manual" criteria are checked in 
 | A-05 | T-31 | | ✔ |
 | A-06 | T-09, T-10 | `test_design_parse.py` (each validation error), `test_design_cli.py::test_register_invalid_design_lists_problems` | |
 | A-07 | T-11 (+ skill rules in T-26) | `test_approve.py` (commits only the folder, other branch, "vale"/other id refused, hook failure, typed id) | ✔ (permission prompt) |
-| A-08 | T-12 | | |
+| A-08 | T-12 | `test_design_change.py` | |
 | A-09 | T-16 | | |
 | A-10 | T-17, T-26 | | ✔ |
 | A-11 | T-07, T-17 | `test_state.py::test_concurrent_claims_exactly_one_wins` | |
@@ -378,6 +378,7 @@ Write here anything the design does not answer or that reality contradicts. Each
 | 2026-10-17 | M2 review | With liveness `unknown` (§7.2) a task stays `in_progress` and could never be recovered. | `task recover` also works from `in_progress` when liveness is `unknown`: it says so, and `--confirm` (after the person decides) closes the attempt as interrupted and opens a new one. | resolved: confirmed by the person; design §1.5 and §7.4 updated |
 | 2026-10-17 | T-10 | §9 `design register <CHG>` vs §4.2 "the CLI assigns it an id"; task ids need the change id before the task block is written. | Two steps: `register` (no id) reserves the next id and creates the folder; `register <CHG>` validates. Update design §4.2 and §9. | resolved: confirmed by the person; design §4.2 and §9 updated |
 | 2026-10-17 | T-11 | The CLI also refuses an approval `--message` that does not name the change id (code `approval_not_explicit`). | Enforces §4.4 rule 1 ("explicit approval that names the change") in the CLI as a second line of defence; it adds no new behavior for valid approvals. | resolved: follows design §4.4 |
+| 2026-10-17 | T-12 | Re-approval of a design that drops a previously approved task id is refused (`design_invalid`). | Follows §4.5 "keeping the ids … Nothing is deleted". | resolved: follows design §4.5 |
 | 2026-10-17 | T-23 | Design §7.4 says recover acts "after the person confirms", but §9 has a single `task recover`. | `task recover <id>` only inspects; `task recover <id> --confirm` acts (the skill calls it after asking). Add to design §9. | resolved: design §9 updated |
 
 ---
@@ -402,3 +403,4 @@ One line per completed task or session: date, task, what was done, what comes ne
 | 2026-10-17 | T-10 | `design register` (no id: reserve the next id + folder, exclusive; with id: validate, deps from other changes' `tasks.yaml`, rejected → `change_rejected`) and `design show` (derived change state, digest, AC, tasks with stored state, approval/rejection, problems of an invalid design); change ids validated by the CLI. Design §4.2/§9 updated with the person's choice. 235 tests green. | T-13 Orca client base (needed by T-11), then T-11. |
 | 2026-10-17 | T-13 | `orca.py`: `run` (always `--json`, Orca errors → `OrcaError` with Orca's code, exit 5), `version`, `check` (installed, min version numerically, running, local by env vars and `status.target.kind`, required commands and flags in `agent-context`), `base_branch` from `worktreeBaseRef` of `repo show --repo path:<main checkout>` with clear errors when unregistered or unset. New fixture `repo-show-not-found.json`. 256 tests green. | T-11 approve/reject. |
 | 2026-10-17 | T-11 | `design approve` (valid design, not already approved or rejected, message names the change or typed id, base branch from Orca, `approval.json` + `tasks.yaml`, commit of only the change folder; a refused commit restores the files and the index) and `design reject` (same checks, `rejection.json`). `git.py`: `current_branch`, `config_value`, `commit_paths`. 273 tests green. | T-12 design changed after approval. |
+| 2026-10-17 | T-12 | `tasks.sync_with_design`: while the digest differs from the approval, in_progress/in_review/interrupted tasks are blocked (`design_changed`); when it matches again (re-approval or reverted edit) they return to `blocked_from`; done/paused untouched. Called by `design show` and `design approve`. Re-approval keeps ids, accepts new tasks, refuses removing approved ones. 280 tests green. M3 done. | M3 review, then M4 (T-14, T-15). |

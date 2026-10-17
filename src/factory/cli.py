@@ -58,7 +58,8 @@ def design_approve(args: argparse.Namespace) -> Result:
         message, method = typed, "terminal"
     else:
         message, method = args.message, "chat"
-    return design.approve(args.change, paths.changes_dir(), message, method, paths.main_checkout()), []
+    store = TaskStore(paths.state_dir())
+    return design.approve(args.change, paths.changes_dir(), message, method, paths.main_checkout(), store), []
 
 
 def design_reject(args: argparse.Namespace) -> Result:

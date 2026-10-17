@@ -23,7 +23,7 @@ from typing import Any
 
 import yaml
 
-from factory import git, orca
+from factory import git, orca, tasks
 from factory.output import EXIT_PRECONDITION, FactoryError
 from factory.state import TaskStore, now
 
@@ -252,19 +252,22 @@ def show(change_id: str, changes_dir: Path, store: TaskStore) -> dict[str, Any]:
             raise
         parsed, problems = {"acceptance_criteria": [], "tasks": []}, exc.details
 
-    tasks = []
-    for task in parsed["tasks"]:
-        stored = store.read_task(task["id"])
-        tasks.append({**task, "state": stored["state"] if stored else None})
-
     approval = _read_json(folder / "approval.json")
     rejection = _read_json(folder / "rejection.json")
     current = digest(text)
+    if approval is not None:
+        approved = approval.get("design_digest") == current
+        tasks.sync_with_design(approved_task_ids(folder), approved, store)
+
+    task_list = []
+    for task in parsed["tasks"]:
+        stored = store.read_task(task["id"])
+        task_list.append({**task, "state": stored["state"] if stored else None})
     if rejection is not None:
         state = "rejected"
     elif approval is None or approval.get("design_digest") != current:
         state = "awaiting_approval"
-    elif tasks and all(t["state"] == "done" for t in tasks):
+    elif task_list and all(t["state"] == "done" for t in task_list):
         state = "done"
     else:
         state = "approved"
@@ -276,11 +279,20 @@ def show(change_id: str, changes_dir: Path, store: TaskStore) -> dict[str, Any]:
         "state": state,
         "digest": current,
         "acceptance_criteria": parsed["acceptance_criteria"],
-        "tasks": tasks,
+        "tasks": task_list,
         "approval": approval,
         "rejection": rejection,
         "problems": problems,
     }
+
+
+def approved_task_ids(folder: Path) -> list[str]:
+    """Task ids of the change's `tasks.yaml` (the last approved task list)."""
+    path = folder / "tasks.yaml"
+    if not path.exists():
+        return []
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    return [str(t["id"]) for t in data.get("tasks", []) if isinstance(t, dict) and "id" in t]
 
 
 def known_tasks(changes_dir: Path, exclude: str) -> set[str]:
@@ -317,14 +329,23 @@ def _read_json(path: Path) -> dict[str, Any] | None:
 
 
 def approve(
-    change_id: str, changes_dir: Path, message: str, method: str, main_checkout: Path
+    change_id: str, changes_dir: Path, message: str, method: str, main_checkout: Path, store: TaskStore
 ) -> dict[str, Any]:
     """Approve the current design (design §4.4): on the base branch, with an explicit message
-    (`chat`) or the typed id (`terminal`); commit only the change folder."""
+    (`chat`) or the typed id (`terminal`); commit only the change folder. On re-approval the task
+    ids are kept and tasks blocked by the design change return to their state (§4.5)."""
     folder = _folder(change_id, changes_dir)
     _refuse_rejected(change_id, folder)
     text = _design_text(folder)
-    parsed = parse_design(text, change_id, known_tasks(changes_dir, exclude=change_id))
+    removed = _removed_tasks(text, folder)
+    try:
+        parsed = parse_design(text, change_id, known_tasks(changes_dir, exclude=change_id))
+    except FactoryError as exc:
+        exc.details += removed
+        raise
+    if removed:
+        message = f"the design of {change_id} removes approved tasks"
+        raise FactoryError("design_invalid", message, EXIT_PRECONDITION, removed)
     current = digest(text)
     previous = _read_json(folder / "approval.json")
     if previous and previous.get("design_digest") == current:
@@ -345,12 +366,13 @@ def approve(
         "method": method,
         "message": message,
     }
-    tasks = {"change": change_id, "design_digest": current, "tasks": parsed["tasks"]}
+    tasks_yaml = {"change": change_id, "design_digest": current, "tasks": parsed["tasks"]}
     files = {
         "approval.json": json.dumps(approval, indent=2, ensure_ascii=False) + "\n",
-        "tasks.yaml": yaml.safe_dump(tasks, sort_keys=False, allow_unicode=True),
+        "tasks.yaml": yaml.safe_dump(tasks_yaml, sort_keys=False, allow_unicode=True),
     }
     commit = _write_and_commit(folder, files, f"Approve {change_id}")
+    tasks.sync_with_design(approved_task_ids(folder), True, store)
     return {"change": change_id, "digest": current, "commit": commit, "tasks": parsed["tasks"]}
 
 
@@ -371,6 +393,14 @@ def reject(change_id: str, changes_dir: Path, reason: str, main_checkout: Path) 
     files = {"rejection.json": json.dumps(rejection, indent=2, ensure_ascii=False) + "\n"}
     commit = _write_and_commit(folder, files, f"Reject {change_id}")
     return {"change": change_id, "commit": commit}
+
+
+def _removed_tasks(text: str, folder: Path) -> list[str]:
+    """Problems for approved task ids missing from the design: nothing is deleted (§4.5)."""
+    block = _task_block(normalize(text), []) or []
+    ids = {str(t.get("id")) for t in block}
+    missing = [i for i in approved_task_ids(folder) if i not in ids]
+    return [f"{i} was approved before and cannot be removed" for i in missing]
 
 
 def _refuse_rejected(change_id: str, folder: Path) -> None:
