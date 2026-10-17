@@ -45,7 +45,7 @@ def doctor(root: Path, main_checkout: Path) -> dict[str, Any]:
         "instructions": _instructions(root),
         "factory": {"installed": configured is not None},
     }
-    if any(v == "ask" for v in report["checks"].values()):
+    if configured is None and any(v == "ask" for v in report["checks"].values()):
         warnings.append("some check commands were not found: ask the person for them")
     warnings += _permission_warnings(root)
     report["problems"] = problems

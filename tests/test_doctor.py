@@ -117,3 +117,9 @@ def test_doctor_changes_nothing(project, capsys):
     before = snapshot(project.root)
     doctor(capsys)
     assert snapshot(project.root) == before
+
+
+def test_no_ask_warning_once_configured(project, capsys):
+    (project.root / ".factory").mkdir()
+    (project.root / ".factory/config.toml").write_text('schema_version = 1\n[checks]\ntest = "pytest"\n')
+    assert not any("check commands" in w for w in doctor(capsys)["warnings"])
