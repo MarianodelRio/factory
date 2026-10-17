@@ -295,6 +295,10 @@ def sync_with_main(change_id: str, main_changes_dir: Path, store: TaskStore) -> 
     tasks.sync_with_design(approved_task_ids(folder), approved, store)
 
 
+def approval_of(folder: Path) -> dict[str, Any] | None:
+    return _read_json(folder / "approval.json")
+
+
 def approved_task_ids(folder: Path) -> list[str]:
     """Task ids of the change's `tasks.yaml` (the last approved task list)."""
     path = folder / "tasks.yaml"

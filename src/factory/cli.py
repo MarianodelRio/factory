@@ -8,7 +8,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any, NoReturn
 
-from factory import __version__, design, paths
+from factory import __version__, design, paths, tasks
 from factory.output import (
     EXIT_ERROR,
     EXIT_OK,
@@ -80,12 +80,26 @@ def design_reject(args: argparse.Namespace) -> Result:
     return design.reject(args.change, paths.changes_dir(), args.reason, paths.main_checkout()), []
 
 
+def task_context() -> tasks.Context:
+    return tasks.Context(paths.main_checkout(), TaskStore(paths.state_dir()))
+
+
+def task_list(args: argparse.Namespace) -> Result:
+    return tasks.list_tasks(task_context()), []
+
+
+def task_show(args: argparse.Namespace) -> Result:
+    return tasks.show_task(args.task, task_context()), []
+
+
 # Command name ("task launch") -> handler. Filled in as tasks are implemented.
 HANDLERS: dict[str, Handler] = {
     "design register": design_register,
     "design show": design_show,
     "design approve": design_approve,
     "design reject": design_reject,
+    "task list": task_list,
+    "task show": task_show,
 }
 
 

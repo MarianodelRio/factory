@@ -2,14 +2,19 @@
 
 Raises FactoryError with these codes:
 - invalid_transition (EXIT_PRECONDITION): the action is not allowed from the task's state.
+- task_not_found (EXIT_PRECONDITION): no approved change has a task with that id.
 """
 
 from __future__ import annotations
 
 import copy
 from collections.abc import Callable
-from typing import NoReturn
+from pathlib import Path
+from typing import Any, NoReturn
 
+import yaml
+
+from factory import design, git, orca
 from factory.output import EXIT_PRECONDITION, FactoryError
 from factory.state import State, TaskStore
 
@@ -92,3 +97,102 @@ def _if_state(states: tuple[str, ...], action: str, reason: str | None) -> Calla
         return transition(task, action, reason=reason)
 
     return apply
+
+
+class Context:
+    """What computing task states needs: the main checkout (owner of the approved changes and the
+    shared state) and the base branch, read from Orca once and only when a dependency needs it."""
+
+    def __init__(self, main_checkout: Path, store: TaskStore) -> None:
+        self.main_checkout = main_checkout
+        self.changes_dir = main_checkout / ".factory" / "changes"
+        self.store = store
+        self._base: str | None = None
+        self._base_error: str | None = None
+
+    def base(self) -> str | None:
+        if self._base is None and self._base_error is None:
+            try:
+                self._base = orca.base_branch(self.main_checkout)
+            except FactoryError as exc:
+                self._base_error = exc.message
+        return self._base
+
+    def base_error(self) -> str:
+        return self._base_error or ""
+
+
+def catalog(ctx: Context) -> dict[str, dict[str, Any]]:
+    """Every task of every approved, not rejected change: id -> task definition plus `change`
+    and whether the change's approval is still valid. Applies §4.5 to each change first."""
+    tasks: dict[str, dict[str, Any]] = {}
+    for tasks_file in sorted(ctx.changes_dir.glob("CHG-*/tasks.yaml")):
+        folder = tasks_file.parent
+        if (folder / "rejection.json").exists():
+            continue
+        design.sync_with_main(folder.name, ctx.changes_dir, ctx.store)
+        approval = design.approval_of(folder)
+        current = design.digest((folder / "design.md").read_text(encoding="utf-8"))
+        approved = approval is not None and approval.get("design_digest") == current
+        data = yaml.safe_load(tasks_file.read_text(encoding="utf-8")) or {}
+        for task in data.get("tasks", []):
+            tasks[str(task["id"])] = {**task, "change": folder.name, "approved": approved}
+    return tasks
+
+
+def view(task: dict[str, Any], ctx: Context) -> dict[str, Any]:
+    """The task with its state and the reason it is not ready (design §1.5, §5.1)."""
+    record = ctx.store.read_task(task["id"])
+    state, reason = (record["state"], record.get("blocked_reason")) if record else _computed(task, ctx)
+    workspace = (record or {}).get("workspace") or {}
+    return {
+        "id": task["id"],
+        "title": task["title"],
+        "change": task["change"],
+        "state": state,
+        "reason": reason,
+        "depends_on": task.get("depends_on", []),
+        "workspace": workspace.get("orca_id"),
+        "branch": workspace.get("branch"),
+    }
+
+
+def _computed(task: dict[str, Any], ctx: Context) -> tuple[str, str | None]:
+    """`pending` or `ready` for a task without a state file: approval valid and every dependency
+    `done` and merged into the base branch."""
+    if not task["approved"]:
+        return "pending", f"{task['change']} is awaiting approval"
+    for dep in task.get("depends_on", []):
+        record = ctx.store.read_task(dep)
+        if record is None or record["state"] != "done":
+            return "pending", f"waiting for {dep} to be done"
+        base = ctx.base()
+        if base is None:
+            return "pending", f"cannot check that {dep} is merged: {ctx.base_error()}"
+        if not _merged(record, base, ctx.main_checkout):
+            return "pending", f"waiting for {dep} to be merged into {base}"
+    return "ready", None
+
+
+def _merged(record: State, base: str, cwd: Path) -> bool:
+    branch = (record.get("workspace") or {}).get("branch")
+    tip = branch if branch and git.ref_exists(branch, cwd) else (record.get("commits") or [None])[-1]
+    if not tip:
+        return False
+    targets = [ref for ref in (base, f"origin/{base}") if git.ref_exists(ref, cwd)]
+    return any(git.is_ancestor(tip, ref, cwd) for ref in targets)
+
+
+def list_tasks(ctx: Context) -> dict[str, Any]:
+    all_tasks = catalog(ctx)
+    return {"tasks": [view(task, ctx) for task in all_tasks.values()]}
+
+
+def show_task(task_id: str, ctx: Context) -> dict[str, Any]:
+    all_tasks = catalog(ctx)
+    if task_id not in all_tasks:
+        raise FactoryError("task_not_found", f"no approved change has a task {task_id}", EXIT_PRECONDITION)
+    task = all_tasks[task_id]
+    shown = view(task, ctx)
+    definition = {k: v for k, v in task.items() if k not in ("change", "approved")}
+    return {**definition, **shown, "record": ctx.store.read_task(task_id)}

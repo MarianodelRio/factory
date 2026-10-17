@@ -87,3 +87,24 @@ def commit_paths(paths: list[str], message: str, cwd: Path) -> str:
         message = f"the commit was refused: {exc.message}"
         raise FactoryError("commit_failed", message, EXIT_PRECONDITION) from exc
     return run(["rev-parse", "HEAD"], cwd)
+
+
+def is_ancestor(commit: str, ref: str, cwd: Path | None = None) -> bool:
+    """True if `commit` is already contained in `ref`; False if not, or if either is unknown."""
+    try:
+        run(["merge-base", "--is-ancestor", commit, ref], cwd)
+    except FactoryError as exc:
+        if exc.code == "git_failed":
+            return False
+        raise
+    return True
+
+
+def ref_exists(ref: str, cwd: Path | None = None) -> bool:
+    try:
+        run(["rev-parse", "--verify", "-q", f"{ref}^{{commit}}"], cwd)
+    except FactoryError as exc:
+        if exc.code == "git_failed":
+            return False
+        raise
+    return True
