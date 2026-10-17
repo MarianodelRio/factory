@@ -14,3 +14,5 @@ shape `{"id", "ok": false, "error": {"code", "message"}, "_meta"}` of the real e
 a lost `agent launch` reply carrying an `operationId`, a non-local host, and `orca search` with
 results (search is disabled here).
 - `repo-show-not-found.json`: `repo show --repo path:<unregistered>` (exit 1).
+- `terminal-show-stale.json`: `terminal show` with a handle Orca does not know (exit 1).
+- `worktree-show-not-found.json`: `worktree show` of a workspace that does not exist (exit 1).

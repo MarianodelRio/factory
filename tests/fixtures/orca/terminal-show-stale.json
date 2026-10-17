@@ -1,0 +1,16 @@
+{
+  "id": "a03e1d80-00ca-45b5-bc76-055e1e4a1dea",
+  "ok": false,
+  "error": {
+    "code": "terminal_handle_stale",
+    "message": "terminal_handle_stale",
+    "data": {
+      "nextSteps": [
+        "Terminal handles belong to the Orca server that issued them. If this handle came from a paired server (for example `orca terminal list --environment <server>`), pass the same --environment <server> to this command."
+      ]
+    }
+  },
+  "_meta": {
+    "runtimeId": "58d6ebae-3b1d-4a59-b296-8b3d43e916a2"
+  }
+}

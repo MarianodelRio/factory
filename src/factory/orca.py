@@ -9,6 +9,7 @@ Raises FactoryError (all EXIT_UNAVAILABLE) with these codes:
 - orca_not_local: a remote Orca was selected (design §10.1).
 - orca_missing_command: a command or flag the Factory uses is not in `orca agent-context`.
 - orca_repo_not_registered / orca_base_branch_unset: no base branch can be read for the repo.
+- effort_needs_model (EXIT_USAGE): `--effort` was given without `--model`.
 """
 
 from __future__ import annotations
@@ -20,7 +21,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from factory.output import EXIT_UNAVAILABLE, FactoryError
+from factory.output import EXIT_UNAVAILABLE, EXIT_USAGE, FactoryError
 
 TIMEOUT = 120
 
@@ -39,9 +40,12 @@ REMOTE_VARIABLES = ("ORCA_PAIRING_CODE", "ORCA_ENVIRONMENT")
 
 
 class OrcaError(FactoryError):
-    def __init__(self, message: str, orca_code: str | None = None) -> None:
+    def __init__(
+        self, message: str, orca_code: str | None = None, error: dict[str, Any] | None = None
+    ) -> None:
         super().__init__("orca_failed", message, EXIT_UNAVAILABLE)
         self.orca_code = orca_code
+        self.error = error or {}
 
 
 def unavailable(code: str, message: str) -> FactoryError:
@@ -71,7 +75,8 @@ def run(args: list[str], cwd: Path | None = None) -> Any:
     if answer.get("ok") is False or done.returncode != 0:
         error = answer.get("error") or {}
         code = error.get("code")
-        raise OrcaError(f"orca {command} failed: {error.get('message') or code or done.stderr.strip()}", code)
+        detail = error.get("message") or code or done.stderr.strip()
+        raise OrcaError(f"orca {command} failed: {detail}", code, error)
     return answer.get("result", answer)
 
 
@@ -152,3 +157,75 @@ def _branch_name(ref: str) -> str:
     for pattern in (r"^refs/remotes/[^/]+/", r"^refs/heads/", r"^origin/"):
         ref = re.sub(pattern, "", ref)
     return ref
+
+
+def create_workspace(name: str, base: str, main_checkout: Path) -> dict[str, str]:
+    """A new Orca workspace (Git worktree with its own branch) from `base` (design §5.1)."""
+    created = run(
+        ["worktree", "create", "--repo", f"path:{main_checkout}", "--name", name, "--base-branch", base]
+    )["worktree"]
+    branch = str(created["branch"]).removeprefix("refs/heads/")
+    return {"id": created["id"], "path": created["path"], "branch": branch}
+
+
+def workspace_exists(workspace_id: str) -> bool:
+    try:
+        run(["worktree", "show", "--worktree", f"id:{workspace_id}"])
+    except OrcaError as exc:
+        if exc.orca_code == "selector_not_found":
+            return False
+        raise
+    return True
+
+
+def launch_agent(
+    workspace_id: str, agent: str, prompt: str, model: str | None, effort: str | None
+) -> dict[str, str]:
+    """Start `agent` in the workspace. If Orca's reply is lost, the same operation is re-issued
+    once with `--retry-launch <operationId>`; it is never launched again as a new agent."""
+    if effort and not model:
+        raise FactoryError("effort_needs_model", "--effort requires --model", EXIT_USAGE)
+    args = ["agent", "launch", "--agent", agent, "--worktree", f"id:{workspace_id}", "--prompt", prompt]
+    if model:
+        args += ["--model", model]
+    if effort:
+        args += ["--effort", effort]
+    try:
+        result = run(args)
+    except OrcaError as exc:
+        operation_id = _operation_id(exc)
+        if operation_id is None:
+            raise
+        result = run([*args, "--retry-launch", operation_id])
+    outcome = result.get("outcome", {})
+    return {
+        "operation_id": str(result.get("operationId", "")),
+        "terminal": str(outcome.get("handle") or result.get("agentTerminalHandle") or ""),
+        "kind": str(outcome.get("kind", "terminal")),
+    }
+
+
+def _operation_id(exc: OrcaError) -> str | None:
+    """The operationId Orca gives in a lost-launch error, if any."""
+    data = exc.error.get("data") or {}
+    found = exc.error.get("operationId") or (data.get("operationId") if isinstance(data, dict) else None)
+    if found:
+        return str(found)
+    match = re.search(r"--retry-launch\s+(\S+)", str(exc.error.get("message", "")))
+    return match.group(1) if match else None
+
+
+def session_liveness(terminal: str | None) -> str:
+    """`alive` if the agent's terminal is connected, `finished` if it is closed or gone, `unknown`
+    when Orca cannot say (design §7.2). An agent that exited inside an open terminal looks alive."""
+    if not terminal:
+        return "unknown"
+    try:
+        shown = run(["terminal", "show", "--terminal", terminal])["terminal"]
+    except OrcaError as exc:
+        return "finished" if exc.orca_code == "terminal_handle_stale" else "unknown"
+    except FactoryError:
+        return "unknown"
+    except (KeyError, TypeError):
+        return "unknown"
+    return "alive" if shown.get("connected") else "finished"

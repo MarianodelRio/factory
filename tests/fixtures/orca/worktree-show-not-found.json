@@ -1,0 +1,30 @@
+{
+  "id": "fd9e5826-cb60-4eca-9d05-b5ec414e0de6",
+  "ok": false,
+  "error": {
+    "code": "selector_not_found",
+    "message": "selector_not_found",
+    "data": {
+      "selector": "id:58d62057-f50a-45fb-98a2-7d49dcf0e5c8::/home/user/orca/workspaces/factory/gone",
+      "validSelectorForms": [
+        "id:<repo-id>::<absolute-path>",
+        "path:<absolute-path>",
+        "name:<display-name>",
+        "branch:<branch>",
+        "identity:<identity-key>",
+        "issue:<number>",
+        "current",
+        "active"
+      ],
+      "suggestions": [],
+      "nextSteps": [
+        "No Orca workspace matched the worktree selector \"id:58d62057-f50a-45fb-98a2-7d49dcf0e5c8::/home/user/orca/workspaces/factory/gone\".",
+        "Valid selector forms: id:<repo-id>::<absolute-path>, path:<absolute-path>, name:<display-name>, branch:<branch>, identity:<identity-key>, issue:<number>, current, active.",
+        "List the exact values with `orca worktree list --json`; a bare repository id is not a worktree id."
+      ]
+    }
+  },
+  "_meta": {
+    "runtimeId": "58d6ebae-3b1d-4a59-b296-8b3d43e916a2"
+  }
+}
