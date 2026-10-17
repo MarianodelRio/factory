@@ -200,7 +200,7 @@ tasks:
   "reviews": [
     {"type": "quality", "reviewer": "codex-subagent", "round": 1, "commit": "abc123", "verdict": "pass", "findings": []}
   ],
-  "notes": [{"at": "...", "text": "...", "read": false}],
+  "notes": [{"at": "...", "text": "...", "pause": false, "read": false}],
   "memory": null,
   "commits": ["abc123"],
   "pull_request": null

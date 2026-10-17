@@ -100,6 +100,22 @@ def task_launch(args: argparse.Namespace) -> Result:
     return tasks.launch(args.task, args.agent, args.reviewer, args.model, args.effort, task_context())
 
 
+def task_checkpoint(args: argparse.Namespace) -> Result:
+    return tasks.checkpoint(args.task, args.done, args.next, task_context())
+
+
+def task_note(args: argparse.Namespace) -> Result:
+    return tasks.note(args.task, args.text, args.pause, task_context())
+
+
+def task_block(args: argparse.Namespace) -> Result:
+    return tasks.block(args.task, args.reason, task_context())
+
+
+def task_unblock(args: argparse.Namespace) -> Result:
+    return tasks.unblock(args.task, task_context())
+
+
 # Command name ("task launch") -> handler. Filled in as tasks are implemented.
 HANDLERS: dict[str, Handler] = {
     "design register": design_register,
@@ -110,6 +126,10 @@ HANDLERS: dict[str, Handler] = {
     "task show": task_show,
     "task claim": task_claim,
     "task launch": task_launch,
+    "task checkpoint": task_checkpoint,
+    "task note": task_note,
+    "task block": task_block,
+    "task unblock": task_unblock,
 }
 
 

@@ -9,6 +9,8 @@ Raises FactoryError with these codes:
 - already_launched (EXIT_CONFLICT): the current attempt already has a lead agent, or a launch
   whose result is unknown.
 - launch_unconfirmed (EXIT_UNAVAILABLE): Orca did not answer a launch; an agent may have started.
+- task_not_started (EXIT_PRECONDITION): the task has no state yet (it was never claimed).
+- approval_not_valid (EXIT_PRECONDITION): unblock while the change's approval is not valid.
 Plus the codes of factory.orca (Orca unavailable, not local, ...).
 """
 
@@ -317,3 +319,95 @@ def _require_approval_on_base(change_id: str, base: str, ctx: Context) -> None:
     if on_base is None or json.loads(on_base).get("design_digest") != approval.get("design_digest"):
         message = f"the approval of {change_id} is not committed on {base}"
         raise FactoryError("approval_not_on_base", message, EXIT_PRECONDITION)
+
+
+def _started(task_id: str, ctx: Context) -> tuple[dict[str, Any], State]:
+    task = _task(task_id, ctx)
+    record = ctx.store.read_task(task_id)
+    if record is None:
+        raise FactoryError("task_not_started", f"{task_id} has not been claimed yet", EXIT_PRECONDITION)
+    return task, record
+
+
+def card_detail(record: State) -> str | None:
+    """The card comment for the task's state (design §7.5)."""
+    state = record["state"]
+    if state == "in_progress":
+        checkpoint = record.get("last_checkpoint") or {}
+        return checkpoint.get("next") or "lead agent working"
+    if state == "in_review":
+        return "reviews in progress"
+    if state == "blocked":
+        return str(record["blocked_reason"])
+    if state == "done":
+        acceptance = record.get("acceptance") or {}
+        verified = sum(1 for ac in acceptance.values() if ac.get("status") == "verified")
+        pr = (record.get("pull_request") or {}).get("number")
+        return orca.done_comment(verified, len(acceptance), pr)
+    return None
+
+
+def _card(task: dict[str, Any], record: State) -> list[str]:
+    workspace = (record.get("workspace") or {}).get("orca_id")
+    if not workspace:
+        return []
+    return orca.update_card(workspace, task["id"], task["title"], record["state"], card_detail(record))
+
+
+def checkpoint(task_id: str, done: str, next_step: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
+    """Record progress and hand over the person's unread notes, marking them read. A pause note
+    moves the task to `blocked` (`paused`) (design §5.2, §7.3)."""
+    task, _ = _started(task_id, ctx)
+    delivered: list[dict[str, Any]] = []
+
+    def apply(state: State) -> State:
+        if state["state"] not in ("in_progress", "in_review"):
+            _reject(state, "checkpoint", f"it is {state['state']}")
+        state["last_checkpoint"] = {"at": now(), "done": [done], "next": next_step}
+        delivered.extend(_read_notes(state))
+        if any(n.get("pause") for n in delivered):
+            state = transition(state, "block", reason=PAUSED)
+        return state
+
+    record = ctx.store.update_task(task_id, apply, "checkpoint")
+    paused = record["state"] == "blocked"
+    data = {"task": task_id, "state": record["state"], "notes": delivered, "paused": paused}
+    if paused:
+        data["message"] = "paused by the person: stop here; they continue with factory task unblock"
+    return data, _card(task, record)
+
+
+def _read_notes(state: State) -> list[dict[str, Any]]:
+    unread = [n for n in state["notes"] if not n["read"]]
+    for note in unread:
+        note["read"] = True
+    return [dict(n) for n in unread]
+
+
+def note(task_id: str, text: str, pause: bool, ctx: Context) -> tuple[dict[str, Any], list[str]]:
+    """Leave a note (or a pause) for the lead agent; it reads it at its next checkpoint or before
+    `submit` (design §7.3)."""
+    _started(task_id, ctx)
+
+    def apply(state: State) -> State:
+        state["notes"].append({"at": now(), "text": text, "pause": pause, "read": False})
+        return state
+
+    ctx.store.update_task(task_id, apply, "pause_note" if pause else "note")
+    return {"task": task_id, "note": text, "pause": pause}, []
+
+
+def block(task_id: str, reason: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
+    task, _ = _started(task_id, ctx)
+    record = ctx.store.update_task(task_id, lambda s: transition(s, "block", reason=reason), "block")
+    return {"task": task_id, "state": "blocked", "reason": reason}, _card(task, record)
+
+
+def unblock(task_id: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
+    """Return a blocked task to its previous state, only while the change's approval is valid."""
+    task, _ = _started(task_id, ctx)
+    if not task["approved"]:
+        message = f"{task['change']} is awaiting approval: approve the design again before unblocking"
+        raise FactoryError("approval_not_valid", message, EXIT_PRECONDITION)
+    record = ctx.store.update_task(task_id, lambda s: transition(s, "unblock"), "unblock")
+    return {"task": task_id, "state": record["state"]}, _card(task, record)

@@ -226,7 +226,7 @@ Goal: answer design §10.3 with evidence and record real outputs for the fakes. 
   Do: `claim`: check ready + approval commit on base → create claim lock → create workspace from base branch → write state (`in_progress`, attempt 1) → card. If workspace creation fails, release the claim (task back to `ready`). `launch --agent`: launch the lead agent with the brief `/factory-implement <id>` plus the review agent name; record the attempt's agent, model (as passed), `operation_id` and `terminal` (design §1.4).
   Done when: tests: happy path; second claim → exit 4; workspace failure → claim released; launch records operationId and attempt.
 
-- [ ] T-18 [P] `checkpoint`, `note`, `block`, `unblock`
+- [x] T-18 [P] `checkpoint`, `note`, `block`, `unblock`
   Depends: T-17 · Design: §5.2, §7.3 · Acceptance: A-20
   Files: `src/factory/tasks.py`, `tests/test_notes.py`
   Do: `checkpoint` saves done/next and returns unread notes (marking them read). `note --text` and `note --pause` from any session. A read pause note moves the task to `blocked` (`paused`). `block --reason`, `unblock` (only while the change's approval is valid, design §1.5). Cards updated.
@@ -349,7 +349,7 @@ Fill the "Test" column as tasks are completed. "Manual" criteria are checked in 
 | A-17 | T-26, T-29 | | ✔ |
 | A-18 | T-26 | | ✔ |
 | A-19 | T-24, T-25, T-26 | | ✔ |
-| A-20 | T-18 | | |
+| A-20 | T-18 (+ before submit in T-20) | `test_notes.py` (note from another worktree read at next checkpoint; pause → blocked) | |
 | A-21 | T-23 | | |
 | A-22 | T-23 | | |
 | A-23 | T-15 | `test_cards.py::test_card_follows_the_table` (one case per row) | |
@@ -413,3 +413,4 @@ One line per completed task or session: date, task, what was done, what comes ne
 | 2026-10-17 | M4 review | No blockers. Fixed: local-only check moved into `orca.run` (every command; liveness under a remote selection is `unknown`); workspaces created with `--no-parent` (independent, as in the spike); cards no longer force `--read` ("no notice" leaves Orca's flag alone); unknown card state → warning; launch returns `terminal: null` for non-terminal launches and keeps the resent operationId. Carried to T-17: a launch that times out has no operationId and must not lead to a second agent. 319 tests green. | T-16 computed states, task list/show. |
 | 2026-10-17 | T-16 | `tasks.Context`/`catalog`/`view`: tasks of approved, not rejected changes from the main checkout (after §4.5 sync); computed `pending`/`ready` with reasons (awaiting approval, dependency not done, not merged into base or origin/base, Orca unavailable for the base branch — still viewable); `task list` and `task show` (definition + state + full record). Open question in §6 about squash merges. 330 tests green. | T-17 claim and launch. |
 | 2026-10-17 | T-17 | `task claim` (not claimed, `ready`, Orca check, approval committed on base, exclusive claim, workspace from base with `--no-parent`; workspace failure releases the claim; state `in_progress` with attempt 1; card) and `task launch` (`--reviewer` added to §9 by the person's choice; brief `/factory-implement <id> [--reviewer X]`; records agent, reviewer, model as passed, operation_id, terminal; an Orca refusal frees the attempt, a launch without answer is `launch_unconfirmed` and is not repeated — recover). Fixed: a released claim no longer leaves an unreadable state. ruff line length 120. 347 tests green. | T-18 and T-19 (both edit tasks.py: sequential). |
+| 2026-10-17 | T-18 | `checkpoint` (saves done/next, delivers unread notes marking them read, a pause note blocks with `paused`), `note [--pause]` from any checkout, `block --reason`, `unblock` (only with a valid approval); cards from the state (`card_detail`). Notes gain a `pause` flag (design §1.4 example updated). | T-19 verify. |
