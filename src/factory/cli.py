@@ -144,6 +144,10 @@ def init_command(args: argparse.Namespace) -> Result:
                            args.exclude)
 
 
+def install_skill(args: argparse.Namespace) -> Result:
+    return init.install_skill(Path.home()), []
+
+
 def doctor(args: argparse.Namespace) -> Result:
     return init.doctor(paths.repo_root(), paths.main_checkout()), []
 
@@ -190,6 +194,7 @@ HANDLERS: dict[str, Handler] = {
     "memory check": memory_check,
     "doctor": doctor,
     "init": init_command,
+    "install-skill": install_skill,
 }
 
 
@@ -208,6 +213,7 @@ def build_parser() -> Parser:
         sub.set_defaults(command=full_name)
         return sub
 
+    command(groups, "install-skill", "install-skill", "install /factory-init for this user (once per machine)")
     command(groups, "doctor", "doctor", "analyze the repository without changing it")
 
     init_cmd = command(groups, "init", "init", "prepare the repository for the Factory")

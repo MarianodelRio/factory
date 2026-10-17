@@ -272,3 +272,19 @@ def test_malformed_settings_are_respected_with_a_warning(project, capsys):
     data = plan(capsys)
     assert ".claude/settings.json" in paths(data["respect"])
     assert any("settings.json" in w for w in data["warnings"])
+
+
+def test_install_skill_for_the_user(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    data = ok_cli(capsys, "install-skill")
+    for base in (".claude/skills", ".agents/skills"):
+        assert (tmp_path / base / "factory-init/SKILL.md").read_text().startswith("---\nname: factory-init")
+        assert not (tmp_path / base / "factory-design").exists()
+    assert len(data["written"]) == 2
+    assert ok_cli(capsys, "install-skill")["written"] == []  # idempotent
+
+
+def ok_cli(capsys, *argv):
+    code, out = cli(capsys, *argv)
+    assert code == 0, out
+    return out["data"]

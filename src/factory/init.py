@@ -534,3 +534,19 @@ def restore(root: Path, state_dir: Path, name: str) -> dict[str, Any]:
         shutil.copy2(backup / "files" / path, root / path)
         restored.append(path)
     return {"backup": name, "restored": restored, "created_left": manifest["created"]}
+
+
+def install_skill(home: Path) -> dict[str, Any]:
+    """Install the `factory-init` skill for this user (Claude and Codex), so `/factory-init` works in
+    a repository that has no Factory yet (design §3)."""
+    files = {rel: content for rel, content in _skill_files().items() if rel.startswith("factory-init/")}
+    written = []
+    for base in (".claude/skills", ".agents/skills"):
+        for rel, content in files.items():
+            target = home / base / rel
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if not target.exists() or target.read_text(encoding="utf-8") != content:
+                target.write_text(content, encoding="utf-8")
+                written.append(str(target))
+    return {"installed": [str(home / base / "factory-init") for base in (".claude/skills", ".agents/skills")],
+            "written": written}

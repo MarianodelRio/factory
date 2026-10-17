@@ -263,6 +263,8 @@ Rules common to all:
 
 ## 3. `/factory-init` — prepare the repository
 
+`/factory-init` is the only skill installed per machine (`factory install-skill`, once after installing the CLI, copies it to `~/.claude/skills/` and `~/.agents/skills/`), so it can run in a repository that has no Factory yet; the other three skills are installed in each repository by `/factory-init`.
+
 ### 3.1 What it does
 
 1. **Analyzes** without changing anything:
@@ -683,6 +685,7 @@ The base branch is the one the repo has in Orca (`worktreeBaseRef` in `orca repo
 It is used by the skills; it is also available to the person. All output supports `--json`.
 
 ```bash
+factory install-skill                            # once per machine: /factory-init for Claude and Codex
 factory doctor                                   # analysis without changes
 factory init --plan [--delete <path> --reason "..."]...      # the plan, with its plan id
 factory init --apply <plan-id> [--exclude <path>]...           # applies exactly the confirmed plan

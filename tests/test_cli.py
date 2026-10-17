@@ -7,6 +7,7 @@ from factory.cli import main
 
 # Every command path of design §9.
 COMMANDS = [
+    ["install-skill"],
     ["doctor"],
     ["init"],
     ["design", "register"],
