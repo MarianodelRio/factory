@@ -194,7 +194,7 @@ Goal: answer design §10.3 with evidence and record real outputs for the fakes. 
 
 ### M4 — Orca client
 
-- [ ] T-13 Orca client base
+- [x] T-13 Orca client base
   Depends: T-04 · Design: §1.1, §10.1, §10.2 · Acceptance: A-24
   Files: `src/factory/orca.py`, `tests/test_orca.py`
   Do: `run(args)` always with `--json`, parse output, map failures to exit code 5 with a clear message. `check()`: installed, version ≥ `min_version`, runtime reachable (`orca status`), required commands present in `orca agent-context`, local only (reject if `ORCA_PAIRING_CODE`/`ORCA_ENVIRONMENT` set or `orca status` → `result.target.kind` is not `local`). `base_branch()` from `worktreeBaseRef` of `orca repo show` (strip `origin/`, `refs/remotes/origin/`); missing → clear error saying how to set it.
@@ -353,7 +353,7 @@ Fill the "Test" column as tasks are completed. "Manual" criteria are checked in 
 | A-21 | T-23 | | |
 | A-22 | T-23 | | |
 | A-23 | T-15 | | |
-| A-24 | T-13 | | |
+| A-24 | T-13 | `test_orca.py` (closed, unreachable, remote variables, non-local host); claim/launch refusal in T-17 | |
 | A-25 | T-23 | | |
 | A-26 | T-07, T-22, T-23 (no secrets written) | | |
 
@@ -399,3 +399,4 @@ One line per completed task or session: date, task, what was done, what comes ne
 | 2026-10-17 | M2 review | No blockers. Minor fixes to state storage (event before JSON, rebuild a missing JSON, claim written in one step, locked release/reassign). Two gaps decided by the person: interrupted tasks are blocked by a design change and `unblock` needs a valid approval; `recover` also from `in_progress` when liveness is unknown. Design §1.5, §4.5, §7.4 updated. 197 tests green. | T-09 digest, ids and task-block parsing. |
 | 2026-10-17 | T-09 | `design.py`: `digest` (LF-normalized SHA-256), `next_change_id`, `parse_design` (AC list + YAML task block: fields, values, ids, dependencies incl. other changes, cycles, AC coverage both ways), all problems reported at once in `error.details` (added to the §3 envelope). 223 tests green. | T-10 register/show. |
 | 2026-10-17 | T-10 | `design register` (no id: reserve the next id + folder, exclusive; with id: validate, deps from other changes' `tasks.yaml`, rejected → `change_rejected`) and `design show` (derived change state, digest, AC, tasks with stored state, approval/rejection, problems of an invalid design); change ids validated by the CLI. Design §4.2/§9 updated with the person's choice. 235 tests green. | T-13 Orca client base (needed by T-11), then T-11. |
+| 2026-10-17 | T-13 | `orca.py`: `run` (always `--json`, Orca errors → `OrcaError` with Orca's code, exit 5), `version`, `check` (installed, min version numerically, running, local by env vars and `status.target.kind`, required commands and flags in `agent-context`), `base_branch` from `worktreeBaseRef` of `repo show --repo path:<main checkout>` with clear errors when unregistered or unset. New fixture `repo-show-not-found.json`. 256 tests green. | T-11 approve/reject. |

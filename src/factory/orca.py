@@ -1,0 +1,141 @@
+"""The only module that runs `orca` (design §1.1, §10). Always with `--json` and argument lists.
+
+Raises FactoryError (all EXIT_UNAVAILABLE) with these codes:
+- orca_unavailable: `orca` is not installed or not on PATH.
+- orca_failed: Orca answered with an error or with something that is not JSON (OrcaError, with
+  Orca's own code in `orca_code`).
+- orca_outdated: the Orca version is below `[orca] min_version`.
+- orca_not_running: the Orca runtime cannot be reached.
+- orca_not_local: a remote Orca was selected (design §10.1).
+- orca_missing_command: a command or flag the Factory uses is not in `orca agent-context`.
+- orca_repo_not_registered / orca_base_branch_unset: no base branch can be read for the repo.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+import subprocess
+from pathlib import Path
+from typing import Any
+
+from factory.output import EXIT_UNAVAILABLE, FactoryError
+
+TIMEOUT = 120
+
+# Commands and flags the CLI uses; `check` verifies them against `orca agent-context`.
+REQUIRED: dict[str, tuple[str, ...]] = {
+    "status": (),
+    "agent-context": (),
+    "repo show": ("repo",),
+    "worktree create": ("repo", "name", "base-branch"),
+    "worktree show": ("worktree",),
+    "worktree set": ("worktree", "display-name", "comment", "workspace-status", "unread", "read"),
+    "agent launch": ("agent", "worktree", "prompt", "model", "effort", "retry-launch"),
+    "terminal show": ("terminal",),
+}
+REMOTE_VARIABLES = ("ORCA_PAIRING_CODE", "ORCA_ENVIRONMENT")
+
+
+class OrcaError(FactoryError):
+    def __init__(self, message: str, orca_code: str | None = None) -> None:
+        super().__init__("orca_failed", message, EXIT_UNAVAILABLE)
+        self.orca_code = orca_code
+
+
+def unavailable(code: str, message: str) -> FactoryError:
+    return FactoryError(code, message, EXIT_UNAVAILABLE)
+
+
+def _exec(args: list[str], cwd: Path | None) -> subprocess.CompletedProcess[str]:
+    try:
+        return subprocess.run(["orca", *args], cwd=cwd, capture_output=True, text=True, timeout=TIMEOUT)
+    except FileNotFoundError as exc:
+        raise unavailable("orca_unavailable", "Orca is not installed or `orca` is not on PATH") from exc
+    except subprocess.TimeoutExpired as exc:
+        raise OrcaError(f"orca {' '.join(args)} did not answer in {TIMEOUT}s") from exc
+
+
+def run(args: list[str], cwd: Path | None = None) -> Any:
+    """Run `orca <args> --json` and return its `result` (or the whole answer if it has none)."""
+    done = _exec([*args, "--json"], cwd)
+    command = " ".join(args[:2])
+    try:
+        answer = json.loads(done.stdout)
+    except json.JSONDecodeError as exc:
+        detail = (done.stderr or done.stdout).strip()[:300]
+        raise OrcaError(f"orca {command} did not answer JSON: {detail}") from exc
+    if not isinstance(answer, dict):
+        raise OrcaError(f"orca {command} answered an unexpected value")
+    if answer.get("ok") is False or done.returncode != 0:
+        error = answer.get("error") or {}
+        code = error.get("code")
+        raise OrcaError(f"orca {command} failed: {error.get('message') or code or done.stderr.strip()}", code)
+    return answer.get("result", answer)
+
+
+def version() -> str:
+    done = _exec(["--version"], None)
+    if done.returncode != 0:
+        raise OrcaError(f"orca --version failed: {done.stderr.strip()}")
+    return done.stdout.strip()
+
+
+def _version_tuple(text: str) -> tuple[int, ...]:
+    return tuple(int(part) for part in re.findall(r"\d+", text)[:3])
+
+
+def check(min_version: str) -> dict[str, Any]:
+    """Orca is installed, recent enough, running, local and has every command the CLI uses."""
+    for variable in REMOTE_VARIABLES:
+        if os.environ.get(variable):
+            raise unavailable("orca_not_local", f"{variable} is set: the Factory only works with local Orca")
+
+    installed = version()
+    if _version_tuple(installed) < _version_tuple(min_version):
+        raise unavailable("orca_outdated", f"Orca {installed} is older than the required {min_version}")
+
+    try:
+        status = run(["status"])
+    except OrcaError as exc:
+        raise unavailable("orca_not_running", f"Orca is not running: {exc.message}. Open Orca.") from exc
+    if not status.get("runtime", {}).get("reachable"):
+        raise unavailable("orca_not_running", "the Orca runtime is not reachable. Open Orca.")
+    if status.get("target", {}).get("kind") != "local":
+        raise unavailable("orca_not_local", "Orca reports a host that is not local")
+
+    commands = {c["command"]: set(c.get("flags", [])) for c in run(["agent-context"])["commands"]}
+    for command, flags in REQUIRED.items():
+        if command not in commands:
+            raise unavailable("orca_missing_command", f"this Orca has no `orca {command}` command")
+        missing = [f for f in flags if f not in commands[command]]
+        if missing:
+            flags_text = ", ".join(f"--{f}" for f in missing)
+            raise unavailable("orca_missing_command", f"`orca {command}` lacks {flags_text}")
+    return {"version": installed, "local": True}
+
+
+def base_branch(main_checkout: Path) -> str:
+    """The repo's base branch in Orca (`worktreeBaseRef`, set by `/factory-init`)."""
+    try:
+        repo = run(["repo", "show", "--repo", f"path:{main_checkout}"])["repo"]
+    except OrcaError as exc:
+        if exc.orca_code == "repo_not_found":
+            message = f"{main_checkout} is not registered in Orca; run /factory-init"
+            raise unavailable("orca_repo_not_registered", message) from exc
+        raise
+    ref = repo.get("worktreeBaseRef")
+    if not ref:
+        message = (
+            "the repo has no base branch in Orca; run /factory-init or "
+            f"`orca repo set-base-ref --repo path:{main_checkout} --ref origin/<branch>`"
+        )
+        raise unavailable("orca_base_branch_unset", message)
+    return _branch_name(str(ref))
+
+
+def _branch_name(ref: str) -> str:
+    for pattern in (r"^refs/remotes/[^/]+/", r"^refs/heads/", r"^origin/"):
+        ref = re.sub(pattern, "", ref)
+    return ref

@@ -13,3 +13,4 @@ Not recorded (could not be produced on this machine; the fake builds them from t
 shape `{"id", "ok": false, "error": {"code", "message"}, "_meta"}` of the real errors):
 a lost `agent launch` reply carrying an `operationId`, a non-local host, and `orca search` with
 results (search is disabled here).
+- `repo-show-not-found.json`: `repo show --repo path:<unregistered>` (exit 1).
