@@ -1,0 +1,29 @@
+{
+  "id": "f9c7078b-cff5-4f4d-a17c-848ef6f39b45",
+  "ok": true,
+  "result": {
+    "outcome": {
+      "kind": "terminal",
+      "handle": "term_9a495532-448e-4be8-9bc3-189ea21acb69",
+      "paneKey": "fd3c0fbb-b7bd-4a33-a9d4-5b8bb896a1ff:ab8c3ca3-5222-4f40-828d-bf1291a7f685"
+    },
+    "worktreeId": "326d8316-1914-4a47-ba66-4ea467bb3d21::/home/user/orca/workspaces/factory-spike/spike-a",
+    "receipt": {
+      "mode": "terminal",
+      "preferred": "terminal",
+      "reason": "user_default",
+      "detail": "Started a terminal agent, the default for new agent tabs in your settings."
+    },
+    "prompt": {
+      "delivery": "submit",
+      "outcome": "handed-to-terminal"
+    },
+    "placement": {
+      "groupId": "78ba2b9b-ccaf-48de-98cf-5f3ba4372d31"
+    },
+    "operationId": "1792253657275-9b1d8dc462e9494e9f9838aebbf2ea14"
+  },
+  "_meta": {
+    "runtimeId": "58d6ebae-3b1d-4a59-b296-8b3d43e916a2"
+  }
+}

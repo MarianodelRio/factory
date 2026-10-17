@@ -1,0 +1,26 @@
+{
+  "id": "local",
+  "ok": true,
+  "result": {
+    "hosts": [
+      {
+        "kind": "local",
+        "name": "this machine",
+        "id": "local",
+        "selector": "--host local",
+        "machineName": "host",
+        "platform": "linux"
+      },
+      {
+        "kind": "ssh",
+        "name": "github.com",
+        "id": "ssh-1792236619211-iux9sa",
+        "selector": "--host ssh:ssh-1792236619211-iux9sa",
+        "connected": false
+      }
+    ]
+  },
+  "_meta": {
+    "runtimeId": "local"
+  }
+}

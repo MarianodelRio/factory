@@ -1,0 +1,76 @@
+{
+  "id": "163613b2-d635-41e8-b628-7bc3b38e8d43",
+  "ok": true,
+  "result": {
+    "worktree": {
+      "id": "326d8316-1914-4a47-ba66-4ea467bb3d21::/home/user/orca/workspaces/factory-spike/spike-a",
+      "identity": {
+        "key": "wt2:local:ce0d9b1d-d9b9-40c6-bfc1-3d18b1ec57c4",
+        "executionHostId": "local",
+        "instanceId": "ce0d9b1d-d9b9-40c6-bfc1-3d18b1ec57c4"
+      },
+      "instanceId": "ce0d9b1d-d9b9-40c6-bfc1-3d18b1ec57c4",
+      "repoId": "326d8316-1914-4a47-ba66-4ea467bb3d21",
+      "projectId": "repo:326d8316-1914-4a47-ba66-4ea467bb3d21",
+      "hostId": "local",
+      "projectHostSetupId": "326d8316-1914-4a47-ba66-4ea467bb3d21",
+      "creatorProvenance": {
+        "kind": "host"
+      },
+      "path": "/home/user/orca/workspaces/factory-spike/spike-a",
+      "head": "3e95d45658a5724d738e610461b4b048c90b2be1",
+      "branch": "refs/heads/user/spike-a",
+      "isBare": false,
+      "isMainWorktree": false,
+      "displayName": "spike-a",
+      "displayNameMode": "fixed",
+      "comment": "spike",
+      "linkedIssue": null,
+      "linkedPR": null,
+      "linkedLinearIssue": null,
+      "linkedLinearIssueWorkspaceId": null,
+      "linkedLinearIssueOrganizationUrlKey": null,
+      "linkedGitLabMR": null,
+      "linkedGitLabIssue": null,
+      "linkedBitbucketPR": null,
+      "linkedAzureDevOpsPR": null,
+      "linkedGiteaPR": null,
+      "linkedWorkItem": null,
+      "linkedTaskSourceContext": null,
+      "isArchived": false,
+      "isUnread": false,
+      "isPinned": false,
+      "sortOrder": 1792253652273,
+      "lastActivityAt": 1792253652273,
+      "createdAt": 1792253652273,
+      "cliProvenance": {
+        "kind": "created-by-cli",
+        "createdAt": 1792253651784,
+        "callerTerminalHandle": "term_71c4ee80-5a3f-42f5-b9a0-47af16e890ed"
+      },
+      "baseRef": "refs/remotes/origin/main",
+      "workspaceStatus": "in-progress",
+      "parentWorktreeId": null,
+      "childWorktreeIds": [],
+      "lineage": null,
+      "workspaceLineage": null,
+      "git": {
+        "path": "/home/user/orca/workspaces/factory-spike/spike-a",
+        "head": "3e95d45658a5724d738e610461b4b048c90b2be1",
+        "branch": "refs/heads/user/spike-a",
+        "isBare": false,
+        "isMainWorktree": false
+      }
+    },
+    "lineage": null,
+    "workspaceLineage": null,
+    "warnings": [],
+    "catalogVersion": {
+      "epoch": "4c01030f-d1f4-4aa8-bcd3-e0d02b2f30ce",
+      "sequence": 50
+    }
+  },
+  "_meta": {
+    "runtimeId": "58d6ebae-3b1d-4a59-b296-8b3d43e916a2"
+  }
+}

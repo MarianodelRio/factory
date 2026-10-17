@@ -1,0 +1,11 @@
+{
+  "id": "local",
+  "ok": false,
+  "error": {
+    "code": "selector_not_found",
+    "message": "No Orca-managed worktree contains the current directory: /home/user/elsewhere"
+  },
+  "_meta": {
+    "runtimeId": null
+  }
+}

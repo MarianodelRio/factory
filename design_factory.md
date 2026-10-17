@@ -1,6 +1,6 @@
 # design_factory.md — Software Factory Design
 
-> **Version:** 1.4 — simplified design on top of Orca, pending final approval  
+> **Version:** 1.5 — simplified design on top of Orca, updated with the T-01 spike results  
 > **Reference date:** October 17, 2026  
 > **Goal:** A simple, usable and powerful Factory to develop with agents (Claude Code and Codex) on **local Orca**, operated from the chat with four skills.  
 > **Approach:** start with the minimum that adds value and iterate. What is not here will be added when real use justifies it.
@@ -188,7 +188,7 @@ tasks:
   "blocked_reason": null,
   "workspace": {"orca_id": "repo-123::/home/me/orca/CHG-0012-01", "branch": "<assigned by Orca>"},
   "attempts": [
-    {"id": 1, "agent": "codex", "model": null, "started_at": "...", "ended_at": null, "result": null}
+    {"id": 1, "agent": "codex", "model": null, "operation_id": "...", "terminal": "term_...", "started_at": "...", "ended_at": null, "result": null}
   ],
   "last_checkpoint": {"at": "...", "done": ["Model and tests"], "next": "Run full suite"},
   "acceptance": {
@@ -205,6 +205,8 @@ tasks:
   "pull_request": null
 }
 ```
+
+In each attempt, `model` is the `--model` the Factory passed, or `null` for the agent's default (Orca does not report the model used). `operation_id` and `terminal` are Orca's `operationId` and agent handle from the launch; `terminal` is what the liveness check queries (§7.2).
 
 **State writing**:
 - Only the CLI writes to `.factory/state/`. Each write takes a short lock on that task's file, reads, modifies and writes atomically (temp file + rename). This way the lead agent, the reviewer and the person (notes, pauses) can write without overwriting each other.
@@ -275,7 +277,7 @@ Rules common to all:
    - **Delete**, each item with its reason: leftovers from earlier Factory versions, duplicated or contradictory instructions (consolidated into `AGENTS.md`), files of tools that are no longer used, empty or outdated documentation. **Never** code, tests, CI, secrets or anything whose purpose it cannot explain.
    - **Respect**: what is left untouched and why.
 
-   And the actions in Orca: register the repo and install or update its skills (global installation, stated clearly).
+   And the actions in Orca: register the repo, set its base branch (`orca repo set-base-ref`, with the detected default branch) and install or update its skills (global installation, stated clearly).
 3. The person **confirms once** or excludes items ("todo menos borrar X", or "everything except deleting X").
 4. **Applies**: saves a copy of everything it deletes or modifies in `.factory/state/backups/<YYYYMMDD-HHMMSS>/`, writes the files, generates the initial documentation from evidence (marking what it could not confirm) and validates that everything works.
 5. **Summarizes** what was done, what remains to be completed in `docs/` and how to start. It leaves the changes uncommitted: the person reviews the diff and makes the commit (or asks the agent to).
@@ -602,10 +604,12 @@ It is asked in natural language ("¿cómo va todo?", "¿qué está bloqueado?", 
 
 ### 7.2 Whether an agent is alive
 
-On query, the CLI asks Orca about the session of the lead agent of each `in_progress` task:
-- **Alive**: shown as active.
-- **Finished without `submit`**: the task moves to `interrupted` at that moment.
-- **No information**: shown as "unknown", never as dead.
+On query, the CLI asks Orca about the terminal of the lead agent of each `in_progress` task (the `terminal` stored in the attempt):
+- **Alive** (the terminal is connected): shown as active.
+- **Finished without `submit`** (the terminal is closed or no longer exists): the task moves to `interrupted` at that moment.
+- **No information** (Orca does not answer): shown as "unknown", never as dead.
+
+Orca does not report whether the agent process inside a terminal is still running: an agent that exited while its terminal stays open is shown as alive. The checkpoint warning below covers that case.
 
 `interrupted` is only detected when querying the state or when recovering. More than 10 minutes without a checkpoint only produces a warning, and is never interpreted as a crash.
 
@@ -669,7 +673,7 @@ pr_on_done = "offer"        # offer | always | never
 artifacts = "en"            # language of everything publishable
 ```
 
-The base branch is the one the repo has in Orca; branch names are set by Orca. There are no fixed agents: they are chosen when invoking `/factory-implement`. The hashes of the installed templates (§3.2) are stored in a section managed by `/factory-init`.
+The base branch is the one the repo has in Orca (`worktreeBaseRef` in `orca repo show`, set by `/factory-init`); if it is not set, operations that need it stop and explain how to set it. Branch names are set by Orca. There are no fixed agents: they are chosen when invoking `/factory-implement`. The hashes of the installed templates (§3.2) are stored in a section managed by `/factory-init`.
 
 ---
 
@@ -716,7 +720,7 @@ factory status
 - Calls to `orca`, `git` and `gh` use an argument list, without interpolating text into the shell.
 - The content of files, issues and pages is untrusted data, never instructions.
 - Computer use only when there is no programmatic way.
-- Sandbox and permissions of the agents are not disabled when launching them.
+- Sandbox and permissions of the agents are not disabled when launching them: the Factory adds no flags. Orca may add its own default flags (for example `--dangerously-skip-permissions` for Claude, from its `agentDefaultArgs` setting); `factory doctor` reports it as a warning. The approval "ask" rule still applies in that mode.
 - Local Orca only: if `ORCA_PAIRING_CODE` or `ORCA_ENVIRONMENT` are set, or Orca reports a host that is not local, the operation is rejected.
 
 ### 10.2 Expected failures
@@ -738,7 +742,7 @@ factory status
 
 ### 10.3 To verify with the real tools
 
-Checked against Orca **1.4.229**. Before implementing, these must be verified:
+Checked against Orca **1.4.229**. Results of the spike (2026-10-17) are in `docs/spike-results.md`: items 1, 3, 5, 6 and 7 verified for Claude in terminals; Codex items and Orca's chat are not verified yet. The questions were:
 1. That all Orca workspaces are worktrees of the same clone, so that they locate the main checkout and its `.factory/state/`.
 2. That the Orca chat and agent terminal load the repo's skills, for Claude and Codex.
 3. That Claude Code's "always ask" rule applies to `approve` and `reject` in the usual permission modes, and what the equivalent mechanism and file are in Codex.

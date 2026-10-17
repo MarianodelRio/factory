@@ -1,0 +1,5424 @@
+{
+  "schemaVersion": 1,
+  "commandCount": 281,
+  "commands": [
+    {
+      "command": "account add",
+      "path": [
+        "account",
+        "add"
+      ],
+      "usage": "orca account add [--agent claude|codex|opencode|devin] [--label <name>] [--integration <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "agent",
+        "label",
+        "integration"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "account list",
+      "path": [
+        "account",
+        "list"
+      ],
+      "usage": "orca account list [--agent opencode|devin] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "agent"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "account rm",
+      "path": [
+        "account",
+        "rm"
+      ],
+      "usage": "orca account rm --agent opencode|devin --account <id> [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "agent",
+        "account"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "account select",
+      "path": [
+        "account",
+        "select"
+      ],
+      "usage": "orca account select --agent opencode|devin --account <id|system> [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "agent",
+        "account"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "agent hooks off",
+      "path": [
+        "agent",
+        "hooks",
+        "off"
+      ],
+      "usage": "orca agent hooks off [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "agent hooks on",
+      "path": [
+        "agent",
+        "hooks",
+        "on"
+      ],
+      "usage": "orca agent hooks on [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "agent hooks prepare-codex",
+      "path": [
+        "agent",
+        "hooks",
+        "prepare-codex"
+      ],
+      "usage": "orca agent hooks prepare-codex",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "agent hooks status",
+      "path": [
+        "agent",
+        "hooks",
+        "status"
+      ],
+      "usage": "orca agent hooks status [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "agent launch",
+      "path": [
+        "agent",
+        "launch"
+      ],
+      "usage": "orca agent launch --agent <id> [--worktree <selector>] [--prompt <text>] [--model <id>] [--effort <level>] [--focus] [--retry-launch <operationId>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "agent",
+        "worktree",
+        "prompt",
+        "model",
+        "effort",
+        "focus",
+        "retry-launch",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "agent-context",
+      "path": [
+        "agent-context"
+      ],
+      "usage": "orca agent-context [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "artifacts delete",
+      "path": [
+        "artifacts",
+        "delete"
+      ],
+      "usage": "orca artifacts delete <id> [--api-url <url>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "api-url",
+        "id"
+      ],
+      "positionalArgs": [
+        "id"
+      ]
+    },
+    {
+      "command": "artifacts list",
+      "path": [
+        "artifacts",
+        "list"
+      ],
+      "usage": "orca artifacts list [--cursor <cursor>] [--api-url <url>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "api-url",
+        "cursor"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "artifacts share",
+      "path": [
+        "artifacts",
+        "share"
+      ],
+      "usage": "orca artifacts share <file> [--api-url <url>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "api-url",
+        "file"
+      ],
+      "positionalArgs": [
+        "file"
+      ]
+    },
+    {
+      "command": "artifacts unshare",
+      "path": [
+        "artifacts",
+        "unshare"
+      ],
+      "usage": "orca artifacts unshare <file> [--api-url <url>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "api-url",
+        "file"
+      ],
+      "positionalArgs": [
+        "file"
+      ]
+    },
+    {
+      "command": "artifacts update",
+      "path": [
+        "artifacts",
+        "update"
+      ],
+      "usage": "orca artifacts update <file> [--api-url <url>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "api-url",
+        "file"
+      ],
+      "positionalArgs": [
+        "file"
+      ]
+    },
+    {
+      "command": "automations create",
+      "path": [
+        "automations",
+        "create"
+      ],
+      "usage": "orca automations create --name <name> --trigger <preset|cron|rrule> --prompt <text> --provider <agent> [--precheck <command>] [--repo <selector>|--workspace <selector>|--project <id> [--host <id>]|--project-host-setup <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "name",
+        "prompt",
+        "provider",
+        "extra-agent-args",
+        "precheck",
+        "precheck-timeout",
+        "repo",
+        "workspace",
+        "project",
+        "host",
+        "project-host-setup",
+        "source-context",
+        "workspace-mode",
+        "base-branch",
+        "trigger",
+        "schedule",
+        "time",
+        "day",
+        "timezone",
+        "enabled",
+        "disabled",
+        "missed-run-grace-minutes",
+        "reuse-session",
+        "fresh-session"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "automations edit",
+      "path": [
+        "automations",
+        "edit"
+      ],
+      "usage": "orca automations edit <id> [--name <name>] [--trigger <preset|cron|rrule>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "id",
+        "name",
+        "prompt",
+        "provider",
+        "extra-agent-args",
+        "precheck",
+        "precheck-timeout",
+        "repo",
+        "workspace",
+        "project",
+        "host",
+        "project-host-setup",
+        "source-context",
+        "workspace-mode",
+        "base-branch",
+        "trigger",
+        "schedule",
+        "time",
+        "day",
+        "timezone",
+        "enabled",
+        "disabled",
+        "missed-run-grace-minutes",
+        "reuse-session",
+        "fresh-session"
+      ],
+      "positionalArgs": [
+        "id"
+      ]
+    },
+    {
+      "command": "automations list",
+      "path": [
+        "automations",
+        "list"
+      ],
+      "usage": "orca automations list [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "automations remove",
+      "path": [
+        "automations",
+        "remove"
+      ],
+      "usage": "orca automations remove <id> [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "id"
+      ],
+      "positionalArgs": [
+        "id"
+      ]
+    },
+    {
+      "command": "automations run",
+      "path": [
+        "automations",
+        "run"
+      ],
+      "usage": "orca automations run <id> [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "id"
+      ],
+      "positionalArgs": [
+        "id"
+      ]
+    },
+    {
+      "command": "automations runs",
+      "path": [
+        "automations",
+        "runs"
+      ],
+      "usage": "orca automations runs [--id <automation-id>] [--limit <n>] [--cursor <cursor>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "id",
+        "limit",
+        "cursor"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "automations show",
+      "path": [
+        "automations",
+        "show"
+      ],
+      "usage": "orca automations show <id> [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "id"
+      ],
+      "positionalArgs": [
+        "id"
+      ]
+    },
+    {
+      "command": "back",
+      "path": [
+        "back"
+      ],
+      "usage": "orca back [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "browser identity get",
+      "path": [
+        "browser",
+        "identity",
+        "get"
+      ],
+      "usage": "orca browser identity get [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "browser identity set",
+      "path": [
+        "browser",
+        "identity",
+        "set"
+      ],
+      "usage": "orca browser identity set --mode <clean|native> [--reset] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "mode",
+        "reset",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "capture start",
+      "path": [
+        "capture",
+        "start"
+      ],
+      "usage": "orca capture start [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "capture stop",
+      "path": [
+        "capture",
+        "stop"
+      ],
+      "usage": "orca capture stop [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "check",
+      "path": [
+        "check"
+      ],
+      "usage": "orca check --element <ref> [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "element",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "claude-teams",
+      "path": [
+        "claude-teams"
+      ],
+      "usage": "orca claude-teams [claude args...]",
+      "flags": [],
+      "positionalArgs": []
+    },
+    {
+      "command": "clear",
+      "path": [
+        "clear"
+      ],
+      "usage": "orca clear --element <ref> [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "element",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "click",
+      "path": [
+        "click"
+      ],
+      "usage": "orca click --element <ref> [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "element",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "clipboard read",
+      "path": [
+        "clipboard",
+        "read"
+      ],
+      "usage": "orca clipboard read [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "clipboard write",
+      "path": [
+        "clipboard",
+        "write"
+      ],
+      "usage": "orca clipboard write --text <text> [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "text",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "computer capabilities",
+      "path": [
+        "computer",
+        "capabilities"
+      ],
+      "usage": "orca computer capabilities [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "computer click",
+      "path": [
+        "computer",
+        "click"
+      ],
+      "usage": "orca computer click --app <app> (--element-index <n> | --x <x> --y <y>) [--window-id <id> | --window-index <n>] [--click-count <n>] [--mouse-button <left|right|middle>] [--modifiers <modifier-chord>] [--restore-window] [--no-screenshot] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree",
+        "session",
+        "app",
+        "window-id",
+        "window-index",
+        "restore-window",
+        "no-screenshot",
+        "element-index",
+        "x",
+        "y",
+        "click-count",
+        "mouse-button",
+        "modifiers"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "computer drag",
+      "path": [
+        "computer",
+        "drag"
+      ],
+      "usage": "orca computer drag --app <app> (--from-element-index <n> --to-element-index <n> | --from-x <x> --from-y <y> --to-x <x> --to-y <y>) [--window-id <id> | --window-index <n>] [--restore-window] [--no-screenshot] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree",
+        "session",
+        "app",
+        "window-id",
+        "window-index",
+        "restore-window",
+        "no-screenshot",
+        "from-element-index",
+        "to-element-index",
+        "from-x",
+        "from-y",
+        "to-x",
+        "to-y"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "computer get-app-state",
+      "path": [
+        "computer",
+        "get-app-state"
+      ],
+      "usage": "orca computer get-app-state --app <name|bundle|pid:N> [--window-id <id> | --window-index <n>] [--worktree <selector> | --session <id>] [--restore-window] [--no-screenshot] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree",
+        "session",
+        "app",
+        "window-id",
+        "window-index",
+        "restore-window",
+        "no-screenshot"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "computer hotkey",
+      "path": [
+        "computer",
+        "hotkey"
+      ],
+      "usage": "orca computer hotkey --app <app> --key <key-combo> [--window-id <id> | --window-index <n>] [--restore-window] [--no-screenshot] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree",
+        "session",
+        "app",
+        "window-id",
+        "window-index",
+        "restore-window",
+        "no-screenshot",
+        "key"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "computer list-apps",
+      "path": [
+        "computer",
+        "list-apps"
+      ],
+      "usage": "orca computer list-apps [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "computer list-windows",
+      "path": [
+        "computer",
+        "list-windows"
+      ],
+      "usage": "orca computer list-windows --app <name|bundle|pid:N> [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "app"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "computer paste-text",
+      "path": [
+        "computer",
+        "paste-text"
+      ],
+      "usage": "orca computer paste-text --app <app> (--text <text> | --text-stdin) [--window-id <id> | --window-index <n>] [--restore-window] [--no-screenshot] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree",
+        "session",
+        "app",
+        "window-id",
+        "window-index",
+        "restore-window",
+        "no-screenshot",
+        "text",
+        "text-stdin"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "computer perform-secondary-action",
+      "path": [
+        "computer",
+        "perform-secondary-action"
+      ],
+      "usage": "orca computer perform-secondary-action --app <app> --element-index <n> --action <name> [--window-id <id> | --window-index <n>] [--restore-window] [--no-screenshot] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree",
+        "session",
+        "app",
+        "window-id",
+        "window-index",
+        "restore-window",
+        "no-screenshot",
+        "element-index",
+        "action"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "computer permissions",
+      "path": [
+        "computer",
+        "permissions"
+      ],
+      "usage": "orca computer permissions [--id <accessibility|screenshots>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "id"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "computer press-key",
+      "path": [
+        "computer",
+        "press-key"
+      ],
+      "usage": "orca computer press-key --app <app> --key <key> [--window-id <id> | --window-index <n>] [--restore-window] [--no-screenshot] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree",
+        "session",
+        "app",
+        "window-id",
+        "window-index",
+        "restore-window",
+        "no-screenshot",
+        "key"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "computer scroll",
+      "path": [
+        "computer",
+        "scroll"
+      ],
+      "usage": "orca computer scroll --app <app> (--element-index <n> | --x <x> --y <y>) --direction <up|down|left|right> [--window-id <id> | --window-index <n>] [--pages <n>] [--restore-window] [--no-screenshot] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree",
+        "session",
+        "app",
+        "window-id",
+        "window-index",
+        "restore-window",
+        "no-screenshot",
+        "element-index",
+        "x",
+        "y",
+        "direction",
+        "pages"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "computer set-value",
+      "path": [
+        "computer",
+        "set-value"
+      ],
+      "usage": "orca computer set-value --app <app> --element-index <n> (--value <text> | --value-stdin) [--window-id <id> | --window-index <n>] [--restore-window] [--no-screenshot] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree",
+        "session",
+        "app",
+        "window-id",
+        "window-index",
+        "restore-window",
+        "no-screenshot",
+        "element-index",
+        "value",
+        "value-stdin"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "computer type-text",
+      "path": [
+        "computer",
+        "type-text"
+      ],
+      "usage": "orca computer type-text --app <app> (--text <text> | --text-stdin) [--window-id <id> | --window-index <n>] [--restore-window] [--no-screenshot] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree",
+        "session",
+        "app",
+        "window-id",
+        "window-index",
+        "restore-window",
+        "no-screenshot",
+        "text",
+        "text-stdin"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "console",
+      "path": [
+        "console"
+      ],
+      "usage": "orca console [--limit <n>] [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "limit",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "cookie delete",
+      "path": [
+        "cookie",
+        "delete"
+      ],
+      "usage": "orca cookie delete --name <n> [--domain <d>] [--url <u>] [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "name",
+        "domain",
+        "url",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "cookie get",
+      "path": [
+        "cookie",
+        "get"
+      ],
+      "usage": "orca cookie get [--url <url>] [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "url",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "cookie set",
+      "path": [
+        "cookie",
+        "set"
+      ],
+      "usage": "orca cookie set --name <n> --value <v> [--domain <d>] [--path <p>] [--secure] [--httpOnly] [--sameSite <s>] [--expires <epoch>] [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "name",
+        "value",
+        "domain",
+        "path",
+        "secure",
+        "httpOnly",
+        "sameSite",
+        "expires",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "dblclick",
+      "path": [
+        "dblclick"
+      ],
+      "usage": "orca dblclick --element <ref> [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "element",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "diagnostics memory",
+      "path": [
+        "diagnostics",
+        "memory"
+      ],
+      "usage": "orca diagnostics memory [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "dialog accept",
+      "path": [
+        "dialog",
+        "accept"
+      ],
+      "usage": "orca dialog accept [--text <text>] [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "text",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "dialog dismiss",
+      "path": [
+        "dialog",
+        "dismiss"
+      ],
+      "usage": "orca dialog dismiss [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "download",
+      "path": [
+        "download"
+      ],
+      "usage": "orca download --selector <ref> --path <path> [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "selector",
+        "path",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "drag",
+      "path": [
+        "drag"
+      ],
+      "usage": "orca drag --from <ref> --to <ref> [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "from",
+        "to",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "emulator attach",
+      "path": [
+        "emulator",
+        "attach"
+      ],
+      "usage": "orca emulator attach [device] [--worktree <selector>] [--focus] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree",
+        "focus",
+        "device"
+      ],
+      "positionalArgs": [
+        "device"
+      ]
+    },
+    {
+      "command": "emulator ax",
+      "path": [
+        "emulator",
+        "ax"
+      ],
+      "usage": "orca emulator ax [--device <id>] [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "device",
+        "emulator",
+        "worktree"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "emulator button",
+      "path": [
+        "emulator",
+        "button"
+      ],
+      "usage": "orca emulator button <name> [--device <id>] [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "device",
+        "emulator",
+        "worktree",
+        "name"
+      ],
+      "positionalArgs": [
+        "name"
+      ]
+    },
+    {
+      "command": "emulator devices",
+      "path": [
+        "emulator",
+        "devices"
+      ],
+      "usage": "orca emulator devices [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "emulator exec",
+      "path": [
+        "emulator",
+        "exec"
+      ],
+      "usage": "orca emulator exec --command <cmd> [--device <id>] [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "command",
+        "device",
+        "emulator",
+        "worktree"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "emulator gesture",
+      "path": [
+        "emulator",
+        "gesture"
+      ],
+      "usage": "orca emulator gesture '<json>' [--device <id>] [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "points",
+        "device",
+        "emulator",
+        "worktree"
+      ],
+      "positionalArgs": [
+        "points"
+      ]
+    },
+    {
+      "command": "emulator install",
+      "path": [
+        "emulator",
+        "install"
+      ],
+      "usage": "orca emulator install <apkPath> [--reinstall] [--device <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "device",
+        "emulator",
+        "worktree",
+        "path",
+        "reinstall"
+      ],
+      "positionalArgs": [
+        "path"
+      ]
+    },
+    {
+      "command": "emulator kill",
+      "path": [
+        "emulator",
+        "kill"
+      ],
+      "usage": "orca emulator kill [--device <id>] [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "device",
+        "emulator",
+        "worktree"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "emulator launch",
+      "path": [
+        "emulator",
+        "launch"
+      ],
+      "usage": "orca emulator launch <package> [--activity <name>] [--device <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "device",
+        "emulator",
+        "worktree",
+        "package",
+        "activity"
+      ],
+      "positionalArgs": [
+        "package"
+      ]
+    },
+    {
+      "command": "emulator list",
+      "path": [
+        "emulator",
+        "list"
+      ],
+      "usage": "orca emulator list [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "emulator logcat",
+      "path": [
+        "emulator",
+        "logcat"
+      ],
+      "usage": "orca emulator logcat [--lines <n>] [--device <id>] [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "device",
+        "emulator",
+        "worktree",
+        "lines"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "emulator permissions",
+      "path": [
+        "emulator",
+        "permissions"
+      ],
+      "usage": "orca emulator permissions <grant|revoke> <package> <permission> [--device <id>] [--json]\n       orca emulator permissions reset [--device <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "device",
+        "emulator",
+        "worktree",
+        "op",
+        "package",
+        "permission"
+      ],
+      "positionalArgs": [
+        "op",
+        "package",
+        "permission"
+      ]
+    },
+    {
+      "command": "emulator rotate",
+      "path": [
+        "emulator",
+        "rotate"
+      ],
+      "usage": "orca emulator rotate <orientation> [--device <id>] [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "device",
+        "emulator",
+        "worktree",
+        "orientation"
+      ],
+      "positionalArgs": [
+        "orientation"
+      ]
+    },
+    {
+      "command": "emulator shutdown",
+      "path": [
+        "emulator",
+        "shutdown"
+      ],
+      "usage": "orca emulator shutdown [--device <id>] [--emulator <id>] [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "device",
+        "emulator",
+        "worktree"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "emulator tap",
+      "path": [
+        "emulator",
+        "tap"
+      ],
+      "usage": "orca emulator tap <x> <y> [--device <id>] [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "device",
+        "emulator",
+        "worktree",
+        "x",
+        "y"
+      ],
+      "positionalArgs": [
+        "x",
+        "y"
+      ]
+    },
+    {
+      "command": "emulator type",
+      "path": [
+        "emulator",
+        "type"
+      ],
+      "usage": "orca emulator type <text> [--device <id>] [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "text",
+        "device",
+        "emulator",
+        "worktree"
+      ],
+      "positionalArgs": [
+        "text"
+      ]
+    },
+    {
+      "command": "environment add",
+      "path": [
+        "environment",
+        "add"
+      ],
+      "usage": "orca environment add --name <name> --pairing-code <code> [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "name",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "environment cancel-stop",
+      "path": [
+        "environment",
+        "cancel-stop"
+      ],
+      "usage": "orca environment cancel-stop --environment <selector> [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "environment forget",
+      "path": [
+        "environment",
+        "forget"
+      ],
+      "usage": "orca environment forget --environment <selector> --yes [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "yes",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "environment list",
+      "path": [
+        "environment",
+        "list"
+      ],
+      "usage": "orca environment list [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "environment recover",
+      "path": [
+        "environment",
+        "recover"
+      ],
+      "usage": "orca environment recover --environment <selector> [--accept-changed-state --yes] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "accept-changed-state",
+        "yes",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "environment rm",
+      "path": [
+        "environment",
+        "rm"
+      ],
+      "usage": "orca environment rm --environment <selector> [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "environment rollback",
+      "path": [
+        "environment",
+        "rollback"
+      ],
+      "usage": "orca environment rollback --environment <selector> [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "environment show",
+      "path": [
+        "environment",
+        "show"
+      ],
+      "usage": "orca environment show --environment <selector> [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "environment status",
+      "path": [
+        "environment",
+        "status"
+      ],
+      "usage": "orca environment status --environment <selector> [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "environment stop",
+      "path": [
+        "environment",
+        "stop"
+      ],
+      "usage": "orca environment stop --environment <selector> --yes [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "yes",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "environment update",
+      "path": [
+        "environment",
+        "update"
+      ],
+      "usage": "orca environment update --environment <selector> [--force] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "force",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "eval",
+      "path": [
+        "eval"
+      ],
+      "usage": "orca eval --expression <js> [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "expression",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "exec",
+      "path": [
+        "exec"
+      ],
+      "usage": "orca exec --command \"<agent-browser command>\" [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "command",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "file diff",
+      "path": [
+        "file",
+        "diff"
+      ],
+      "usage": "orca file diff <path> [--staged] [--worktree <selector>] [--focus] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "path",
+        "staged",
+        "worktree",
+        "focus"
+      ],
+      "positionalArgs": [
+        "path"
+      ]
+    },
+    {
+      "command": "file open",
+      "path": [
+        "file",
+        "open"
+      ],
+      "usage": "orca file open <path> [--line <n> [--column <n>]] [--worktree <selector>] [--focus] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "path",
+        "line",
+        "column",
+        "worktree",
+        "focus"
+      ],
+      "positionalArgs": [
+        "path"
+      ]
+    },
+    {
+      "command": "file open-changed",
+      "path": [
+        "file",
+        "open-changed"
+      ],
+      "usage": "orca file open-changed [--mode edit|diff|both] [--worktree <selector>] [--focus] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "mode",
+        "worktree",
+        "focus"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "fill",
+      "path": [
+        "fill"
+      ],
+      "usage": "orca fill --element <ref> --value <text> [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "element",
+        "value",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "find",
+      "path": [
+        "find"
+      ],
+      "usage": "orca find --locator <type> --value <text> --action <action> [--text <text>] [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "locator",
+        "value",
+        "action",
+        "text",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "focus",
+      "path": [
+        "focus"
+      ],
+      "usage": "orca focus --element <ref> [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "element",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "forward",
+      "path": [
+        "forward"
+      ],
+      "usage": "orca forward [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "full-screenshot",
+      "path": [
+        "full-screenshot"
+      ],
+      "usage": "orca full-screenshot [--format <png|jpeg>] [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "format",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "geolocation",
+      "path": [
+        "geolocation"
+      ],
+      "usage": "orca geolocation --latitude <lat> --longitude <lon> [--accuracy <n>] [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "latitude",
+        "longitude",
+        "accuracy",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "get",
+      "path": [
+        "get"
+      ],
+      "usage": "orca get --what <property> [--element <ref>] [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "what",
+        "element",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "goto",
+      "path": [
+        "goto"
+      ],
+      "usage": "orca goto --url <url> [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "url",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "highlight",
+      "path": [
+        "highlight"
+      ],
+      "usage": "orca highlight --selector <ref> [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "selector",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "host list",
+      "path": [
+        "host",
+        "list"
+      ],
+      "usage": "orca host list [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "host name",
+      "path": [
+        "host",
+        "name"
+      ],
+      "usage": "orca host name [--name <name>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "name",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "hover",
+      "path": [
+        "hover"
+      ],
+      "usage": "orca hover --element <ref> [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "element",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "inserttext",
+      "path": [
+        "inserttext"
+      ],
+      "usage": "orca inserttext --text <text> [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "text",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "intercept disable",
+      "path": [
+        "intercept",
+        "disable"
+      ],
+      "usage": "orca intercept disable [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "intercept enable",
+      "path": [
+        "intercept",
+        "enable"
+      ],
+      "usage": "orca intercept enable [--patterns <glob,...>] [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "patterns",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "intercept list",
+      "path": [
+        "intercept",
+        "list"
+      ],
+      "usage": "orca intercept list [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "is",
+      "path": [
+        "is"
+      ],
+      "usage": "orca is --what <state> --element <ref> [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "what",
+        "element",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "jira assignee clear",
+      "path": [
+        "jira",
+        "assignee",
+        "clear"
+      ],
+      "usage": "orca jira assignee clear <key> [--site <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "site",
+        "key"
+      ],
+      "positionalArgs": [
+        "key"
+      ]
+    },
+    {
+      "command": "jira assignee list",
+      "path": [
+        "jira",
+        "assignee",
+        "list"
+      ],
+      "usage": "orca jira assignee list <key> [--query <text>] [--site <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "site",
+        "key",
+        "query"
+      ],
+      "positionalArgs": [
+        "key"
+      ]
+    },
+    {
+      "command": "jira assignee set",
+      "path": [
+        "jira",
+        "assignee",
+        "set"
+      ],
+      "usage": "orca jira assignee set <key> --to-id <accountId> [--site <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "site",
+        "key",
+        "to-id"
+      ],
+      "positionalArgs": [
+        "key"
+      ]
+    },
+    {
+      "command": "jira comment add",
+      "path": [
+        "jira",
+        "comment",
+        "add"
+      ],
+      "usage": "orca jira comment add <key> (--body <text> | --body-file <path|->) [--site <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "site",
+        "key",
+        "body",
+        "body-file"
+      ],
+      "positionalArgs": [
+        "key"
+      ]
+    },
+    {
+      "command": "jira comment list",
+      "path": [
+        "jira",
+        "comment",
+        "list"
+      ],
+      "usage": "orca jira comment list <key> [--site <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "site",
+        "key"
+      ],
+      "positionalArgs": [
+        "key"
+      ]
+    },
+    {
+      "command": "jira connection",
+      "path": [
+        "jira",
+        "connection"
+      ],
+      "usage": "orca jira connection [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "jira create",
+      "path": [
+        "jira",
+        "create"
+      ],
+      "usage": "orca jira create --project <idOrKey> --type <issueTypeId> --title <text> [--body <text> | --body-file <path|->] [--fields-json <json>] [--user-field <key>...] [--site <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "site",
+        "project",
+        "type",
+        "title",
+        "body",
+        "body-file",
+        "fields-json",
+        "user-field"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "jira issue",
+      "path": [
+        "jira",
+        "issue"
+      ],
+      "usage": "orca jira issue <key> [--site <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "site",
+        "key"
+      ],
+      "positionalArgs": [
+        "key"
+      ]
+    },
+    {
+      "command": "jira label add",
+      "path": [
+        "jira",
+        "label",
+        "add"
+      ],
+      "usage": "orca jira label add <key> --label <name>... [--site <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "site",
+        "key",
+        "label"
+      ],
+      "positionalArgs": [
+        "key"
+      ]
+    },
+    {
+      "command": "jira label rm",
+      "path": [
+        "jira",
+        "label",
+        "rm"
+      ],
+      "usage": "orca jira label rm <key> --label <name>... [--site <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "site",
+        "key",
+        "label"
+      ],
+      "positionalArgs": [
+        "key"
+      ]
+    },
+    {
+      "command": "jira label set",
+      "path": [
+        "jira",
+        "label",
+        "set"
+      ],
+      "usage": "orca jira label set <key> --label <name> [--label <name>...] [--site <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "site",
+        "key",
+        "label"
+      ],
+      "positionalArgs": [
+        "key"
+      ]
+    },
+    {
+      "command": "jira list",
+      "path": [
+        "jira",
+        "list"
+      ],
+      "usage": "orca jira list [--filter assigned|reported|all|done] [--limit <n>] [--site <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "site",
+        "filter",
+        "limit"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "jira priority clear",
+      "path": [
+        "jira",
+        "priority",
+        "clear"
+      ],
+      "usage": "orca jira priority clear <key> [--site <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "site",
+        "key"
+      ],
+      "positionalArgs": [
+        "key"
+      ]
+    },
+    {
+      "command": "jira priority list",
+      "path": [
+        "jira",
+        "priority",
+        "list"
+      ],
+      "usage": "orca jira priority list [--site <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "site"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "jira priority set",
+      "path": [
+        "jira",
+        "priority",
+        "set"
+      ],
+      "usage": "orca jira priority set <key> --to-id <priorityId> [--site <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "site",
+        "key",
+        "to-id"
+      ],
+      "positionalArgs": [
+        "key"
+      ]
+    },
+    {
+      "command": "jira project fields",
+      "path": [
+        "jira",
+        "project",
+        "fields"
+      ],
+      "usage": "orca jira project fields --project <idOrKey> --type <id> [--site <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "site",
+        "project",
+        "type"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "jira project list",
+      "path": [
+        "jira",
+        "project",
+        "list"
+      ],
+      "usage": "orca jira project list [--site <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "site"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "jira project types",
+      "path": [
+        "jira",
+        "project",
+        "types"
+      ],
+      "usage": "orca jira project types --project <idOrKey> [--site <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "site",
+        "project"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "jira search",
+      "path": [
+        "jira",
+        "search"
+      ],
+      "usage": "orca jira search <jql> [--limit <n>] [--site <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "site",
+        "limit",
+        "jql"
+      ],
+      "positionalArgs": [
+        "jql"
+      ]
+    },
+    {
+      "command": "jira status list",
+      "path": [
+        "jira",
+        "status",
+        "list"
+      ],
+      "usage": "orca jira status list <key> [--site <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "site",
+        "key"
+      ],
+      "positionalArgs": [
+        "key"
+      ]
+    },
+    {
+      "command": "jira status set",
+      "path": [
+        "jira",
+        "status",
+        "set"
+      ],
+      "usage": "orca jira status set <key> (--to <name> | --to-id <transitionId>) [--site <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "site",
+        "key",
+        "to",
+        "to-id"
+      ],
+      "positionalArgs": [
+        "key"
+      ]
+    },
+    {
+      "command": "keypress",
+      "path": [
+        "keypress"
+      ],
+      "usage": "orca keypress --key <name> [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "key",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "linear assignee clear",
+      "path": [
+        "linear",
+        "assignee",
+        "clear"
+      ],
+      "usage": "orca linear assignee clear [<id>] [--current] [--workspace <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "current",
+        "workspace",
+        "id"
+      ],
+      "positionalArgs": [
+        "id"
+      ]
+    },
+    {
+      "command": "linear assignee set",
+      "path": [
+        "linear",
+        "assignee",
+        "set"
+      ],
+      "usage": "orca linear assignee set [<id>] [--current] (--me | --to-id <userId>) [--workspace <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "current",
+        "me",
+        "to-id",
+        "workspace",
+        "id"
+      ],
+      "positionalArgs": [
+        "id"
+      ]
+    },
+    {
+      "command": "linear attach",
+      "path": [
+        "linear",
+        "attach"
+      ],
+      "usage": "orca linear attach [<id>] [--current] --url <url> [--title <title>] [--write-id <uuid>] [--workspace <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "current",
+        "url",
+        "title",
+        "write-id",
+        "workspace",
+        "id"
+      ],
+      "positionalArgs": [
+        "id"
+      ]
+    },
+    {
+      "command": "linear comment add",
+      "path": [
+        "linear",
+        "comment",
+        "add"
+      ],
+      "usage": "orca linear comment add [<id>] [--current] (--body <text> | --body-file <path|->) [--reply-to <commentId>] [--write-id <uuid>] [--workspace <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "current",
+        "body",
+        "body-file",
+        "reply-to",
+        "write-id",
+        "workspace",
+        "id"
+      ],
+      "positionalArgs": [
+        "id"
+      ]
+    },
+    {
+      "command": "linear create",
+      "path": [
+        "linear",
+        "create"
+      ],
+      "usage": "orca linear create --title <title> [--body <text> | --body-file <path|->] [--team <key|id>] [--project <projectId-or-exact-name>] [--state <stateId|exact-name>] [--assignee me|<userId>] [--priority none|low|medium|high|urgent] [--estimate <number>] [--due-date <yyyy-mm-dd>] [--label <labelId-or-exact-name>]... [--parent <id> | --parent-current] [--write-id <uuid>] [--workspace <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "title",
+        "body",
+        "body-file",
+        "team",
+        "project",
+        "state",
+        "assignee",
+        "priority",
+        "estimate",
+        "due-date",
+        "label",
+        "parent",
+        "parent-current",
+        "write-id",
+        "workspace"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "linear due-date clear",
+      "path": [
+        "linear",
+        "due-date",
+        "clear"
+      ],
+      "usage": "orca linear due-date clear [<id>] [--current] [--workspace <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "current",
+        "workspace",
+        "id"
+      ],
+      "positionalArgs": [
+        "id"
+      ]
+    },
+    {
+      "command": "linear due-date set",
+      "path": [
+        "linear",
+        "due-date",
+        "set"
+      ],
+      "usage": "orca linear due-date set [<id>] [--current] --to <yyyy-mm-dd> [--workspace <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "current",
+        "to",
+        "workspace",
+        "id"
+      ],
+      "positionalArgs": [
+        "id"
+      ]
+    },
+    {
+      "command": "linear estimate clear",
+      "path": [
+        "linear",
+        "estimate",
+        "clear"
+      ],
+      "usage": "orca linear estimate clear [<id>] [--current] [--workspace <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "current",
+        "workspace",
+        "id"
+      ],
+      "positionalArgs": [
+        "id"
+      ]
+    },
+    {
+      "command": "linear estimate set",
+      "path": [
+        "linear",
+        "estimate",
+        "set"
+      ],
+      "usage": "orca linear estimate set [<id>] [--current] --to <number> [--workspace <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "current",
+        "to",
+        "workspace",
+        "id"
+      ],
+      "positionalArgs": [
+        "id"
+      ]
+    },
+    {
+      "command": "linear issue",
+      "path": [
+        "linear",
+        "issue"
+      ],
+      "usage": "orca linear issue [<id>] [--current] [--comments] [--children] [--depth <n>] [--attachments] [--relations] [--activity] [--full] [--workspace <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "current",
+        "comments",
+        "children",
+        "depth",
+        "attachments",
+        "relations",
+        "activity",
+        "full",
+        "workspace",
+        "id"
+      ],
+      "positionalArgs": [
+        "id"
+      ]
+    },
+    {
+      "command": "linear label add",
+      "path": [
+        "linear",
+        "label",
+        "add"
+      ],
+      "usage": "orca linear label add [<id>] [--current] --label <labelId-or-exact-name>... [--workspace <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "current",
+        "label",
+        "workspace",
+        "id"
+      ],
+      "positionalArgs": [
+        "id"
+      ]
+    },
+    {
+      "command": "linear label remove",
+      "path": [
+        "linear",
+        "label",
+        "remove"
+      ],
+      "usage": "orca linear label remove [<id>] [--current] --label <labelId-or-exact-name>... [--workspace <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "current",
+        "label",
+        "workspace",
+        "id"
+      ],
+      "positionalArgs": [
+        "id"
+      ]
+    },
+    {
+      "command": "linear label set",
+      "path": [
+        "linear",
+        "label",
+        "set"
+      ],
+      "usage": "orca linear label set [<id>] [--current] --label <labelId-or-exact-name>... [--workspace <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "current",
+        "label",
+        "workspace",
+        "id"
+      ],
+      "positionalArgs": [
+        "id"
+      ]
+    },
+    {
+      "command": "linear list",
+      "path": [
+        "linear",
+        "list"
+      ],
+      "usage": "orca linear list [--filter assigned|created|all|completed|open] [--team <key|id>] [--limit <n>] [--workspace <id>|all] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "filter",
+        "team",
+        "limit",
+        "workspace"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "linear list-issues",
+      "path": [
+        "linear",
+        "list-issues"
+      ],
+      "usage": "orca linear list-issues [--team <team>] [--cycle <cycle>] [--label <label>] [--limit <n>] [--query <text>] [--state <state>] [--cursor <cursor>] [--order-by createdAt|updatedAt] [--project <project>] [--release <release>] [--assignee <user|me|null>] [--delegate <user|me|null>] [--parent-id <issue|null>] [--priority <0-4>] [--created-at <datetime|duration>] [--updated-at <datetime|duration>] [--include-archived] [--workspace <id>|all] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "team",
+        "cycle",
+        "label",
+        "limit",
+        "query",
+        "state",
+        "cursor",
+        "order-by",
+        "project",
+        "release",
+        "assignee",
+        "delegate",
+        "parent-id",
+        "priority",
+        "created-at",
+        "updated-at",
+        "include-archived",
+        "workspace"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "linear priority clear",
+      "path": [
+        "linear",
+        "priority",
+        "clear"
+      ],
+      "usage": "orca linear priority clear [<id>] [--current] [--workspace <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "current",
+        "workspace",
+        "id"
+      ],
+      "positionalArgs": [
+        "id"
+      ]
+    },
+    {
+      "command": "linear priority set",
+      "path": [
+        "linear",
+        "priority",
+        "set"
+      ],
+      "usage": "orca linear priority set [<id>] [--current] --to none|low|medium|high|urgent [--workspace <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "current",
+        "to",
+        "workspace",
+        "id"
+      ],
+      "positionalArgs": [
+        "id"
+      ]
+    },
+    {
+      "command": "linear project list",
+      "path": [
+        "linear",
+        "project",
+        "list"
+      ],
+      "usage": "orca linear project list [--query <text>] [--limit <n>] [--workspace <id>|all] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "query",
+        "limit",
+        "workspace"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "linear relation add",
+      "path": [
+        "linear",
+        "relation",
+        "add"
+      ],
+      "usage": "orca linear relation add [<id>] [--current] --related <issue> --type blocks|blocked-by|related|duplicate-of [--workspace <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "current",
+        "related",
+        "type",
+        "workspace",
+        "id"
+      ],
+      "positionalArgs": [
+        "id"
+      ]
+    },
+    {
+      "command": "linear relation remove",
+      "path": [
+        "linear",
+        "relation",
+        "remove"
+      ],
+      "usage": "orca linear relation remove [<id>] [--current] --related <issue> --type blocks|blocked-by|related|duplicate-of [--workspace <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "current",
+        "related",
+        "type",
+        "workspace",
+        "id"
+      ],
+      "positionalArgs": [
+        "id"
+      ]
+    },
+    {
+      "command": "linear save-issue",
+      "path": [
+        "linear",
+        "save-issue"
+      ],
+      "usage": "orca linear save-issue [<id>] [--current] [--team <key|id>] [--title <title>] [--description <text> | --body-file <path|->] [--state <state>] [--assignee me|<user>|null] [--priority none|low|medium|high|urgent] [--estimate <number>|null] [--due-date <yyyy-mm-dd>|null] [--label <label>...] [--project <project>|null] [--parent-id <issue>|null] [--write-id <uuid>] [--workspace <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "current",
+        "team",
+        "title",
+        "description",
+        "body",
+        "body-file",
+        "state",
+        "assignee",
+        "priority",
+        "estimate",
+        "due-date",
+        "label",
+        "project",
+        "parent-id",
+        "write-id",
+        "workspace",
+        "id"
+      ],
+      "positionalArgs": [
+        "id"
+      ]
+    },
+    {
+      "command": "linear search",
+      "path": [
+        "linear",
+        "search"
+      ],
+      "usage": "orca linear search <query> [--limit <n>] [--workspace <id>|all] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "limit",
+        "workspace",
+        "query"
+      ],
+      "positionalArgs": [
+        "query"
+      ]
+    },
+    {
+      "command": "linear status set",
+      "path": [
+        "linear",
+        "status",
+        "set"
+      ],
+      "usage": "orca linear status set [<id>] [--current] --to <state> [--workspace <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "current",
+        "to",
+        "workspace",
+        "id"
+      ],
+      "positionalArgs": [
+        "id"
+      ]
+    },
+    {
+      "command": "linear team labels",
+      "path": [
+        "linear",
+        "team",
+        "labels"
+      ],
+      "usage": "orca linear team labels --team <key|id> [--workspace <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "team",
+        "workspace"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "linear team list",
+      "path": [
+        "linear",
+        "team",
+        "list"
+      ],
+      "usage": "orca linear team list [--workspace <id>|all] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "workspace"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "linear team members",
+      "path": [
+        "linear",
+        "team",
+        "members"
+      ],
+      "usage": "orca linear team members --team <key|id> [--workspace <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "team",
+        "workspace"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "linear team states",
+      "path": [
+        "linear",
+        "team",
+        "states"
+      ],
+      "usage": "orca linear team states --team <key|id> [--workspace <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "team",
+        "workspace"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "mouse down",
+      "path": [
+        "mouse",
+        "down"
+      ],
+      "usage": "orca mouse down [--button <left|right|middle>] [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "button",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "mouse move",
+      "path": [
+        "mouse",
+        "move"
+      ],
+      "usage": "orca mouse move --x <n> --y <n> [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "x",
+        "y",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "mouse up",
+      "path": [
+        "mouse",
+        "up"
+      ],
+      "usage": "orca mouse up [--button <left|right|middle>] [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "button",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "mouse wheel",
+      "path": [
+        "mouse",
+        "wheel"
+      ],
+      "usage": "orca mouse wheel --dy <n> [--dx <n>] [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "dy",
+        "dx",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "network",
+      "path": [
+        "network"
+      ],
+      "usage": "orca network [--limit <n>] [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "limit",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "open",
+      "path": [
+        "open"
+      ],
+      "usage": "orca open [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "open-url",
+      "path": [
+        "open-url"
+      ],
+      "usage": "orca open-url --url <url> [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "url",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "orchestration ask",
+      "path": [
+        "orchestration",
+        "ask"
+      ],
+      "usage": "orca orchestration ask (--question <text> | --resume <message_id>) [--to <run:id>] [--run <run_id>] [--options <csv>] [--timeout-ms <n>] [--from <handle>] [--retry-request <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "to",
+        "run",
+        "question",
+        "resume",
+        "dispatch-capability",
+        "options",
+        "timeout-ms",
+        "from",
+        "retry-request"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "orchestration check",
+      "path": [
+        "orchestration",
+        "check"
+      ],
+      "usage": "orca orchestration check [--terminal <handle>] [--run <run_id>] [--ack <delivery_id>] [--unread | --peek | --all] [--types <type,...>] [--format] [--wait] [--timeout-ms <n>] [--retry-request <id>] [--json]\n  default: return the bound Run's oldest unacknowledged FIFO batch.\n  --ack: acknowledge the prior whole batch before checking/waiting.\n  --peek: return only unread messages without marking them read.\n  --all: return every message for the handle; does not mark read.\n  --wait: block until a matching message arrives or --timeout-ms expires.\n          Emits JSON keepalive lines to stderr every 15s so the caller can\n          tell the process is alive. `_keepalive` is unrelated to heartbeat\n          messages; `_heartbeat` remains as a deprecated compatibility alias.\n          Filter with `jq \"select(._keepalive|not)\"` when merging streams.",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "terminal",
+        "run",
+        "ack",
+        "unread",
+        "peek",
+        "all",
+        "types",
+        "format",
+        "wait",
+        "timeout-ms",
+        "retry-request"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "orchestration coordinator-start",
+      "path": [
+        "orchestration",
+        "coordinator-start"
+      ],
+      "usage": "orca orchestration coordinator-start --spec <text> [--from <handle>] [--poll-interval-ms <n>] [--max-concurrent <n>] [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "spec",
+        "from",
+        "poll-interval-ms",
+        "max-concurrent",
+        "worktree"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "orchestration coordinator-stop",
+      "path": [
+        "orchestration",
+        "coordinator-stop"
+      ],
+      "usage": "orca orchestration coordinator-stop [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "orchestration dispatch",
+      "path": [
+        "orchestration",
+        "dispatch"
+      ],
+      "usage": "orca orchestration dispatch --task <task_id> --to <handle> [--from <handle>] [--run <run_id>] [--inject] [--dry-run] [--return-preamble] [--retry-request <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "task",
+        "to",
+        "from",
+        "run",
+        "inject",
+        "dry-run",
+        "return-preamble",
+        "retry-request"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "orchestration dispatch-show",
+      "path": [
+        "orchestration",
+        "dispatch-show"
+      ],
+      "usage": "orca orchestration dispatch-show --task <task_id> [--preamble] [--from <handle>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "task",
+        "preamble",
+        "from"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "orchestration gate-create",
+      "path": [
+        "orchestration",
+        "gate-create"
+      ],
+      "usage": "orca orchestration gate-create --task <task_id> --question <text> [--options <json_array>] [--from <handle>] [--retry-request <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "task",
+        "question",
+        "options",
+        "from",
+        "retry-request"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "orchestration gate-list",
+      "path": [
+        "orchestration",
+        "gate-list"
+      ],
+      "usage": "orca orchestration gate-list [--task <task_id>] [--status <status>] [--run <run_id>] [--from <handle>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "task",
+        "status",
+        "run",
+        "from"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "orchestration gate-resolve",
+      "path": [
+        "orchestration",
+        "gate-resolve"
+      ],
+      "usage": "orca orchestration gate-resolve --id <gate_id> --resolution <text> [--from <handle>] [--retry-request <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "id",
+        "resolution",
+        "from",
+        "retry-request"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "orchestration inbox",
+      "path": [
+        "orchestration",
+        "inbox"
+      ],
+      "usage": "orca orchestration inbox [--limit <n>] [--terminal <handle>] [--full] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "limit",
+        "terminal",
+        "full"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "orchestration reply",
+      "path": [
+        "orchestration",
+        "reply"
+      ],
+      "usage": "orca orchestration reply --id <msg_id> --body <text> [--run <run_id>] [--from <handle>] [--retry-request <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "id",
+        "body",
+        "run",
+        "from",
+        "retry-request"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "orchestration request-show",
+      "path": [
+        "orchestration",
+        "request-show"
+      ],
+      "usage": "orca orchestration request-show --request <request_id> [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "request"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "orchestration reset",
+      "path": [
+        "orchestration",
+        "reset"
+      ],
+      "usage": "orca orchestration reset (--all | --tasks | --messages) [--retry-request <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "all",
+        "tasks",
+        "messages",
+        "retry-request"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "orchestration run-create",
+      "path": [
+        "orchestration",
+        "run-create"
+      ],
+      "usage": "orca orchestration run-create --objective <text> [--from <handle>] [--retry-request <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "objective",
+        "from",
+        "retry-request"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "orchestration run-current",
+      "path": [
+        "orchestration",
+        "run-current"
+      ],
+      "usage": "orca orchestration run-current [--from <handle>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "from"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "orchestration run-list",
+      "path": [
+        "orchestration",
+        "run-list"
+      ],
+      "usage": "orca orchestration run-list [--limit <n>] [--cursor <cursor>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "limit",
+        "cursor"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "orchestration run-show",
+      "path": [
+        "orchestration",
+        "run-show"
+      ],
+      "usage": "orca orchestration run-show --id <run_id> [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "id"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "orchestration run-use",
+      "path": [
+        "orchestration",
+        "run-use"
+      ],
+      "usage": "orca orchestration run-use --id <run_id> [--from <handle>] [--takeover-legacy] [--retry-request <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "id",
+        "from",
+        "takeover-legacy",
+        "retry-request"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "orchestration send",
+      "path": [
+        "orchestration",
+        "send"
+      ],
+      "usage": "orca orchestration send --subject <text> [--to <run:id|dispatch:id|legacy_handle>] [--run <run_id>] [--from <handle>] [--body <text>] [--type <type>] [--priority <level>] [--thread-id <id>] [--payload <json>] [--task-id <id>] [--dispatch-id <id>] [--outcome <succeeded|failed>] [--files-modified <csv>] [--report-path <path>] [--phase <text>] [--retry-request <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "to",
+        "run",
+        "from",
+        "subject",
+        "body",
+        "type",
+        "priority",
+        "thread-id",
+        "payload",
+        "task-id",
+        "dispatch-id",
+        "dispatch-capability",
+        "retry-request",
+        "outcome",
+        "files-modified",
+        "report-path",
+        "phase"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "orchestration task-create",
+      "path": [
+        "orchestration",
+        "task-create"
+      ],
+      "usage": "orca orchestration task-create --spec <text> [--task-title <text>] [--display-name <text>] [--deps <json_array>] [--parent <task_id>] [--run <run_id>] [--from <handle>] [--retry-request <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "spec",
+        "task-title",
+        "display-name",
+        "deps",
+        "parent",
+        "run",
+        "from",
+        "retry-request"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "orchestration task-list",
+      "path": [
+        "orchestration",
+        "task-list"
+      ],
+      "usage": "orca orchestration task-list [--status <status>] [--ready] [--brief] [--run <run_id>] [--from <handle>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "status",
+        "ready",
+        "brief",
+        "run",
+        "from"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "orchestration task-update",
+      "path": [
+        "orchestration",
+        "task-update"
+      ],
+      "usage": "orca orchestration task-update --id <task_id> --status <status> [--result <text>] [--run <run_id>] [--from <handle>] [--retry-request <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "id",
+        "status",
+        "result",
+        "run",
+        "from",
+        "retry-request"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "orchestration worker-abandon",
+      "path": [
+        "orchestration",
+        "worker-abandon"
+      ],
+      "usage": "orca orchestration worker-abandon --dispatch <dispatch_id> [--retry-request <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "dispatch",
+        "retry-request"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "orchestration worker-list",
+      "path": [
+        "orchestration",
+        "worker-list"
+      ],
+      "usage": "orca orchestration worker-list [--run <run_id>] [--terminal-state <active|reclaimable|retained|release_pending|release_unknown|released>] [--include-remote] [--cursor <cursor>] [--limit <1-100>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "run",
+        "terminal-state",
+        "include-remote",
+        "cursor",
+        "limit"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "orchestration worker-read",
+      "path": [
+        "orchestration",
+        "worker-read"
+      ],
+      "usage": "orca orchestration worker-read --dispatch <dispatch_id> [--source <auto|transcript|terminal>] [--cursor <cursor>] [--limit <n>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "dispatch",
+        "source",
+        "cursor",
+        "limit"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "orchestration worker-release",
+      "path": [
+        "orchestration",
+        "worker-release"
+      ],
+      "usage": "orca orchestration worker-release --dispatch <dispatch_id> [--retry-request <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "dispatch",
+        "retry-request"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "orchestration worker-retain",
+      "path": [
+        "orchestration",
+        "worker-retain"
+      ],
+      "usage": "orca orchestration worker-retain --dispatch <dispatch_id> [--retry-request <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "dispatch",
+        "retry-request"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "orchestration worker-show",
+      "path": [
+        "orchestration",
+        "worker-show"
+      ],
+      "usage": "orca orchestration worker-show --dispatch <dispatch_id> [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "dispatch"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "orchestration worker-start",
+      "path": [
+        "orchestration",
+        "worker-start"
+      ],
+      "usage": "orca orchestration worker-start (--task <task_id> | --spec <text>) [--on <saved-environment>] [--worktree <current|selector|new-child|new-top-level>] (--agent <agent> | --terminal <handle>) [--task-title <text>] [--deps <json_array>] [--parent <task_id>] [--model <id>] [--effort <level>] [--name <name>] [--repo <selector>] [--base-branch <ref>] [--display-name <text>] [--comment <text>] [--setup <run|skip|inherit>] [--retry-of <dispatch_id>] [--timeout-ms <n>] [--run <run_id>] [--from <handle>] [--retry-request <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "task",
+        "spec",
+        "task-title",
+        "deps",
+        "parent",
+        "on",
+        "worktree",
+        "name",
+        "repo",
+        "base-branch",
+        "display-name",
+        "comment",
+        "setup",
+        "agent",
+        "model",
+        "effort",
+        "terminal",
+        "retry-of",
+        "timeout-ms",
+        "run",
+        "from",
+        "retry-request"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "orchestration worker-stop",
+      "path": [
+        "orchestration",
+        "worker-stop"
+      ],
+      "usage": "orca orchestration worker-stop --dispatch <dispatch_id> [--retry-request <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "dispatch",
+        "retry-request"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "pdf",
+      "path": [
+        "pdf"
+      ],
+      "usage": "orca pdf [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "profile state exports",
+      "path": [
+        "profile",
+        "state",
+        "exports"
+      ],
+      "usage": "orca profile state exports [--profile-id <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "profile-id",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "profile state rollback",
+      "path": [
+        "profile",
+        "state",
+        "rollback"
+      ],
+      "usage": "orca profile state rollback (--backup <id> | --revision <revision> | --current-json | --current-sqlite | --latest-json) [--profile-id <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "revision",
+        "backup",
+        "current-json",
+        "current-sqlite",
+        "latest-json",
+        "profile-id",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "project list",
+      "path": [
+        "project",
+        "list"
+      ],
+      "usage": "orca project list [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "project setup-clone",
+      "path": [
+        "project",
+        "setup-clone"
+      ],
+      "usage": "orca project setup-clone --project <id> --host <host-id> --url <clone-url> --destination <path> [--display-name <name>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "project",
+        "host",
+        "url",
+        "destination",
+        "display-name"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "project setup-create",
+      "path": [
+        "project",
+        "setup-create"
+      ],
+      "usage": "orca project setup-create --project <id> --host <host-id> [--setup-id <id>] [--path <path>] [--kind git|folder] [--display-name <name>] [--worktree-base-path <path>] [--git-username <name>] [--state ready|not-set-up|setting-up|error|unsupported] [--method imported-existing-folder|cloned|provisioned] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "project",
+        "host",
+        "setup-id",
+        "path",
+        "kind",
+        "display-name",
+        "worktree-base-path",
+        "git-username",
+        "state",
+        "method"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "project setup-delete",
+      "path": [
+        "project",
+        "setup-delete"
+      ],
+      "usage": "orca project setup-delete --setup <setup-id> [--force] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "setup",
+        "force"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "project setup-existing-folder",
+      "path": [
+        "project",
+        "setup-existing-folder"
+      ],
+      "usage": "orca project setup-existing-folder --project <id> --host <host-id> --path <path> [--kind git|folder] [--display-name <name>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "project",
+        "host",
+        "path",
+        "kind",
+        "display-name"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "project setup-update",
+      "path": [
+        "project",
+        "setup-update"
+      ],
+      "usage": "orca project setup-update --setup <setup-id> [--display-name <name>] [--path <path>] [--worktree-base-path <path>] [--git-username <name>] [--kind git|folder] [--state ready|not-set-up|setting-up|error|unsupported] [--method legacy-repo|imported-existing-folder|cloned|provisioned] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "setup",
+        "display-name",
+        "path",
+        "worktree-base-path",
+        "git-username",
+        "kind",
+        "state",
+        "method"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "project setups",
+      "path": [
+        "project",
+        "setups"
+      ],
+      "usage": "orca project setups [--project <id>] [--host <host-id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "project",
+        "host"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "reference add",
+      "path": [
+        "reference",
+        "add"
+      ],
+      "usage": "orca reference add <url-or-jira-key>... --worktree <selector> [--reference-site <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree",
+        "url",
+        "reference-site"
+      ],
+      "positionalArgs": [
+        "url"
+      ]
+    },
+    {
+      "command": "reference find",
+      "path": [
+        "reference",
+        "find"
+      ],
+      "usage": "orca reference find <url-or-issue-key> [--worktree <selector>|--repo <selector>] [--include-archived] [--limit <n>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "query",
+        "worktree",
+        "repo",
+        "include-archived",
+        "limit"
+      ],
+      "positionalArgs": [
+        "query"
+      ]
+    },
+    {
+      "command": "reference list",
+      "path": [
+        "reference",
+        "list"
+      ],
+      "usage": "orca reference list --worktree <selector> [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "reference remove",
+      "path": [
+        "reference",
+        "remove"
+      ],
+      "usage": "orca reference remove [<url>...] [--key <key>...] --worktree <selector> [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree",
+        "url",
+        "key"
+      ],
+      "positionalArgs": [
+        "url"
+      ]
+    },
+    {
+      "command": "reload",
+      "path": [
+        "reload"
+      ],
+      "usage": "orca reload [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "repo add",
+      "path": [
+        "repo",
+        "add"
+      ],
+      "usage": "orca repo add --path <path> [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "path"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "repo list",
+      "path": [
+        "repo",
+        "list"
+      ],
+      "usage": "orca repo list [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "repo search-refs",
+      "path": [
+        "repo",
+        "search-refs"
+      ],
+      "usage": "orca repo search-refs --repo <selector> --query <text> [--limit <n>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "repo",
+        "query",
+        "limit"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "repo set",
+      "path": [
+        "repo",
+        "set"
+      ],
+      "usage": "orca repo set --repo <selector> --external-worktree-visibility show|hide|inherit [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "repo",
+        "external-worktree-visibility"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "repo set-base-ref",
+      "path": [
+        "repo",
+        "set-base-ref"
+      ],
+      "usage": "orca repo set-base-ref --repo <selector> --ref <ref> [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "repo",
+        "ref"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "repo show",
+      "path": [
+        "repo",
+        "show"
+      ],
+      "usage": "orca repo show --repo <selector> [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "repo"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "screenshot",
+      "path": [
+        "screenshot"
+      ],
+      "usage": "orca screenshot [--format <png|jpeg>] [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "format",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "scroll",
+      "path": [
+        "scroll"
+      ],
+      "usage": "orca scroll --direction <up|down> [--amount <pixels>] [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "direction",
+        "amount",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "scrollintoview",
+      "path": [
+        "scrollintoview"
+      ],
+      "usage": "orca scrollintoview --element <ref> [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "element",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "search",
+      "path": [
+        "search"
+      ],
+      "usage": "orca search <query> [--scope conversation|all] [--fresh] [--limit <n>] [--cursor <c>] [--agent <id>] [--path <p>] [--since <iso>] [--sort relevance|newest] [--debug] [--json]\n  orca search --index-status [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "query",
+        "scope",
+        "fresh",
+        "limit",
+        "cursor",
+        "agent",
+        "path",
+        "since",
+        "sort",
+        "debug",
+        "index-status"
+      ],
+      "positionalArgs": [
+        "query"
+      ]
+    },
+    {
+      "command": "select",
+      "path": [
+        "select"
+      ],
+      "usage": "orca select --element <ref> --value <value> [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "element",
+        "value",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "select-all",
+      "path": [
+        "select-all"
+      ],
+      "usage": "orca select-all --element <ref> [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "element",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "serve",
+      "path": [
+        "serve"
+      ],
+      "usage": "orca serve [--port <port>] [--pairing-address <host>] [--mobile-pairing] [--no-pairing] [--grant-desktop-control] [--project-root <path>] [--recipe-json] [--supervise] [--force] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "port",
+        "pairing-address",
+        "mobile-pairing",
+        "no-pairing",
+        "grant-desktop-control",
+        "project-root",
+        "recipe-json",
+        "supervise",
+        "force",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "serve restore resume",
+      "path": [
+        "serve",
+        "restore",
+        "resume"
+      ],
+      "usage": "orca serve restore resume [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "serve service install",
+      "path": [
+        "serve",
+        "service",
+        "install"
+      ],
+      "usage": "orca serve service install [--port <port>] [--pairing-address <host>] [--command <path>] [--dry-run] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "port",
+        "pairing-address",
+        "command",
+        "dry-run",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "serve service status",
+      "path": [
+        "serve",
+        "service",
+        "status"
+      ],
+      "usage": "orca serve service status [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "serve service uninstall",
+      "path": [
+        "serve",
+        "service",
+        "uninstall"
+      ],
+      "usage": "orca serve service uninstall [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "set credentials",
+      "path": [
+        "set",
+        "credentials"
+      ],
+      "usage": "orca set credentials --user <user> --pass <pass> [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "user",
+        "pass",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "set device",
+      "path": [
+        "set",
+        "device"
+      ],
+      "usage": "orca set device --name <device> [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "name",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "set headers",
+      "path": [
+        "set",
+        "headers"
+      ],
+      "usage": "orca set headers --headers <json> [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "headers",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "set media",
+      "path": [
+        "set",
+        "media"
+      ],
+      "usage": "orca set media [--color-scheme <dark|light>] [--reduced-motion <reduce|no-preference>] [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "color-scheme",
+        "reduced-motion",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "set offline",
+      "path": [
+        "set",
+        "offline"
+      ],
+      "usage": "orca set offline [--state <on|off>] [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "state",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "skills get",
+      "path": [
+        "skills",
+        "get"
+      ],
+      "usage": "orca skills get <topic> [--full | --reference <name>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "topic",
+        "full",
+        "reference",
+        "references"
+      ],
+      "positionalArgs": [
+        "topic"
+      ]
+    },
+    {
+      "command": "skills install",
+      "path": [
+        "skills",
+        "install"
+      ],
+      "usage": "orca skills install [--skill <name>]... [--all] [--agent <name>[,<name>]] [--local] [--dry-run] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "skill",
+        "all",
+        "agent",
+        "local",
+        "dry-run"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "skills installed",
+      "path": [
+        "skills",
+        "installed"
+      ],
+      "usage": "orca skills installed [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "skills list",
+      "path": [
+        "skills",
+        "list"
+      ],
+      "usage": "orca skills list [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "skills share",
+      "path": [
+        "skills",
+        "share"
+      ],
+      "usage": "orca skills share --skill <selector> [--skill <selector> ...] --bundle-name <name> [--release-notes <text>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "skill",
+        "bundle-name",
+        "release-notes"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "skills update",
+      "path": [
+        "skills",
+        "update"
+      ],
+      "usage": "orca skills update [--skill <name>]... [--all] [--agent <name>[,<name>]] [--local] [--dry-run] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "skill",
+        "all",
+        "agent",
+        "local",
+        "dry-run"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "snapshot",
+      "path": [
+        "snapshot"
+      ],
+      "usage": "orca snapshot [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "status",
+      "path": [
+        "status"
+      ],
+      "usage": "orca status [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "storage local clear",
+      "path": [
+        "storage",
+        "local",
+        "clear"
+      ],
+      "usage": "orca storage local clear [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "storage local get",
+      "path": [
+        "storage",
+        "local",
+        "get"
+      ],
+      "usage": "orca storage local get --key <key> [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "key",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "storage local set",
+      "path": [
+        "storage",
+        "local",
+        "set"
+      ],
+      "usage": "orca storage local set --key <key> --value <value> [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "key",
+        "value",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "storage session clear",
+      "path": [
+        "storage",
+        "session",
+        "clear"
+      ],
+      "usage": "orca storage session clear [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "storage session get",
+      "path": [
+        "storage",
+        "session",
+        "get"
+      ],
+      "usage": "orca storage session get --key <key> [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "key",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "storage session set",
+      "path": [
+        "storage",
+        "session",
+        "set"
+      ],
+      "usage": "orca storage session set --key <key> --value <value> [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "key",
+        "value",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "tab close",
+      "path": [
+        "tab",
+        "close"
+      ],
+      "usage": "orca tab close [--index <n>] [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "index",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "tab create",
+      "path": [
+        "tab",
+        "create"
+      ],
+      "usage": "orca tab create [--url <url>] [--worktree <selector>] [--profile <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "url",
+        "worktree",
+        "profile"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "tab current",
+      "path": [
+        "tab",
+        "current"
+      ],
+      "usage": "orca tab current [--worktree <selector|all>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "tab list",
+      "path": [
+        "tab",
+        "list"
+      ],
+      "usage": "orca tab list [--worktree <selector|all>] [--show-profile] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree",
+        "show-profile"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "tab profile clone",
+      "path": [
+        "tab",
+        "profile",
+        "clone"
+      ],
+      "usage": "orca tab profile clone --profile <id> [--page <id>] [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "profile",
+        "page",
+        "worktree"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "tab profile create",
+      "path": [
+        "tab",
+        "profile",
+        "create"
+      ],
+      "usage": "orca tab profile create --label <name> [--scope <isolated|imported>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "label",
+        "scope"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "tab profile delete",
+      "path": [
+        "tab",
+        "profile",
+        "delete"
+      ],
+      "usage": "orca tab profile delete --profile <id> [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "profile"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "tab profile list",
+      "path": [
+        "tab",
+        "profile",
+        "list"
+      ],
+      "usage": "orca tab profile list [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "tab profile set",
+      "path": [
+        "tab",
+        "profile",
+        "set"
+      ],
+      "usage": "orca tab profile set (--page <id> | --worktree <selector>) --profile <id> [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "profile",
+        "page",
+        "worktree"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "tab profile show",
+      "path": [
+        "tab",
+        "profile",
+        "show"
+      ],
+      "usage": "orca tab profile show --page <id> [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "page",
+        "worktree"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "tab profile use-default",
+      "path": [
+        "tab",
+        "profile",
+        "use-default"
+      ],
+      "usage": "orca tab profile use-default --page <id> [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "page",
+        "worktree"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "tab show",
+      "path": [
+        "tab",
+        "show"
+      ],
+      "usage": "orca tab show --page <id> [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "page",
+        "worktree"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "tab switch",
+      "path": [
+        "tab",
+        "switch"
+      ],
+      "usage": "orca tab switch (--index <n> | --page <id>) [--worktree <selector>] [--focus] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "index",
+        "page",
+        "worktree",
+        "focus"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "terminal close",
+      "path": [
+        "terminal",
+        "close"
+      ],
+      "usage": "orca terminal close ([--terminal <handle>] [--tab] | --worktree <selector> --all) [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "terminal",
+        "tab",
+        "worktree",
+        "all"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "terminal create",
+      "path": [
+        "terminal",
+        "create"
+      ],
+      "usage": "orca terminal create [--worktree <selector>] [--title <name>] [--command <text>] [--shell <shell>] [--focus] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree",
+        "command",
+        "shell",
+        "title",
+        "focus"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "terminal list",
+      "path": [
+        "terminal",
+        "list"
+      ],
+      "usage": "orca terminal list [--worktree <selector>] [--limit <n>] [--include-visual-layouts] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree",
+        "limit",
+        "include-visual-layouts"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "terminal read",
+      "path": [
+        "terminal",
+        "read"
+      ],
+      "usage": "orca terminal read [--terminal <handle>] [--cursor <n>] [--limit <n>] [--screen] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "terminal",
+        "cursor",
+        "limit",
+        "screen"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "terminal rename",
+      "path": [
+        "terminal",
+        "rename"
+      ],
+      "usage": "orca terminal rename [--terminal <handle>] [--title <text>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "terminal",
+        "title"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "terminal send",
+      "path": [
+        "terminal",
+        "send"
+      ],
+      "usage": "orca terminal send [--terminal <handle>] [--text <text>] [--enter] [--interrupt] [--wait-submit <seconds>] [--retry-request <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "terminal",
+        "text",
+        "enter",
+        "interrupt",
+        "wait-submit",
+        "retry-request"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "terminal show",
+      "path": [
+        "terminal",
+        "show"
+      ],
+      "usage": "orca terminal show [--terminal <handle>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "terminal"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "terminal split",
+      "path": [
+        "terminal",
+        "split"
+      ],
+      "usage": "orca terminal split [--terminal <handle>] [--direction horizontal|vertical] [--command <text>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "terminal",
+        "direction",
+        "command"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "terminal switch",
+      "path": [
+        "terminal",
+        "switch"
+      ],
+      "usage": "orca terminal switch [--terminal <handle>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "terminal"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "terminal wait",
+      "path": [
+        "terminal",
+        "wait"
+      ],
+      "usage": "orca terminal wait [--terminal <handle>] --for exit|tui-idle [--timeout-ms <ms>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "terminal",
+        "for",
+        "timeout-ms"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "terminal-daemon restart",
+      "path": [
+        "terminal-daemon",
+        "restart"
+      ],
+      "usage": "orca terminal-daemon restart --yes [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "yes",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "terminal-daemon status",
+      "path": [
+        "terminal-daemon",
+        "status"
+      ],
+      "usage": "orca terminal-daemon status [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "type",
+      "path": [
+        "type"
+      ],
+      "usage": "orca type --input <text> [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "input",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "uncheck",
+      "path": [
+        "uncheck"
+      ],
+      "usage": "orca uncheck --element <ref> [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "element",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "upload",
+      "path": [
+        "upload"
+      ],
+      "usage": "orca upload --element <ref> --files <path,...> [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "element",
+        "files",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "viewport",
+      "path": [
+        "viewport"
+      ],
+      "usage": "orca viewport --width <w> --height <h> [--scale <n>] [--mobile] [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "width",
+        "height",
+        "scale",
+        "mobile",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "vm recipe doctor",
+      "path": [
+        "vm",
+        "recipe",
+        "doctor"
+      ],
+      "usage": "orca vm recipe doctor <recipe-id> [--repo-path <path>] [--provision|--connect] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "recipe-id",
+        "repo-path",
+        "provision",
+        "connect",
+        "page"
+      ],
+      "positionalArgs": [
+        "recipe-id"
+      ]
+    },
+    {
+      "command": "wait",
+      "path": [
+        "wait"
+      ],
+      "usage": "orca wait [--selector <sel>] [--timeout <ms>] [--text <text>] [--url <pattern>] [--load <state>] [--fn <js>] [--state <hidden|visible>] [--worktree <selector>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "selector",
+        "timeout",
+        "text",
+        "url",
+        "load",
+        "fn",
+        "state",
+        "worktree",
+        "page"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "worktree create",
+      "path": [
+        "worktree",
+        "create"
+      ],
+      "usage": "orca worktree create --name <name> [--repo <selector>|--project <id> [--host <host-id>]|--project-host-setup <id>] [--agent <id>] [--prompt <text>] [--model <id>] [--effort <level>] [--setup run|skip|inherit] [--base-branch <ref>] [--reference <url-or-jira-key>...] [--reference-site <id>] [--issue <number>] [--pr <number>] [--linear-issue <identifier-or-url>] [--gitlab-issue <number-or-url>] [--gitlab-mr <number-or-url>] [--comment <text>] [--parent-worktree <selector>] [--no-parent] [--run-hooks] [--activate] [--retry-launch <operationId>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "repo",
+        "project",
+        "host",
+        "project-host-setup",
+        "name",
+        "agent",
+        "prompt",
+        "model",
+        "effort",
+        "retry-launch",
+        "base-branch",
+        "reference",
+        "reference-site",
+        "issue",
+        "pr",
+        "linear-issue",
+        "gitlab-issue",
+        "gitlab-mr",
+        "comment",
+        "setup",
+        "parent-worktree",
+        "no-parent",
+        "run-hooks",
+        "activate"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "worktree current",
+      "path": [
+        "worktree",
+        "current"
+      ],
+      "usage": "orca worktree current [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "worktree list",
+      "path": [
+        "worktree",
+        "list"
+      ],
+      "usage": "orca worktree list [--repo <selector>] [--limit <n>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "repo",
+        "limit"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "worktree ps",
+      "path": [
+        "worktree",
+        "ps"
+      ],
+      "usage": "orca worktree ps [--limit <n>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "limit"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "worktree rm",
+      "path": [
+        "worktree",
+        "rm"
+      ],
+      "usage": "orca worktree rm --worktree <selector> [--force] [--run-hooks] [--allow-failed-archive-hook] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree",
+        "force",
+        "run-hooks",
+        "allow-failed-archive-hook"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "worktree set",
+      "path": [
+        "worktree",
+        "set"
+      ],
+      "usage": "orca worktree set --worktree <selector> [--display-name <name>] [--issue <number|null>] [--pr <number|null>] [--linear-issue <identifier-or-url|null>] [--gitlab-issue <number-or-url|null>] [--gitlab-mr <number-or-url|null>] [--comment <text>] [--workspace-status <id>] [--unread|--read] [--parent-worktree <selector>|--no-parent] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree",
+        "display-name",
+        "issue",
+        "pr",
+        "linear-issue",
+        "gitlab-issue",
+        "gitlab-mr",
+        "comment",
+        "workspace-status",
+        "unread",
+        "read",
+        "parent-worktree",
+        "no-parent"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "worktree show",
+      "path": [
+        "worktree",
+        "show"
+      ],
+      "usage": "orca worktree show --worktree <selector> [--json]",
+      "flags": [
+        "help",
+        "json",
+        "pairing-code",
+        "environment",
+        "worktree"
+      ],
+      "positionalArgs": []
+    }
+  ]
+}

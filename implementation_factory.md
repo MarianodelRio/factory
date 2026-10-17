@@ -1,8 +1,8 @@
 # implementation_factory.md — Software Factory v1 Implementation Plan
 
-> **Source of truth:** `design_factory.md` (v1.4). This file says **in what order** to build it and **how to know each step is done**. It does not redefine behavior: when in doubt, the design wins.
+> **Source of truth:** `design_factory.md` (v1.5). This file says **in what order** to build it and **how to know each step is done**. It does not redefine behavior: when in doubt, the design wins.
 > **Audience:** a Claude Code session (with subagents) that implements the Factory in this repository.
-> **Status:** not started.
+> **Status:** M0 done; M1 next.
 
 ---
 
@@ -116,7 +116,7 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8**, but the `
 
 Goal: answer design §10.3 with evidence and record real outputs for the fakes. No product code.
 
-- [ ] T-01 [HUMAN] Verify Orca, Claude Code and Codex behavior
+- [x] T-01 [HUMAN] Verify Orca, Claude Code and Codex behavior
   Depends: — · Design: §10.3
   Files: `docs/spike-results.md`, `tests/fixtures/orca/*.json`
   Do: with the person, check each of the 7 items in design §10.3 on this machine (Orca 1.4.229). Note that `codex` is not on PATH here: find how Orca runs it. Record the real `--json` output of every `orca` command the design uses (`status`, `agent-context`, `repo show`, `worktree create/show/set/list`, `agent launch`, `terminal list/show`, `search`). Redact paths and ids that are personal.
@@ -197,13 +197,13 @@ Goal: answer design §10.3 with evidence and record real outputs for the fakes. 
 - [ ] T-13 Orca client base
   Depends: T-04 · Design: §1.1, §10.1, §10.2 · Acceptance: A-24
   Files: `src/factory/orca.py`, `tests/test_orca.py`
-  Do: `run(args)` always with `--json`, parse output, map failures to exit code 5 with a clear message. `check()`: installed, version ≥ `min_version`, runtime reachable (`orca status`), required commands present in `orca agent-context`, local only (reject if `ORCA_PAIRING_CODE`/`ORCA_ENVIRONMENT` set or Orca reports a non-local host, per T-01 findings). `base_branch()` from `orca repo show`.
+  Do: `run(args)` always with `--json`, parse output, map failures to exit code 5 with a clear message. `check()`: installed, version ≥ `min_version`, runtime reachable (`orca status`), required commands present in `orca agent-context`, local only (reject if `ORCA_PAIRING_CODE`/`ORCA_ENVIRONMENT` set or `orca status` → `result.target.kind` is not `local`). `base_branch()` from `worktreeBaseRef` of `orca repo show` (strip `origin/`, `refs/remotes/origin/`); missing → clear error saying how to set it.
   Done when: tests with the fake: each failure case gives the right error; capability check fails cleanly when a command is missing.
 
 - [ ] T-14 [P] Workspaces and agents
   Depends: T-13 · Design: §5.1, §10.2
   Files: `src/factory/orca.py`, `tests/test_orca_workspace.py`
-  Do: `create_workspace(name, base)`, `workspace_exists(id)`, `launch_agent(workspace, agent, prompt, model, effort)` storing Orca's `operationId`; on a lost response, resend with `--retry-launch <operationId>` (never a new launch). `session_liveness(workspace)` → `alive | finished | unknown`.
+  Do: `create_workspace(name, base)`, `workspace_exists(id)`, `launch_agent(workspace, agent, prompt, model, effort)` storing Orca's `operationId` and agent handle (`result.outcome.handle`); on a lost response, resend with `--retry-launch <operationId>` (never a new launch). `session_liveness(terminal)` → `alive` (terminal `connected`) `| finished` (terminal closed or missing) `| unknown` (Orca error), per design §7.2.
   Done when: tests: lost response resends with the same operationId and only one agent is recorded; liveness maps each fake answer correctly.
 
 - [ ] T-15 [P] Cards
@@ -287,13 +287,13 @@ Goal: answer design §10.3 with evidence and record real outputs for the fakes. 
 - [ ] T-27 `factory doctor` (analysis)
   Depends: T-13, T-05 · Design: §3.1 (step 1)
   Files: `src/factory/init.py`, `tests/test_doctor.py`
-  Do: collect, without writing anything: Git info, Orca check (T-13), agents available, `gh`, stack and check commands (from `pyproject.toml`, `package.json`, `Makefile`, CI files; unknown → "ask"), existing instructions/docs/skills, previous Factory installation, client permission mode warning if detectable.
+  Do: collect, without writing anything: Git info, Orca check (T-13), agents available, `gh`, stack and check commands (from `pyproject.toml`, `package.json`, `Makefile`, CI files; unknown → "ask"), existing instructions/docs/skills, previous Factory installation, client permission mode warning (Orca's `agentDefaultArgs` bypass flags, design §10.1) if detectable.
   Done when: tests on sample repos (Python, Node, empty, already initialized) produce the expected report, and the repo is byte-identical afterwards (A-01).
 
 - [ ] T-28 `factory init --plan` and `--apply`
   Depends: T-27, T-26 · Design: §3.1, §3.2 · Acceptance: A-01, A-02, A-03
   Files: `src/factory/init.py`, `tests/test_init.py`
-  Do: build the four lists (create, modify, delete with reason, respect) plus Orca actions, as data. Deletions limited to the categories of design §3.1; never code, tests, CI or secrets. `--apply <plan-id> [--exclude ...]`: back up every modified or deleted file to `backups/<YYYYMMDD-HHMMSS>/`, write files from templates (skills to `.claude/skills/` and `.agents/skills/`, docs adapted to repo size per §6.2, `config.toml` with detected `[checks]`, `.gitignore` entry for `.factory/state/`, `permissions.ask` for `factory design approve`/`reject` in `.claude/settings.json` merged without losing existing settings, Codex equivalent per T-01), record template hashes, register the repo in Orca and install/update Orca skills. Nothing committed. Customized files (hash mismatch) → shown as diff, not overwritten. `--restore <backup>`.
+  Do: build the four lists (create, modify, delete with reason, respect) plus Orca actions, as data. Deletions limited to the categories of design §3.1; never code, tests, CI or secrets. `--apply <plan-id> [--exclude ...]`: back up every modified or deleted file to `backups/<YYYYMMDD-HHMMSS>/`, write files from templates (skills to `.claude/skills/` and `.agents/skills/`, docs adapted to repo size per §6.2, `config.toml` with detected `[checks]`, `.gitignore` entry for `.factory/state/`, `permissions.ask` for `factory design approve`/`reject` in `.claude/settings.json` merged without losing existing settings, Codex equivalent per T-01), record template hashes, register the repo in Orca, set its base branch (`orca repo set-base-ref`) and install/update Orca skills. Nothing committed. Customized files (hash mismatch) → shown as diff, not overwritten. `--restore <backup>`.
   Done when: tests: plan is stable; apply twice = same tree (A-02); customized file kept; deleted file restorable (A-03); existing `.claude/settings.json` keys preserved.
 
 - [ ] T-29 [P] `factory memory check`
@@ -367,6 +367,11 @@ Write here anything the design does not answer or that reality contradicts. Each
 |---|---|---|---|---|
 | 2026-10-17 | T-02 | Design §1.1 says "standard library" but YAML needs a dependency (D-01). | Accept PyYAML and update §1.1. | resolved: confirmed, design §1.1 updated |
 | 2026-10-17 | T-02 | Local Python is 3.10; design requires 3.11+; no pipx (D-02). | Use `uv tool install`. | resolved: confirmed, design §1.1–§1.2 updated |
+| 2026-10-17 | T-01 | Codex is not available on this machine (no licence), so §10.3 items 2–5 cannot be verified for Codex. | Keep Codex support exactly as designed; mark Codex items "not verified" in `docs/spike-results.md`; verify them (and A-04/A-05) when Codex is available. | open (deferred) |
+| 2026-10-17 | T-01 | Liveness (§7.2): Orca does not say whether a terminal agent is still running. After the agent exits, its terminal stays `connected: true`; only a closed terminal shows `connected: false` / `orphaned`. | Store Orca's terminal handle in the attempt (`terminal`, from `result.outcome.handle`, plus `operation_id`). Liveness: terminal missing or `connected: false` → `finished`; `connected: true` → `alive`; Orca error → `unknown`. Known limit: an agent that exited inside a still-open terminal shows as `alive`; the 10-minute no-checkpoint warning covers it. Update design §1.4 and §7.2. | resolved: approved by the person; design §1.4 and §7.2 updated |
+| 2026-10-17 | T-01 | Base branch (§8, T-13): `orca repo show` returns `worktreeBaseRef` only after `orca repo set-base-ref`; otherwise no field. | `base_branch()` reads `worktreeBaseRef` (strip `origin/` / `refs/remotes/origin/`). If missing → exit 5 with "set the base branch in Orca". `factory init` adds `orca repo set-base-ref` to its Orca actions (with the detected default branch, confirmed in the plan). Update design §3.1 and §8. | resolved: approved by the person; design §3.1 and §8 updated |
+| 2026-10-17 | T-01 | Model (§1.4): Orca does not report the model used. | `attempts[].model` = the `--model` passed, or `null` (agent default). Clarify in design §1.4. | resolved: approved by the person; design §1.4 updated |
+| 2026-10-17 | T-01 | Permissions (§10.1): Orca's `agentDefaultArgs` launches Claude with `--dangerously-skip-permissions`. The "ask" rule still holds (verified). | No launch change (the Factory adds no flags). `factory doctor` reports it as the permission-mode warning of §3.1. Note it in design §10.1. | resolved: approved by the person; design §10.1 updated |
 | 2026-10-17 | T-23 | Design §7.4 says recover acts "after the person confirms", but §9 has a single `task recover`. | `task recover <id>` only inspects; `task recover <id> --confirm` acts (the skill calls it after asking). Add to design §9. | resolved: design §9 updated |
 
 ---
@@ -378,3 +383,4 @@ One line per completed task or session: date, task, what was done, what comes ne
 | Date | Task | Done | Next |
 |---|---|---|---|
 | 2026-10-17 | T-02 | D-01 (PyYAML) and D-02 (Python 3.11+, uv) confirmed; design updated. | T-01 spike with the person, then T-03. |
+| 2026-10-17 | T-01 | Spike with the person: §10.3 answered in `docs/spike-results.md` (Claude terminal verified; Codex and Orca chat not verified), 21 Orca fixtures recorded, 4 design changes approved and applied (design v1.5). Sandbox removed from Orca. | T-03 project skeleton. |

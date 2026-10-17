@@ -1,0 +1,72 @@
+{
+  "id": "bdfe0ec0-4f89-48e6-b8b1-3efdfcdb0893",
+  "ok": true,
+  "result": {
+    "worktree": {
+      "id": "326d8316-1914-4a47-ba66-4ea467bb3d21::/home/user/orca/workspaces/factory-spike/spike-a",
+      "identity": {
+        "key": "wt2:local:ce0d9b1d-d9b9-40c6-bfc1-3d18b1ec57c4",
+        "executionHostId": "local",
+        "instanceId": "ce0d9b1d-d9b9-40c6-bfc1-3d18b1ec57c4"
+      },
+      "instanceId": "ce0d9b1d-d9b9-40c6-bfc1-3d18b1ec57c4",
+      "repoId": "326d8316-1914-4a47-ba66-4ea467bb3d21",
+      "projectId": "repo:326d8316-1914-4a47-ba66-4ea467bb3d21",
+      "hostId": "local",
+      "projectHostSetupId": "326d8316-1914-4a47-ba66-4ea467bb3d21",
+      "creatorProvenance": {
+        "kind": "host"
+      },
+      "path": "/home/user/orca/workspaces/factory-spike/spike-a",
+      "head": "3e95d45658a5724d738e610461b4b048c90b2be1",
+      "branch": "refs/heads/user/spike-a",
+      "isBare": false,
+      "isMainWorktree": false,
+      "displayName": "CHG-0001-01 Spike card",
+      "displayNameMode": "fixed",
+      "comment": "Pending reviews: conformance",
+      "linkedIssue": null,
+      "linkedPR": null,
+      "suppressedGitHubPR": null,
+      "linkedLinearIssue": null,
+      "linkedLinearIssueWorkspaceId": null,
+      "linkedLinearIssueOrganizationUrlKey": null,
+      "linkedGitLabMR": null,
+      "linkedGitLabIssue": null,
+      "linkedBitbucketPR": null,
+      "linkedAzureDevOpsPR": null,
+      "linkedGiteaPR": null,
+      "linkedWorkItem": null,
+      "linkedItems": [],
+      "linkedTaskSourceContext": null,
+      "isArchived": false,
+      "isUnread": true,
+      "isPinned": false,
+      "sortOrder": 1792253652273,
+      "lastActivityAt": 1792253683498,
+      "createdAt": 1792253652273,
+      "cliProvenance": {
+        "kind": "created-by-cli",
+        "createdAt": 1792253651784,
+        "callerTerminalHandle": "term_71c4ee80-5a3f-42f5-b9a0-47af16e890ed"
+      },
+      "pendingFirstAgentMessageRename": false,
+      "firstAgentMessageRenameError": null,
+      "baseRef": "refs/remotes/origin/main",
+      "workspaceStatus": "in-review",
+      "parentWorktreeId": null,
+      "childWorktreeIds": [],
+      "lineage": null,
+      "git": {
+        "path": "/home/user/orca/workspaces/factory-spike/spike-a",
+        "head": "3e95d45658a5724d738e610461b4b048c90b2be1",
+        "branch": "refs/heads/user/spike-a",
+        "isBare": false,
+        "isMainWorktree": false
+      }
+    }
+  },
+  "_meta": {
+    "runtimeId": "58d6ebae-3b1d-4a59-b296-8b3d43e916a2"
+  }
+}

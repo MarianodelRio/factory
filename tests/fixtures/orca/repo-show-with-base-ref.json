@@ -1,0 +1,32 @@
+{
+  "id": "2f0b77c3-9f60-493b-9854-120fe99025a1",
+  "ok": true,
+  "result": {
+    "repo": {
+      "id": "326d8316-1914-4a47-ba66-4ea467bb3d21",
+      "path": "/home/user/src/factory-spike",
+      "displayName": "factory-spike",
+      "badgeColor": "#737373",
+      "addedAt": 1792253647670,
+      "kind": "git",
+      "externalWorktreeVisibilityLegacy": false,
+      "gitUsername": "user",
+      "worktreeBaseRef": "origin/main",
+      "upstream": null,
+      "gitRemoteIdentity": null,
+      "hookSettings": {
+        "mode": "auto",
+        "setupRunPolicy": "run-by-default",
+        "setupAgentStartupPolicy": "start-immediately",
+        "scripts": {
+          "setup": "",
+          "archive": ""
+        }
+      },
+      "externalWorktreeVisibility": "hide"
+    }
+  },
+  "_meta": {
+    "runtimeId": "58d6ebae-3b1d-4a59-b296-8b3d43e916a2"
+  }
+}

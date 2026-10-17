@@ -1,0 +1,30 @@
+{
+  "id": "a4f480aa-3058-4710-adad-cd62918965ba",
+  "ok": true,
+  "result": {
+    "terminal": {
+      "handle": "term_9a495532-448e-4be8-9bc3-189ea21acb69",
+      "ptyId": "326d8316-1914-4a47-ba66-4ea467bb3d21::/home/user/orca/workspaces/factory-spike/spike-a@@cee216e9",
+      "incarnationId": "a90bf1da-2bc1-4b0e-8854-62e0ca20d5e3",
+      "orphaned": false,
+      "worktreeId": "326d8316-1914-4a47-ba66-4ea467bb3d21::/home/user/orca/workspaces/factory-spike/spike-a",
+      "worktreePath": "/home/user/orca/workspaces/factory-spike/spike-a",
+      "branch": "refs/heads/user/spike-a",
+      "tabId": "fd3c0fbb-b7bd-4a33-a9d4-5b8bb896a1ff",
+      "leafId": "ab8c3ca3-5222-4f40-828d-bf1291a7f685",
+      "title": "✳ Factory probe",
+      "connected": true,
+      "writable": true,
+      "lastOutputAt": 1792253665620,
+      "preview": "/effort\n──────────────────────────────────────────────────────────────────────────────────────────────────────────────────\n❯\n──────────────────────────────────────────────────────────────────────────────────────────────────────────────────\n⏵⏵ bypass permissions on (shift+tab to cycle) · ← for agents",
+      "executionHostId": "local",
+      "agentIdentity": "claude",
+      "paneRuntimeId": 1,
+      "rendererGraphEpoch": 0,
+      "agentWait": null
+    }
+  },
+  "_meta": {
+    "runtimeId": "58d6ebae-3b1d-4a59-b296-8b3d43e916a2"
+  }
+}

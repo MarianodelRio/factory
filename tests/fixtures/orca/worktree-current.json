@@ -1,0 +1,59 @@
+{
+  "id": "07e235c6-cfd6-4e7c-837e-7a447f944010",
+  "ok": true,
+  "result": {
+    "worktree": {
+      "id": "58d62057-f50a-45fb-98a2-7d49dcf0e5c8::/home/user/Desktop/factory",
+      "identity": {
+        "key": "wt2:local:66775fe6-42ec-4e39-bc63-28d07e9dc3a3",
+        "executionHostId": "local",
+        "instanceId": "66775fe6-42ec-4e39-bc63-28d07e9dc3a3"
+      },
+      "instanceId": "66775fe6-42ec-4e39-bc63-28d07e9dc3a3",
+      "repoId": "58d62057-f50a-45fb-98a2-7d49dcf0e5c8",
+      "projectId": "github:user/factory",
+      "hostId": "local",
+      "projectHostSetupId": "58d62057-f50a-45fb-98a2-7d49dcf0e5c8",
+      "path": "/home/user/Desktop/factory",
+      "head": "a62a1075e4537cdb2f02dcc46892ab0704fc21d5",
+      "branch": "refs/heads/main",
+      "isBare": false,
+      "isMainWorktree": true,
+      "displayName": "main",
+      "displayNameMode": "automatic",
+      "comment": "",
+      "linkedIssue": null,
+      "linkedPR": null,
+      "linkedLinearIssue": null,
+      "linkedLinearIssueWorkspaceId": null,
+      "linkedLinearIssueOrganizationUrlKey": null,
+      "linkedGitLabMR": null,
+      "linkedGitLabIssue": null,
+      "linkedBitbucketPR": null,
+      "linkedAzureDevOpsPR": null,
+      "linkedGiteaPR": null,
+      "linkedWorkItem": null,
+      "linkedTaskSourceContext": null,
+      "isArchived": false,
+      "isUnread": false,
+      "isPinned": false,
+      "sortOrder": 1792236915470,
+      "lastActivityAt": 1792253277038,
+      "workspaceStatus": "in-progress",
+      "parentWorktreeId": null,
+      "childWorktreeIds": [],
+      "lineage": null,
+      "git": {
+        "path": "/home/user/Desktop/factory",
+        "head": "a62a1075e4537cdb2f02dcc46892ab0704fc21d5",
+        "branch": "refs/heads/main",
+        "isBare": false,
+        "isMainWorktree": true
+      },
+      "linkedItems": []
+    }
+  },
+  "_meta": {
+    "runtimeId": "58d6ebae-3b1d-4a59-b296-8b3d43e916a2"
+  }
+}
