@@ -118,3 +118,20 @@ def show_file(ref: str, path: str, cwd: Path | None = None) -> str | None:
         if exc.code == "git_failed":
             return None
         raise
+
+
+NOT_CODE = [":(exclude)docs", ":(exclude).factory"]
+
+
+def last_code_commit(base: str, cwd: Path) -> str:
+    """The last commit since `base` that changed files outside `docs/` and `.factory/`; the
+    merge base if there is none."""
+    merge_base = run(["merge-base", base, "HEAD"], cwd)
+    last = run(["log", "-1", "--format=%H", f"{merge_base}..HEAD", "--", ".", *NOT_CODE], cwd)
+    return last or merge_base
+
+
+def changed_files(base: str, cwd: Path) -> list[str]:
+    """Files changed on the branch since it left `base`."""
+    merge_base = run(["merge-base", base, "HEAD"], cwd)
+    return run(["diff", "--name-only", merge_base, "HEAD"], cwd).splitlines()

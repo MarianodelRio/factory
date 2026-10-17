@@ -244,7 +244,7 @@ Goal: answer design §10.3 with evidence and record real outputs for the fakes. 
   Do: `submit` → `in_review`. `review --type conformance --agent X` launches an Orca agent in the same workspace with the conformance role and the task context (quality runs as a subagent of the lead and needs no launch, unless T-01 says the client has none). Effective review types = task `review` field adjusted by config `always|never`. `review --record <file.json>`: validate the reviewer JSON of design §5.3, compute verdict (`pass` if no blocker/major), store with round number and current HEAD commit. If the second round of a type is not `pass` (config `max_rounds`) → `blocked`, findings kept.
   Done when: tests: effective types for each config combination; verdict computation; round limit → blocked with findings kept.
 
-- [ ] T-21 `task finish`
+- [x] T-21 `task finish`
   Depends: T-20 · Design: §5.7 · Acceptance: A-14
   Files: `src/factory/tasks.py`, `tests/test_finish.py`
   Do: check all gates of design §5.7 (AC verified, checks passed, required reviews `pass` on the last commit that changed files outside `docs/` and `.factory/`, `--memory` given, approval valid). `scope` warning for files outside the globs (excluding `docs/`, `.factory/`), stored in state. On success: `done`, release claim, card `completed`.
@@ -343,7 +343,7 @@ Fill the "Test" column as tasks are completed. "Manual" criteria are checked in 
 | A-11 | T-07, T-17 | `test_state.py::test_concurrent_claims_exactly_one_wins`, `test_claim_launch.py::test_second_claim_is_a_conflict` | |
 | A-12 | T-20 | `test_review.py::test_effective_review_types`, conformance launch / quality subagent tests; "reviewers do not edit" is in the role text (T-24) | |
 | A-13 | T-20 | `test_review.py::test_second_round_without_pass_blocks_and_keeps_findings` | |
-| A-14 | T-21 | | |
+| A-14 | T-21 | `test_finish.py` (one failing test per gate: AC, checks, review missing/failing/on an older code commit, memory, approval) | |
 | A-15 | T-22 | | |
 | A-16 | T-21, T-26 | | ✔ |
 | A-17 | T-26, T-29 | | ✔ |
@@ -418,3 +418,4 @@ One line per completed task or session: date, task, what was done, what comes ne
 | 2026-10-17 | T-19 | `task verify`: config `[checks]` and each AC command run in the task workspace as argument lists (`shlex.split`, no shell), evidence in the main checkout's `evidence/<task>/`, AC `verified` only on exit 0, unrunnable → `not_run`, no checks → `not_run`; checks store the HEAD commit; `--manual AC --evidence file` only for manual ACs. Check commands run from `tasks.py` (not git/orca), still without shell. 365 tests green. | T-20 submit and review. |
 | 2026-10-17 | T-24 | Six role files in `src/factory/templates/roles/` with the §5.3 text verbatim, template marks, and the reviewer JSON contract in both reviewer files; a test keeps them equal to the design and loads them as package data (checked in the built wheel). Done before T-20, which uses them. | T-20 submit and review. |
 | 2026-10-17 | T-20 | `submit` (reads pending notes; a pause blocks instead; card with pending reviews), `effective_reviews` (task field + config always/never), `review --type` (conformance: Orca agent in the workspace with the role text and context, agent = `--agent` or the attempt's reviewer; quality: subagent unless `--agent`), `review --record` (JSON with `type` per the person's choice, validated; verdict computed; round and HEAD stored; not `pass` at `max_rounds` → blocked with findings). 391 tests green. | T-21 finish. |
+| 2026-10-17 | T-21 | `task finish`: gates of §5.7 reported together (`gates_not_met`): every AC verified, checks passed, each effective review's latest verdict `pass` on a commit containing the last commit with code (docs/ and .factory/ ignored), non-empty `--memory`, approval valid; scope warning (outside globs, ignoring docs/.factory) stored as `scope_warnings` and returned; done → claim released, card completed. 407 tests green. | T-22 publish and T-23 status/recover (both edit tasks.py: sequential). |

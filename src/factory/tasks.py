@@ -14,12 +14,14 @@ Raises FactoryError with these codes:
 - evidence_not_found / ac_not_in_task / ac_not_manual (EXIT_PRECONDITION): bad `verify --manual`.
 - review_invalid (EXIT_PRECONDITION): the reviewer JSON does not follow design §5.3.
 - review_agent_missing (EXIT_USAGE): a conformance review without `--agent` or a recorded reviewer.
+- gates_not_met (EXIT_PRECONDITION): `finish` with closing criteria unmet; `details` lists them.
 Plus the codes of factory.orca (Orca unavailable, not local, ...).
 """
 
 from __future__ import annotations
 
 import copy
+import fnmatch
 import json
 import shlex
 import shutil
@@ -637,3 +639,59 @@ def _review_report(path: Path) -> dict[str, Any]:
     if problems:
         raise FactoryError("review_invalid", f"{path} is not a valid review", EXIT_PRECONDITION, problems)
     return {"type": report["type"], "findings": findings}
+
+
+def finish(task_id: str, memory: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
+    """Move the task to `done` only if every closing criterion of design §5.7 holds."""
+    task, record = _started(task_id, ctx)
+    if record["state"] not in ("in_progress", "in_review"):
+        _reject(record, "finish", f"it is {record['state']}")
+    base = orca.base_branch(ctx.main_checkout)
+    cwd = workspace_path(record)
+    problems: list[str] = []
+
+    for ac in task["acceptance"]:
+        status = (record["acceptance"].get(ac) or {}).get("status", "pending")
+        if status != "verified":
+            problems.append(f"{ac} is {status}, not verified")
+    checks = (record.get("checks") or {}).get("status", "not_run")
+    if checks != "passed":
+        problems.append(f"the project checks are {checks}, not passed")
+    code_commit = git.last_code_commit(base, cwd)
+    for kind in effective_reviews(task, _config(ctx)):
+        latest = [r for r in record["reviews"] if r["type"] == kind]
+        if not latest or latest[-1]["verdict"] != "pass":
+            problems.append(f"the {kind} review has no pass verdict")
+        elif not git.is_ancestor(code_commit, latest[-1]["commit"], cwd):
+            problems.append(f"the {kind} review passed on {latest[-1]['commit'][:8]}, not on the last commit with code")
+    if not memory.strip():
+        problems.append("memory was not evaluated: pass --memory '<summary>' or --memory none")
+    if not task["approved"]:
+        problems.append(f"the approval of {task['change']} is no longer valid")
+    if problems:
+        raise FactoryError("gates_not_met", f"{task_id} cannot be done yet", EXIT_PRECONDITION, problems)
+
+    out_of_scope = _outside_scope(task, git.changed_files(base, cwd))
+
+    def apply(state: State) -> State:
+        state = transition(state, "finish")
+        state["memory"] = memory
+        state["scope_warnings"] = out_of_scope
+        return state
+
+    updated = ctx.store.update_task(task_id, apply, "finish")
+    ctx.store.release_claim(task_id)
+    warnings = [f"changed outside the task scope: {path}" for path in out_of_scope]
+    warnings += _card(task, updated)
+    return {"task": task_id, "state": "done", "memory": memory, "scope_warnings": out_of_scope}, warnings
+
+
+def _outside_scope(task: dict[str, Any], files: list[str]) -> list[str]:
+    """Files outside the task's `scope` globs, ignoring `docs/` and `.factory/` (design §5.7)."""
+    scope = task.get("scope")
+    if not scope:
+        return []
+    return [
+        path for path in files
+        if not path.startswith(("docs/", ".factory/")) and not any(fnmatch.fnmatch(path, g) for g in scope)
+    ]

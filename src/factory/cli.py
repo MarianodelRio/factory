@@ -126,6 +126,10 @@ def task_review(args: argparse.Namespace) -> Result:
     return tasks.review(args.task, args.type, args.agent, task_context())
 
 
+def task_finish(args: argparse.Namespace) -> Result:
+    return tasks.finish(args.task, args.memory, task_context())
+
+
 def task_verify(args: argparse.Namespace) -> Result:
     if args.manual:
         return tasks.verify_manual(args.task, args.manual, Path(args.evidence).resolve(), task_context())
@@ -149,6 +153,7 @@ HANDLERS: dict[str, Handler] = {
     "task verify": task_verify,
     "task submit": task_submit,
     "task review": task_review,
+    "task finish": task_finish,
 }
 
 
