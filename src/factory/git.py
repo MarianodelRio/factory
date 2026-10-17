@@ -70,13 +70,20 @@ def config_value(key: str, cwd: Path | None = None) -> str:
 
 
 def commit_paths(paths: list[str], message: str, cwd: Path) -> str:
-    """Commit only `paths` (other staged or unstaged changes stay as they are); return the commit.
-    If the commit is refused, the paths are unstaged again and commit_failed is raised."""
-    run(["add", "--", *paths], cwd)
+    """Commit the working-tree content of `paths` only (`git commit --only`); other staged or
+    unstaged changes stay as they are. New files are made known with `git add -N`, which is
+    undone if the commit is refused, so the index ends as it was (commit_failed is raised)."""
+    untracked = run(["ls-files", "--others", "--exclude-standard", "--", *paths], cwd).splitlines()
+    if untracked:
+        run(["add", "-N", "--", *untracked], cwd)
     try:
-        run(["commit", "-q", "-m", message, "--", *paths], cwd)
+        run(["commit", "-q", "--only", "-m", message, "--", *paths], cwd)
     except FactoryError as exc:
-        run(["reset", "-q", "--", *paths], cwd)
+        if untracked:
+            try:
+                run(["rm", "-q", "--cached", "--", *untracked], cwd)
+            except FactoryError:
+                pass  # the commit failure below is what the person needs to see
         message = f"the commit was refused: {exc.message}"
         raise FactoryError("commit_failed", message, EXIT_PRECONDITION) from exc
     return run(["rev-parse", "HEAD"], cwd)

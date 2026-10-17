@@ -122,3 +122,14 @@ def test_reapproval_cannot_remove_an_approved_task(project, capsys):
     out = json.loads(capsys.readouterr().out)
     assert code == 3
     assert any("CHG-0012-02" in d for d in out["error"]["details"])
+
+
+def test_show_from_a_worktree_does_not_lift_a_design_change(project, store, capsys, monkeypatch):
+    worktree = project.add_worktree("task-branch")  # holds the approved design
+    set_state(store, "CHG-0012-01", "in_progress")
+    edit(project)  # changed on the main checkout
+    show(capsys)
+    assert store.read_task("CHG-0012-01")["state"] == "blocked"
+    monkeypatch.chdir(worktree)
+    show(capsys)
+    assert store.read_task("CHG-0012-01")["state"] == "blocked"

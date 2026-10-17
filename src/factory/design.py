@@ -239,9 +239,10 @@ def register(change_id: str, changes_dir: Path) -> dict[str, Any]:
     return {"change": change_id, "digest": digest(text), **parsed}
 
 
-def show(change_id: str, changes_dir: Path, store: TaskStore) -> dict[str, Any]:
+def show(change_id: str, changes_dir: Path, store: TaskStore, main_changes_dir: Path) -> dict[str, Any]:
     """Change state (§1.5), digest, criteria, tasks with their stored state, approval or rejection.
-    An invalid design is still shown, with its problems."""
+    An invalid design is still shown, with its problems. Whether the design changed after its
+    approval (§4.5) is decided on the main checkout's files, which own the shared task state."""
     folder = _folder(change_id, changes_dir)
     text = _design_text(folder)
     try:
@@ -255,9 +256,7 @@ def show(change_id: str, changes_dir: Path, store: TaskStore) -> dict[str, Any]:
     approval = _read_json(folder / "approval.json")
     rejection = _read_json(folder / "rejection.json")
     current = digest(text)
-    if approval is not None:
-        approved = approval.get("design_digest") == current
-        tasks.sync_with_design(approved_task_ids(folder), approved, store)
+    sync_with_main(change_id, main_changes_dir, store)
 
     task_list = []
     for task in parsed["tasks"]:
@@ -284,6 +283,16 @@ def show(change_id: str, changes_dir: Path, store: TaskStore) -> dict[str, Any]:
         "rejection": rejection,
         "problems": problems,
     }
+
+
+def sync_with_main(change_id: str, main_changes_dir: Path, store: TaskStore) -> None:
+    """Block or restore the change's tasks (§4.5) from the main checkout's design and approval."""
+    folder = main_changes_dir / change_id
+    approval = _read_json(folder / "approval.json")
+    if approval is None or not (folder / "design.md").exists():
+        return
+    approved = approval.get("design_digest") == digest((folder / "design.md").read_text(encoding="utf-8"))
+    tasks.sync_with_design(approved_task_ids(folder), approved, store)
 
 
 def approved_task_ids(folder: Path) -> list[str]:

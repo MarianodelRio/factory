@@ -83,14 +83,13 @@ def version() -> str:
 
 
 def _version_tuple(text: str) -> tuple[int, ...]:
-    return tuple(int(part) for part in re.findall(r"\d+", text)[:3])
+    parts = [int(part) for part in re.findall(r"\d+", text)[:3]]
+    return tuple(parts + [0] * (3 - len(parts)))
 
 
 def check(min_version: str) -> dict[str, Any]:
     """Orca is installed, recent enough, running, local and has every command the CLI uses."""
-    for variable in REMOTE_VARIABLES:
-        if os.environ.get(variable):
-            raise unavailable("orca_not_local", f"{variable} is set: the Factory only works with local Orca")
+    require_local()
 
     installed = version()
     if _version_tuple(installed) < _version_tuple(min_version):
@@ -100,12 +99,18 @@ def check(min_version: str) -> dict[str, Any]:
         status = run(["status"])
     except OrcaError as exc:
         raise unavailable("orca_not_running", f"Orca is not running: {exc.message}. Open Orca.") from exc
-    if not status.get("runtime", {}).get("reachable"):
+    try:
+        reachable = status["runtime"]["reachable"]
+        local = status["target"]["kind"] == "local"
+        context = run(["agent-context"])["commands"]
+        commands = {c["command"]: set(c.get("flags", [])) for c in context}
+    except (KeyError, TypeError, AttributeError) as exc:
+        raise OrcaError(f"Orca answered in an unexpected format ({exc!r})") from exc
+    if not reachable:
         raise unavailable("orca_not_running", "the Orca runtime is not reachable. Open Orca.")
-    if status.get("target", {}).get("kind") != "local":
+    if not local:
         raise unavailable("orca_not_local", "Orca reports a host that is not local")
 
-    commands = {c["command"]: set(c.get("flags", [])) for c in run(["agent-context"])["commands"]}
     for command, flags in REQUIRED.items():
         if command not in commands:
             raise unavailable("orca_missing_command", f"this Orca has no `orca {command}` command")
@@ -116,8 +121,16 @@ def check(min_version: str) -> dict[str, Any]:
     return {"version": installed, "local": True}
 
 
+def require_local() -> None:
+    """Refuse a remote Orca selected through the environment (design §10.1)."""
+    for variable in REMOTE_VARIABLES:
+        if os.environ.get(variable):
+            raise unavailable("orca_not_local", f"{variable} is set: the Factory only works with local Orca")
+
+
 def base_branch(main_checkout: Path) -> str:
     """The repo's base branch in Orca (`worktreeBaseRef`, set by `/factory-init`)."""
+    require_local()
     try:
         repo = run(["repo", "show", "--repo", f"path:{main_checkout}"])["repo"]
     except OrcaError as exc:

@@ -336,7 +336,7 @@ Fill the "Test" column as tasks are completed. "Manual" criteria are checked in 
 | A-04 | T-26, T-31 | | ✔ |
 | A-05 | T-31 | | ✔ |
 | A-06 | T-09, T-10 | `test_design_parse.py` (each validation error), `test_design_cli.py::test_register_invalid_design_lists_problems` | |
-| A-07 | T-11 (+ skill rules in T-26) | `test_approve.py` (commits only the folder, other branch, "vale"/other id refused, hook failure, typed id) | ✔ (permission prompt) |
+| A-07 | T-11 (+ skill rules in T-26) | `test_approve.py` (commits only the folder, other branch, "vale"/other id refused, hook failure, typed id, piped stdin refused); file content cannot approve by construction (only `--message` or a typed id are read) | ✔ (permission prompt) |
 | A-08 | T-12 | `test_design_change.py` | |
 | A-09 | T-16 | | |
 | A-10 | T-17, T-26 | | ✔ |
@@ -379,6 +379,7 @@ Write here anything the design does not answer or that reality contradicts. Each
 | 2026-10-17 | T-10 | §9 `design register <CHG>` vs §4.2 "the CLI assigns it an id"; task ids need the change id before the task block is written. | Two steps: `register` (no id) reserves the next id and creates the folder; `register <CHG>` validates. Update design §4.2 and §9. | resolved: confirmed by the person; design §4.2 and §9 updated |
 | 2026-10-17 | T-11 | The CLI also refuses an approval `--message` that does not name the change id (code `approval_not_explicit`). | Enforces §4.4 rule 1 ("explicit approval that names the change") in the CLI as a second line of defence; it adds no new behavior for valid approvals. | resolved: follows design §4.4 |
 | 2026-10-17 | T-12 | Re-approval of a design that drops a previously approved task id is refused (`design_invalid`). | Follows §4.5 "keeping the ids … Nothing is deleted". | resolved: follows design §4.5 |
+| 2026-10-17 | M3 review | §4.5 restores `design_changed` tasks "on re-approval"; the CLI also restores them when an edit is reverted (the digest matches the existing approval again). | Equivalent: the approval is valid again for that exact design, so nothing new is approved. | resolved: follows design §1.5 ("approved" = digest matches) |
 | 2026-10-17 | T-23 | Design §7.4 says recover acts "after the person confirms", but §9 has a single `task recover`. | `task recover <id>` only inspects; `task recover <id> --confirm` acts (the skill calls it after asking). Add to design §9. | resolved: design §9 updated |
 
 ---
@@ -404,3 +405,4 @@ One line per completed task or session: date, task, what was done, what comes ne
 | 2026-10-17 | T-13 | `orca.py`: `run` (always `--json`, Orca errors → `OrcaError` with Orca's code, exit 5), `version`, `check` (installed, min version numerically, running, local by env vars and `status.target.kind`, required commands and flags in `agent-context`), `base_branch` from `worktreeBaseRef` of `repo show --repo path:<main checkout>` with clear errors when unregistered or unset. New fixture `repo-show-not-found.json`. 256 tests green. | T-11 approve/reject. |
 | 2026-10-17 | T-11 | `design approve` (valid design, not already approved or rejected, message names the change or typed id, base branch from Orca, `approval.json` + `tasks.yaml`, commit of only the change folder; a refused commit restores the files and the index) and `design reject` (same checks, `rejection.json`). `git.py`: `current_branch`, `config_value`, `commit_paths`. 273 tests green. | T-12 design changed after approval. |
 | 2026-10-17 | T-12 | `tasks.sync_with_design`: while the digest differs from the approval, in_progress/in_review/interrupted tasks are blocked (`design_changed`); when it matches again (re-approval or reverted edit) they return to `blocked_from`; done/paused untouched. Called by `design show` and `design approve`. Re-approval keeps ids, accepts new tasks, refuses removing approved ones. 280 tests green. M3 done. | M3 review, then M4 (T-14, T-15). |
+| 2026-10-17 | M3 review | No blockers. Fixed: §4.5 sync decided on the main checkout's files (a worktree's `design show` can no longer lift a block); approval commit uses `git add -N` + `commit --only`, so a refused commit leaves the person's staged changes intact; interactive approve needs a real terminal and prompts on stderr; approve/reject refuse remote Orca variables; version padding; unexpected Orca shapes → exit 5. 286 tests green. | M4: T-14 and T-15 in parallel. |

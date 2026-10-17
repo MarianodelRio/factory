@@ -5,12 +5,14 @@ from __future__ import annotations
 import argparse
 import sys
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any, NoReturn
 
 from factory import __version__, design, paths
 from factory.output import (
     EXIT_ERROR,
     EXIT_OK,
+    EXIT_PRECONDITION,
     EXIT_USAGE,
     FactoryError,
     error_envelope,
@@ -48,14 +50,26 @@ def design_register(args: argparse.Namespace) -> Result:
     return design.register(args.change, paths.changes_dir()), []
 
 
+def main_changes_dir() -> Path:
+    return paths.main_checkout() / ".factory" / "changes"
+
+
 def design_show(args: argparse.Namespace) -> Result:
-    return design.show(args.change, paths.changes_dir(), TaskStore(paths.state_dir())), []
+    store = TaskStore(paths.state_dir())
+    return design.show(args.change, paths.changes_dir(), store, main_changes_dir()), []
+
+
+def stdin_is_terminal() -> bool:
+    return sys.stdin.isatty()
 
 
 def design_approve(args: argparse.Namespace) -> Result:
     if args.message is None:
-        typed = input(f"Type {args.change} to approve its current design: ")
-        message, method = typed, "terminal"
+        if not stdin_is_terminal():
+            message = "without --message, approve asks the person to type the id in a terminal"
+            raise FactoryError("approval_not_confirmed", message, EXIT_PRECONDITION)
+        print(f"Type {args.change} to approve its current design: ", end="", file=sys.stderr, flush=True)
+        message, method = input(), "terminal"
     else:
         message, method = args.message, "chat"
     store = TaskStore(paths.state_dir())

@@ -126,3 +126,13 @@ def test_base_branch_repo_not_registered(repo, fake_orca):
     fake_orca.respond_fixture("repo show", "repo-show-not-found", exit=1)
     error = failure(orca.base_branch, repo.root)
     assert error.code == "orca_repo_not_registered"
+
+
+def test_check_short_version_is_padded(repo, fake_orca):
+    fake_orca.respond("version", "1.5")
+    assert orca.check("1.5.0")["version"] == "1.5"
+
+
+def test_check_unexpected_status_shape(repo, fake_orca):
+    fake_orca.respond("status", {"ok": True, "result": {"something": "else"}})
+    assert failure(orca.check, "1.4.229").code == "orca_failed"

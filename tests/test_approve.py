@@ -103,7 +103,8 @@ def test_failing_pre_commit_hook_leaves_nothing_approved(project, capsys):
 
 
 def test_interactive_approval(project, capsys, monkeypatch):
-    monkeypatch.setattr("builtins.input", lambda prompt: "CHG-0012")
+    monkeypatch.setattr("factory.cli.stdin_is_terminal", lambda: True)
+    monkeypatch.setattr("builtins.input", lambda: "CHG-0012")
     code = main(["design", "approve", CHANGE])
     assert code == 0
     approval = json.loads((project.root / FOLDER / "approval.json").read_text())
@@ -112,7 +113,8 @@ def test_interactive_approval(project, capsys, monkeypatch):
 
 
 def test_interactive_wrong_id_is_refused(project, capsys, monkeypatch):
-    monkeypatch.setattr("builtins.input", lambda prompt: "CHG-0021")
+    monkeypatch.setattr("factory.cli.stdin_is_terminal", lambda: True)
+    monkeypatch.setattr("builtins.input", lambda: "CHG-0021")
     assert main(["design", "approve", CHANGE]) == 3
     assert "approval_not_confirmed" in capsys.readouterr().err
     assert not (project.root / FOLDER / "approval.json").exists()
@@ -170,3 +172,31 @@ def test_reapproval_after_edit_replaces_files(project, capsys):
     approval = json.loads((project.root / FOLDER / "approval.json").read_text())
     assert approval["message"] == "apruebo CHG-0012 otra vez"
     assert subprocess.run(["git", "diff", "--quiet", "HEAD"], cwd=project.root).returncode == 0
+
+
+def test_interactive_needs_a_terminal(project, capsys, monkeypatch):
+    monkeypatch.setattr("factory.cli.stdin_is_terminal", lambda: False)
+    code = main(["design", "approve", CHANGE, "--json"])
+    assert code == 3
+    assert json.loads(capsys.readouterr().out)["error"]["code"] == "approval_not_confirmed"
+
+
+def test_failed_commit_keeps_what_the_person_had_staged(project, capsys):
+    project.commit(f"{FOLDER}/design.md", DESIGN, "draft design")
+    staged = DESIGN.replace("Weekly recurrence.", "Weekly recurrence (staged).")
+    (project.root / FOLDER / "design.md").write_text(staged)
+    git("add", f"{FOLDER}/design.md", cwd=project.root)
+    hook = project.root / ".git/hooks/pre-commit"
+    hook.write_text("#!/bin/sh\nexit 1\n")
+    hook.chmod(0o755)
+    code, out = cli(capsys, "design", "approve", CHANGE, "--message", "apruebo CHG-0012")
+    assert out["error"]["code"] == "commit_failed"
+    assert git("diff", "--cached", "--name-only", cwd=project.root) == f"{FOLDER}/design.md"
+    assert git("show", f":{FOLDER}/design.md", cwd=project.root) == staged.strip()
+
+
+def test_remote_orca_blocks_approval(project, capsys, monkeypatch):
+    monkeypatch.setenv("ORCA_PAIRING_CODE", "orca://pair?x")
+    code, out = cli(capsys, "design", "approve", CHANGE, "--message", "apruebo CHG-0012")
+    assert code == 5
+    assert out["error"]["code"] == "orca_not_local"
