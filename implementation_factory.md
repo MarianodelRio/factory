@@ -264,7 +264,7 @@ Goal: answer design §10.3 with evidence and record real outputs for the fakes. 
 
 ### M6 — Templates (can start after M1)
 
-- [ ] T-24 [P] Role instructions
+- [x] T-24 [P] Role instructions
   Depends: T-03 · Design: §5.3
   Files: `src/factory/templates/roles/{designer,design_critic,lead,planner,quality_reviewer,conformance_reviewer}.md`
   Do: the six role texts from design §5.3, plus the reviewer JSON contract in both reviewer files.
@@ -415,3 +415,4 @@ One line per completed task or session: date, task, what was done, what comes ne
 | 2026-10-17 | T-17 | `task claim` (not claimed, `ready`, Orca check, approval committed on base, exclusive claim, workspace from base with `--no-parent`; workspace failure releases the claim; state `in_progress` with attempt 1; card) and `task launch` (`--reviewer` added to §9 by the person's choice; brief `/factory-implement <id> [--reviewer X]`; records agent, reviewer, model as passed, operation_id, terminal; an Orca refusal frees the attempt, a launch without answer is `launch_unconfirmed` and is not repeated — recover). Fixed: a released claim no longer leaves an unreadable state. ruff line length 120. 347 tests green. | T-18 and T-19 (both edit tasks.py: sequential). |
 | 2026-10-17 | T-18 | `checkpoint` (saves done/next, delivers unread notes marking them read, a pause note blocks with `paused`), `note [--pause]` from any checkout, `block --reason`, `unblock` (only with a valid approval); cards from the state (`card_detail`). Notes gain a `pause` flag (design §1.4 example updated). | T-19 verify. |
 | 2026-10-17 | T-19 | `task verify`: config `[checks]` and each AC command run in the task workspace as argument lists (`shlex.split`, no shell), evidence in the main checkout's `evidence/<task>/`, AC `verified` only on exit 0, unrunnable → `not_run`, no checks → `not_run`; checks store the HEAD commit; `--manual AC --evidence file` only for manual ACs. Check commands run from `tasks.py` (not git/orca), still without shell. 365 tests green. | T-20 submit and review. |
+| 2026-10-17 | T-24 | Six role files in `src/factory/templates/roles/` with the §5.3 text verbatim, template marks, and the reviewer JSON contract in both reviewer files; a test keeps them equal to the design and loads them as package data (checked in the built wheel). Done before T-20, which uses them. | T-20 submit and review. |
