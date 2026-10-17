@@ -309,11 +309,12 @@ For truly trivial changes the Factory is not needed: just ask an agent directly.
 1. **Reads the project context**: `AGENTS.md` and whatever applies from `docs/` (product, architecture, conventions, current decisions, working agreements).
 2. **Researches the real code**: locates the files that will be touched, the existing patterns worth imitating and the current tests. It distinguishes what was verified from what was assumed.
 3. **Clarifies** what is ambiguous: it first researches and proposes options; it asks only what changes the design.
-4. **Writes the design** with the template (§4.3), proportional to the size of the change. For each task it decides its complexity and reviews, using the table in §5.4 as a guide.
-5. **Self-reviews** with a critical subagent (*Design critic* role, §5.3) that answers one question: *could another agent implement this correctly without having seen this conversation?* The agent fixes issues before presenting.
-6. **Registers** the change in two steps: before writing, `factory design register` reserves the next id and creates `.factory/changes/<id>/`, where the skill writes `design.md`; then `factory design register <id>` validates that the task block has the right format and that every AC is covered by some task (it is run again after every edit).
-7. **Presents** a summary (goal, decisions, risks, AC, tasks), opens the design in Orca and says how to approve.
-8. If the person asks for changes, it applies them in the same conversation; the digest changes with every modification.
+4. **Presents an outline and waits**: before writing anything, a short outline (10–20 lines) of the fundamentals: goal and scope, the chosen approach (and the alternatives considered, with why this one), the acceptance criteria in one line each with how they are verified, the tasks (title, dependencies, complexity, reviews), and risks or open questions. Nothing is reserved or written until the person says OK; they can correct it or ask for another option. This OK only allows writing the design: it is not an approval.
+5. **Writes the design** with the template (§4.3), proportional to the size of the change. For each task it decides its complexity and reviews, using the table in §5.4 as a guide.
+6. **Self-reviews** with a critical subagent (*Design critic* role, §5.3) that answers one question: *could another agent implement this correctly without having seen this conversation?* The agent fixes issues before presenting.
+7. **Registers** the change in two steps: before writing, `factory design register` reserves the next id and creates `.factory/changes/<id>/`, where the skill writes `design.md`; then `factory design register <id>` validates that the task block has the right format and that every AC is covered by some task (it is run again after every edit).
+8. **Presents** a summary (goal, decisions, risks, AC, tasks), opens the design in Orca and says how to approve.
+9. If the person asks for changes, it applies them in the same conversation; the digest changes with every modification.
 
 ### 4.3 Design template
 

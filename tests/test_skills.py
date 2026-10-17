@@ -70,3 +70,10 @@ def test_every_cli_command_used_exists():
         with pytest.raises(SystemExit) as exc:
             parser.parse_args([*command.split(), "--help"])
         assert exc.value.code == 0, command
+
+
+def test_design_skill_outlines_before_writing():
+    text = skill_dir("factory-design").joinpath("SKILL.md").read_text()
+    outline, reserve = text.index("**Outline and wait**"), text.index("**Reserve the id**")
+    assert outline < reserve
+    assert "never an approval" in text

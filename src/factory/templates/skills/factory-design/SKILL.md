@@ -19,18 +19,26 @@ changes do not need the Factory: the person can ask an agent directly.
    conventions, decisions, working agreements).
 2. **Research the real code**: the files to touch, the patterns to imitate, the current tests.
    Separate what you verified from what you assume.
-3. **Clarify**: research first and propose options; ask only what changes the design.
-4. **Reserve the id**: `factory design register --json` creates `.factory/changes/<id>/`.
-5. **Write** `.factory/changes/<id>/design.md` from the template in `references/design-template.md`,
+3. **Clarify**: research first and propose options; ask only what changes the design. If the
+   request is open or the person wants to explore, research the options (in the code, and outside
+   it when useful) before proposing.
+4. **Outline and wait**: before writing anything, present a short outline (10–20 lines): goal and
+   scope; the chosen approach in 2–4 sentences and the alternatives considered with why this one;
+   the acceptance criteria, one line each with how they are verified; the tasks (title,
+   dependencies, complexity, reviews); risks and open questions. Then stop. Reserve and write
+   nothing until the person says OK; apply their corrections or other options and outline again.
+   This OK only allows writing the design: it is never an approval.
+5. **Reserve the id**: `factory design register --json` creates `.factory/changes/<id>/`.
+6. **Write** `.factory/changes/<id>/design.md` from the template in `references/design-template.md`,
    proportional to the change. Every AC says how it is verified; tasks have clear boundaries
    (not micro-steps); choose `complexity` and `review` with `references/reviews.md`.
-6. **Self-review** with a subagent playing `references/roles/design_critic.md`: could another
+7. **Self-review** with a subagent playing `references/roles/design_critic.md`: could another
    agent implement this correctly without this conversation? Fix what it finds.
-7. **Validate**: `factory design register <id> --json`. Fix every problem in `error.details`
+8. **Validate**: `factory design register <id> --json`. Fix every problem in `error.details`
    and run it again after each edit.
-8. **Present** a summary (goal, decisions, risks, AC, tasks), open the design in Orca
+9. **Present** a summary (goal, decisions, risks, AC, tasks), open the design in Orca
    (`orca file open <path>`) and say how to approve: "approve <id>" ("apruebo <id>").
-9. If the person asks for changes, edit and validate again: the digest changes with every edit.
+10. If the person asks for changes, edit and validate again: the digest changes with every edit.
    Before editing an **approved** design, warn the person: the change goes back to awaiting
    approval, its tasks in progress (or interrupted) become `blocked` (`design_changed`) until it is
    approved again, `done` tasks are not touched, and re-approval keeps the task ids (new tasks get
