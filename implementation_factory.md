@@ -304,7 +304,7 @@ Goal: answer design §10.3 with evidence and record real outputs for the fakes. 
 
 ### M8 — End to end
 
-- [ ] T-30 Automated end-to-end flow
+- [x] T-30 Automated end-to-end flow
   Depends: T-23, T-28, T-29 · Acceptance: A-01…A-26 (automatable ones)
   Files: `tests/test_e2e.py`
   Do: on a temp repo with fakes: init → register a design → approve → claim → launch → checkpoint → verify → submit → record reviews → finish → publish → status; plus design change after approval, two tasks in parallel, interruption and recover.
@@ -337,21 +337,21 @@ Fill the "Test" column as tasks are completed. "Manual" criteria are checked in 
 | A-05 | T-31 | | ✔ |
 | A-06 | T-09, T-10 | `test_design_parse.py` (each validation error), `test_design_cli.py::test_register_invalid_design_lists_problems` | |
 | A-07 | T-11 (+ skill rules in T-26) | `test_approve.py` (commits only the folder, other branch, "vale"/other id refused, hook failure, typed id, piped stdin refused); file content cannot approve by construction (only `--message` or a typed id are read) | ✔ (permission prompt) |
-| A-08 | T-12 | `test_design_change.py` | |
+| A-08 | T-12 | `test_design_change.py`, `test_e2e.py::test_design_change_after_approval` | |
 | A-09 | T-16 | `test_task_states.py` (not done → pending; done not merged → pending with reason; merged → ready) | |
 | A-10 | T-17, T-26 | `test_claim_launch.py` (workspace + branch, launch with brief; in-workspace mode is skill behavior, T-26) | ✔ |
 | A-11 | T-07, T-17 | `test_state.py::test_concurrent_claims_exactly_one_wins`, `test_claim_launch.py::test_second_claim_is_a_conflict` | |
 | A-12 | T-20 | `test_review.py::test_effective_review_types`, conformance launch / quality subagent tests; "reviewers do not edit" is in the role text (T-24) | |
 | A-13 | T-20 | `test_review.py::test_second_round_without_pass_blocks_and_keeps_findings` | |
 | A-14 | T-21 | `test_finish.py` (one failing test per gate: AC, checks, review missing/failing/on an older code commit, memory, approval) | |
-| A-15 | T-22 | `test_publish.py` (only the task branch pushed, never forced, PR body sections, one PR on re-publish, no gh / gh failing) | |
+| A-15 | T-22 | `test_e2e.py::test_full_flow_from_init_to_published_pr`, `test_publish.py` (only the task branch pushed, never forced, PR body sections, one PR on re-publish, no gh / gh failing) | |
 | A-16 | T-21, T-26 | `test_finish.py` (`--memory` gate); memory on the task branch is a skill rule | ✔ |
 | A-17 | T-26, T-29 | `test_memory.py::test_superseded_decision_still_cited` (ADR immutability itself is a skill rule) | ✔ |
 | A-18 | T-26 | skill rule (`factory-implement/references/memory.md`: agreements saved only if the person accepts) | ✔ |
 | A-19 | T-24, T-25, T-26 | templates and skills in English (`test_templates.py`, `test_skills.py`); skills say artifacts are English | ✔ |
 | A-20 | T-18 (+ before submit in T-20) | `test_notes.py` (note from another worktree read at next checkpoint; pause → blocked), `test_review.py::test_submit_moves_to_in_review_and_reads_notes` | |
 | A-21 | T-23 | `test_status_recover.py` (finished → interrupted, unknown never dead, 10-minute warning only) | |
-| A-22 | T-23 | `test_status_recover.py::test_recover_confirm_opens_a_new_attempt_and_keeps_files` (new attempt, uncommitted files kept, nothing relaunched) | |
+| A-22 | T-23 | `test_status_recover.py::test_recover_confirm_opens_a_new_attempt_and_keeps_files` (new attempt, uncommitted files kept, nothing relaunched), `test_e2e.py::test_interruption_and_recovery` | |
 | A-23 | T-15 | `test_cards.py::test_card_follows_the_table` (one case per row) | |
 | A-24 | T-13 | `test_orca.py` (closed, unreachable, remote variables, non-local host), `test_claim_launch.py::test_orca_unavailable_claims_nothing` | |
 | A-25 | T-23 | `test_status_recover.py::test_deleted_workspace_is_a_broken_link` | |
@@ -437,3 +437,4 @@ One line per completed task or session: date, task, what was done, what comes ne
 | 2026-10-17 | T-27 | `init.doctor` + `factory doctor`: Git (root, branch, pending changes, worktrees), Orca (check, repo registered, base branch, orca-cli skill installed), agents Orca finds (`agent hooks status`), gh (installed, authenticated), stack, check commands (config > package.json scripts with the lock's runner > pyproject tools > Makefile; else "ask"), CI files, existing instructions/docs/skills, previous install, permission-bypass warning from Claude settings; problems/warnings instead of errors. git reads run with `GIT_OPTIONAL_LOCKS=0` so they never rewrite the index. New fixtures: agent hooks status, skills installed. 499 tests green. | T-28 init plan/apply/restore. |
 | 2026-10-17 | T-28 | `factory init --plan [--delete P --reason R]...` (four lists + customized + Orca actions + plan id; changes nothing), `--apply <plan-id> [--exclude P]...` (refuses a changed plan; backups + manifest under `backups/<ts>/`; skills to `.claude/skills/` and `.agents/skills/` with roles, design and ADR templates; docs by repo size; config with detected checks and `[templates]` hashes for skills; `.gitignore`; `permissions.ask` merged; Orca repo add / set-base-ref / skills install or update; nothing committed), `--restore <backup>`. Deletions: Factory leftovers and empty docs, plus skill-proposed ones, never code/tests/CI/secrets. `orca.run_plain` for commands that reject `--json`. 519 tests green. M7 done. | M7 review. |
 | 2026-10-17 | M7 review | 1 blocker fixed: `--delete`/writes could leave the repo (`../x`, absolute paths, symlinked folders) — paths are now normalized, must stay inside the repo and never go through a symlink. Also fixed: deletable files limited to `.md/.mdc/.rst` and known instruction files, never `.factory/`, `docs/decisions/`, `docs/working-agreements.md`; plan id covers the content of files to delete; config is an ordinary plan write (backed up, rebuilt from the plan's report, excluded skills keep their recorded hash); `[templates]` header with a comment handled; malformed package.json/pyproject/settings → warnings; plan warns that Codex has no ask rule; the init skill documents `--delete/--reason` and re-passing them to `--apply`. 531 tests green. | M8: T-30 automated end-to-end. |
+| 2026-10-17 | T-30 | `tests/test_e2e.py` through the CLI only: init → commit → register (reserve + validate) → approve → list → claim → launch → commit → checkpoint → verify (+ manual) → submit → conformance launch → record quality and conformance → finish → publish → status; trivial task finishing without submit; design change after approval and re-approval; two tasks in parallel; interruption and recovery. Every automatable criterion in §5 is linked to a test (A-04/A-05 and the manual parts wait for T-31; Codex parts deferred). 536 tests green. | T-31 real run with the person. |
