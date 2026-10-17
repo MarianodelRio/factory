@@ -128,7 +128,7 @@ Goal: answer design §10.3 with evidence and record real outputs for the fakes. 
 
 ### M1 — Skeleton and contracts
 
-- [ ] T-03 Project skeleton
+- [x] T-03 Project skeleton
   Depends: T-02 · Design: §1.2
   Files: `pyproject.toml`, `src/factory/__init__.py`, `src/factory/cli.py`, `src/factory/output.py`, `README.md`, `.gitignore`
   Do: package with entry point `factory`, Python ≥ 3.11, PyYAML runtime dependency, dev dependencies (pytest, ruff, mypy). `factory --version` and `factory --help` with all subcommands of design §9 registered (bodies may raise "not implemented" with exit 1). JSON envelope and exit codes of §3.
@@ -384,3 +384,4 @@ One line per completed task or session: date, task, what was done, what comes ne
 |---|---|---|---|
 | 2026-10-17 | T-02 | D-01 (PyYAML) and D-02 (Python 3.11+, uv) confirmed; design updated. | T-01 spike with the person, then T-03. |
 | 2026-10-17 | T-01 | Spike with the person: §10.3 answered in `docs/spike-results.md` (Claude terminal verified; Codex and Orca chat not verified), 21 Orca fixtures recorded, 4 design changes approved and applied (design v1.5). The spike's sandbox repo and workspace were removed from Orca. M0 review: no blockers; fixes applied. | T-03 project skeleton. |
+| 2026-10-17 | T-03 | Package skeleton (uv_build, Python 3.11 pinned for dev, PyYAML), `factory` CLI with every design §9 command registered (not implemented → exit 1), JSON envelope and exit codes of §3, README. `uv` reinstalled on the machine (link was broken). 52 tests, ruff, mypy green. | T-04 test harness (fake orca/gh), then T-05/T-06. |
