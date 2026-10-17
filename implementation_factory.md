@@ -296,7 +296,7 @@ Goal: answer design §10.3 with evidence and record real outputs for the fakes. 
   Do: build the four lists (create, modify, delete with reason, respect) plus Orca actions, as data. Deletions limited to the categories of design §3.1; never code, tests, CI or secrets. `--apply <plan-id> [--exclude ...]`: back up every modified or deleted file to `backups/<YYYYMMDD-HHMMSS>/`, write files from templates (skills to `.claude/skills/` and `.agents/skills/`, docs adapted to repo size per §6.2, `config.toml` with detected `[checks]`, `.gitignore` entry for `.factory/state/`, `permissions.ask` for `factory design approve`/`reject` in `.claude/settings.json` merged without losing existing settings, Codex equivalent per T-01), record template hashes, register the repo in Orca, set its base branch (`orca repo set-base-ref`) and install/update Orca skills. Nothing committed. Customized files (hash mismatch) → shown as diff, not overwritten. `--restore <backup>`.
   Done when: tests: plan is stable; apply twice = same tree (A-02); customized file kept; deleted file restorable (A-03); existing `.claude/settings.json` keys preserved.
 
-- [ ] T-29 [P] `factory memory check`
+- [x] T-29 [P] `factory memory check`
   Depends: T-03 · Design: §6.6
   Files: `src/factory/memory.py`, `tests/test_memory.py`
   Do: `AGENTS.md` > 120 lines; ADRs with status `superseded` still referenced; duplicated ADR numbers; links to missing files.
@@ -346,7 +346,7 @@ Fill the "Test" column as tasks are completed. "Manual" criteria are checked in 
 | A-14 | T-21 | `test_finish.py` (one failing test per gate: AC, checks, review missing/failing/on an older code commit, memory, approval) | |
 | A-15 | T-22 | `test_publish.py` (only the task branch pushed, never forced, PR body sections, one PR on re-publish, no gh / gh failing) | |
 | A-16 | T-21, T-26 | | ✔ |
-| A-17 | T-26, T-29 | | ✔ |
+| A-17 | T-26, T-29 | `test_memory.py::test_superseded_decision_still_cited` (ADR immutability itself is a skill rule) | ✔ |
 | A-18 | T-26 | | ✔ |
 | A-19 | T-24, T-25, T-26 | | ✔ |
 | A-20 | T-18 (+ before submit in T-20) | `test_notes.py` (note from another worktree read at next checkpoint; pause → blocked), `test_review.py::test_submit_moves_to_in_review_and_reads_notes` | |
@@ -429,3 +429,4 @@ One line per completed task or session: date, task, what was done, what comes ne
 | 2026-10-17 | M5 review | No blockers. Fixed: `commits` recorded at finish (dependencies stay integrated after their branch is deleted); checks must cover the last code commit; launch takes the attempt inside the task lock (concurrent launches start one agent); finish reads unread notes (a pause stops it); in-review card lists pending reviews; verify rechecks the state before writing; claim releases its lock on any failure; status interrupts only the attempt it checked; recover checks the claim first and tolerates a missing workspace; config loaded in one place. Two questions open in §6 (review commit, A-26). 434 tests green. | Ask the person; then M6 (T-25, T-26). |
 | 2026-10-17 | M5 decisions | Reviewer JSON requires `commit` (must be on the task branch; that commit is stored and used by the finish gate). Secret guard: `output.mask_secrets` on every state/event write, evidence, card comment and PR body; `.env`/key files refused as evidence. Design §5.3, §10.1 and reviewer roles updated. 459 tests green. | M6: T-25 design/docs templates, T-26 skills. |
 | 2026-10-17 | T-25 | Design template (§4.3, placeholder `CHG-0000`, parsed by `parse_design` in a test) and docs templates (`AGENTS.md` 65 lines with the Factory section, `CLAUDE.md` = `@AGENTS.md`, product, architecture, conventions with Known pitfalls, working agreements by topic, decisions index and ADR template), all with `factory-template` marks. | T-26 skills. |
+| 2026-10-17 | T-29 | `memory.py` + `factory memory check`: AGENTS.md over 120 lines, superseded ADRs still cited outside `docs/decisions/`, duplicated ADR numbers, links to missing files (AGENTS.md, CLAUDE.md, docs/**); read-only. Done while the T-26 review runs. | Finish T-26 after its review. |
