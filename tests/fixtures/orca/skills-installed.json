@@ -1,0 +1,182 @@
+{
+  "id": "545cb2c6-81a5-4f60-8389-5ec53ad82c6d",
+  "ok": true,
+  "result": {
+    "skills": [
+      {
+        "id": "da9bdcad69a39770",
+        "name": "built-in-browser",
+        "providers": [
+          "claude"
+        ],
+        "sourceKind": "home",
+        "sourceLabel": "Claude Code home"
+      },
+      {
+        "id": "4b6cde95576f2f8f",
+        "name": "chrome-browser",
+        "providers": [
+          "claude"
+        ],
+        "sourceKind": "home",
+        "sourceLabel": "Claude Code home"
+      },
+      {
+        "id": "3e064571a4539c6a",
+        "name": "computer-use",
+        "providers": [
+          "agent-skills"
+        ],
+        "sourceKind": "home",
+        "sourceLabel": "Agent skills home"
+      },
+      {
+        "id": "b3ac300190e10603",
+        "name": "computer-use",
+        "providers": [
+          "claude"
+        ],
+        "sourceKind": "home",
+        "sourceLabel": "Claude Code home"
+      },
+      {
+        "id": "fd347cb5cde814d0",
+        "name": "computer-use",
+        "providers": [
+          "claude"
+        ],
+        "sourceKind": "home",
+        "sourceLabel": "Claude Code home"
+      },
+      {
+        "id": "b7fc0309e0228446",
+        "name": "deep-research",
+        "providers": [
+          "claude"
+        ],
+        "sourceKind": "home",
+        "sourceLabel": "Claude Code home"
+      },
+      {
+        "id": "55e6cbcbec86104f",
+        "name": "docs",
+        "providers": [
+          "claude"
+        ],
+        "sourceKind": "home",
+        "sourceLabel": "Claude Code home"
+      },
+      {
+        "id": "1327989ed2ec45bd",
+        "name": "docs",
+        "providers": [
+          "claude"
+        ],
+        "sourceKind": "home",
+        "sourceLabel": "Claude Code home"
+      },
+      {
+        "id": "17f2692abf876e61",
+        "name": "docx",
+        "providers": [
+          "claude"
+        ],
+        "sourceKind": "home",
+        "sourceLabel": "Claude Code home"
+      },
+      {
+        "id": "846a34a351b35672",
+        "name": "find-skills",
+        "providers": [
+          "agent-skills"
+        ],
+        "sourceKind": "home",
+        "sourceLabel": "Agent skills home"
+      },
+      {
+        "id": "2d0ff4551a303c31",
+        "name": "google-workspace",
+        "providers": [
+          "claude"
+        ],
+        "sourceKind": "home",
+        "sourceLabel": "Claude Code home"
+      },
+      {
+        "id": "4c6516f4e93ddebb",
+        "name": "import-memory",
+        "providers": [
+          "claude"
+        ],
+        "sourceKind": "home",
+        "sourceLabel": "Claude Code home"
+      },
+      {
+        "id": "1b4c91b0615867d6",
+        "name": "morning",
+        "providers": [
+          "claude"
+        ],
+        "sourceKind": "home",
+        "sourceLabel": "Claude Code home"
+      },
+      {
+        "id": "6ff911679e14835a",
+        "name": "orca-cli",
+        "providers": [
+          "agent-skills"
+        ],
+        "sourceKind": "home",
+        "sourceLabel": "Agent skills home"
+      },
+      {
+        "id": "88d2e7bd4fcdb31d",
+        "name": "orchestration",
+        "providers": [
+          "agent-skills"
+        ],
+        "sourceKind": "home",
+        "sourceLabel": "Agent skills home"
+      },
+      {
+        "id": "76c227a630998e56",
+        "name": "pdf",
+        "providers": [
+          "claude"
+        ],
+        "sourceKind": "home",
+        "sourceLabel": "Claude Code home"
+      },
+      {
+        "id": "a56fbe751805fb42",
+        "name": "pptx",
+        "providers": [
+          "claude"
+        ],
+        "sourceKind": "home",
+        "sourceLabel": "Claude Code home"
+      },
+      {
+        "id": "4b7fc7d6998f8b19",
+        "name": "skill-creator",
+        "providers": [
+          "claude"
+        ],
+        "sourceKind": "home",
+        "sourceLabel": "Claude Code home"
+      },
+      {
+        "id": "c268b3981e51d4cf",
+        "name": "xlsx",
+        "providers": [
+          "claude"
+        ],
+        "sourceKind": "home",
+        "sourceLabel": "Claude Code home"
+      }
+    ]
+  },
+  "_meta": {
+    "runtimeId": "58d6ebae-3b1d-4a59-b296-8b3d43e916a2"
+  }
+}

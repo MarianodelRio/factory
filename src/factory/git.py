@@ -24,8 +24,9 @@ from factory.output import EXIT_ERROR, EXIT_PRECONDITION, EXIT_UNAVAILABLE, Fact
 def run(args: list[str], cwd: Path | None = None) -> str:
     """Run `git <args>` in `cwd` and return its stripped stdout."""
     command = ["git", *args]
-    # Untranslated messages so failures can be classified by their text.
-    env = {**os.environ, "LC_ALL": "C"}
+    # Untranslated messages so failures can be classified by their text; no optional locks, so read
+    # commands such as `status` never rewrite the index.
+    env = {**os.environ, "LC_ALL": "C", "GIT_OPTIONAL_LOCKS": "0"}
     try:
         result = subprocess.run(command, cwd=cwd, env=env, capture_output=True, text=True)
     except FileNotFoundError as error:
@@ -188,3 +189,11 @@ def branch_commits(base: str, cwd: Path) -> list[str]:
     """Commits of the branch since it left `base`, oldest first."""
     merge_base = run(["merge-base", base, "HEAD"], cwd)
     return run(["log", "--reverse", "--format=%H", f"{merge_base}..HEAD"], cwd).splitlines()
+
+
+def gh_authenticated(cwd: Path) -> bool:
+    try:
+        _gh(["auth", "status"], cwd)
+    except FactoryError:
+        return False
+    return True

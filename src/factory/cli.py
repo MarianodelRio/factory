@@ -8,7 +8,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any, NoReturn
 
-from factory import __version__, design, memory, paths, tasks
+from factory import __version__, design, init, memory, paths, tasks
 from factory.output import (
     EXIT_ERROR,
     EXIT_OK,
@@ -134,6 +134,10 @@ def task_recover(args: argparse.Namespace) -> Result:
     return tasks.recover(args.task, args.confirm, task_context())
 
 
+def doctor(args: argparse.Namespace) -> Result:
+    return init.doctor(paths.repo_root(), paths.main_checkout()), []
+
+
 def memory_check(args: argparse.Namespace) -> Result:
     return memory.check(paths.repo_root()), []
 
@@ -174,6 +178,7 @@ HANDLERS: dict[str, Handler] = {
     "task recover": task_recover,
     "status": status,
     "memory check": memory_check,
+    "doctor": doctor,
 }
 
 

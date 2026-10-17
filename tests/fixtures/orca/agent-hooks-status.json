@@ -1,0 +1,175 @@
+{
+  "id": "local",
+  "ok": true,
+  "result": {
+    "enabled": true,
+    "settingsPath": "/home/user/.config/orca/profiles/local-default/orca-data.json",
+    "appliedBy": "offline",
+    "statuses": [
+      {
+        "agent": "claude",
+        "state": "installed",
+        "configPath": "/home/user/.claude/settings.json",
+        "managedHooksPresent": true,
+        "detail": null
+      },
+      {
+        "agent": "openclaude",
+        "state": "not_installed",
+        "configPath": "/home/user/.openclaude/settings.json",
+        "managedHooksPresent": false,
+        "detail": null
+      },
+      {
+        "agent": "codex",
+        "state": "not_installed",
+        "configPath": "/home/user/.codex/hooks.json",
+        "managedHooksPresent": false,
+        "detail": "Orca could not find Codex at codex"
+      },
+      {
+        "agent": "gemini",
+        "state": "not_installed",
+        "configPath": "/home/user/.gemini/settings.json",
+        "managedHooksPresent": false,
+        "detail": null
+      },
+      {
+        "agent": "qoder",
+        "state": "not_installed",
+        "configPath": "/home/user/.qoder/settings.json",
+        "managedHooksPresent": false,
+        "detail": null
+      },
+      {
+        "agent": "qoder-cn",
+        "state": "not_installed",
+        "configPath": "/home/user/.qoder-cn/settings.json",
+        "managedHooksPresent": false,
+        "detail": null
+      },
+      {
+        "agent": "qwen-code",
+        "state": "not_installed",
+        "configPath": "/home/user/.qwen/settings.json",
+        "managedHooksPresent": false,
+        "detail": null
+      },
+      {
+        "agent": "codebuddy",
+        "state": "not_installed",
+        "configPath": "/home/user/.codebuddy/settings.json",
+        "managedHooksPresent": false,
+        "detail": null
+      },
+      {
+        "agent": "antigravity",
+        "state": "not_installed",
+        "configPath": "/home/user/.gemini/config/hooks.json",
+        "managedHooksPresent": false,
+        "detail": null
+      },
+      {
+        "agent": "amp",
+        "state": "not_installed",
+        "configPath": "/home/user/.config/amp/plugins/orca-agent-status.ts",
+        "managedHooksPresent": false,
+        "detail": null
+      },
+      {
+        "agent": "cursor",
+        "state": "not_installed",
+        "configPath": "/home/user/.cursor/hooks.json",
+        "managedHooksPresent": false,
+        "detail": null
+      },
+      {
+        "agent": "droid",
+        "state": "not_installed",
+        "configPath": "/home/user/.factory/settings.json",
+        "managedHooksPresent": false,
+        "detail": null
+      },
+      {
+        "agent": "grok",
+        "state": "not_installed",
+        "configPath": "/home/user/.grok/hooks/orca-status.json",
+        "managedHooksPresent": false,
+        "detail": null
+      },
+      {
+        "agent": "command-code",
+        "state": "not_installed",
+        "configPath": "/home/user/.commandcode/settings.json",
+        "managedHooksPresent": false,
+        "detail": null
+      },
+      {
+        "agent": "copilot",
+        "state": "not_installed",
+        "configPath": "/home/user/.copilot/hooks/orca.json",
+        "managedHooksPresent": false,
+        "detail": null
+      },
+      {
+        "agent": "hermes",
+        "state": "not_installed",
+        "configPath": "/home/user/.hermes/config.yaml",
+        "managedHooksPresent": false,
+        "detail": null
+      },
+      {
+        "agent": "devin",
+        "state": "not_installed",
+        "configPath": "/home/user/.config/devin/config.json",
+        "managedHooksPresent": false,
+        "detail": "Devin read_config_from.claude is enabled; imported Claude hooks may fire alongside Devin hooks."
+      },
+      {
+        "agent": "kimi",
+        "state": "not_installed",
+        "configPath": "/home/user/.kimi-code/config.toml",
+        "managedHooksPresent": false,
+        "detail": null
+      },
+      {
+        "agent": "muse",
+        "configPath": "/home/user/.config/muse/settings.json",
+        "state": "not_installed",
+        "managedHooksPresent": false,
+        "detail": null
+      },
+      {
+        "agent": "zcode",
+        "configPath": "/home/user/.zcode/cli/config.json",
+        "state": "not_installed",
+        "managedHooksPresent": false,
+        "detail": null
+      },
+      {
+        "agent": "dsh",
+        "state": "not_installed",
+        "configPath": "/home/user/.dsh/cordis.patch.yml",
+        "managedHooksPresent": false,
+        "detail": null
+      },
+      {
+        "agent": "jcode",
+        "state": "not_installed",
+        "configPath": "/home/user/.jcode/config.toml",
+        "managedHooksPresent": false,
+        "detail": null
+      },
+      {
+        "agent": "kiro",
+        "state": "not_installed",
+        "configPath": "/home/user/.kiro/agents",
+        "managedHooksPresent": false,
+        "detail": "No custom Kiro agents in /home/user/.kiro/agents. Kiro's built-in default agent cannot carry hooks; create one with `kiro-cli agent create` and make it the default so Orca can track Kiro's status"
+      }
+    ]
+  },
+  "_meta": {
+    "runtimeId": "local"
+  }
+}

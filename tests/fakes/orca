@@ -39,6 +39,8 @@ DEFAULTS = {
     "terminal show": "terminal-show-alive",
     "terminal close": "terminal-close",
     "search": "search-disabled",
+    "agent hooks status": "agent-hooks-status",
+    "skills installed": "skills-installed",
 }
 
 

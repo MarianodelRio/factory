@@ -284,7 +284,7 @@ Goal: answer design §10.3 with evidence and record real outputs for the fakes. 
 
 ### M7 — Init and memory
 
-- [ ] T-27 `factory doctor` (analysis)
+- [x] T-27 `factory doctor` (analysis)
   Depends: T-13, T-05 · Design: §3.1 (step 1)
   Files: `src/factory/init.py`, `tests/test_doctor.py`
   Do: collect, without writing anything: Git info, Orca check (T-13), agents available, `gh`, stack and check commands (from `pyproject.toml`, `package.json`, `Makefile`, CI files; unknown → "ask"), existing instructions/docs/skills, previous Factory installation, client permission mode warning (Orca's `agentDefaultArgs` bypass flags, design §10.1) if detectable.
@@ -330,7 +330,7 @@ Fill the "Test" column as tasks are completed. "Manual" criteria are checked in 
 
 | Criterion | Task(s) | Test | Manual |
 |---|---|---|---|
-| A-01 | T-27, T-28 | | |
+| A-01 | T-27, T-28 | `test_doctor.py::test_doctor_changes_nothing` (files and `.git/index` byte-identical); plan side in T-28 | |
 | A-02 | T-28 | | |
 | A-03 | T-28 | | |
 | A-04 | T-26, T-31 | | ✔ |
@@ -432,3 +432,4 @@ One line per completed task or session: date, task, what was done, what comes ne
 | 2026-10-17 | T-25 | Design template (§4.3, placeholder `CHG-0000`, parsed by `parse_design` in a test) and docs templates (`AGENTS.md` 65 lines with the Factory section, `CLAUDE.md` = `@AGENTS.md`, product, architecture, conventions with Known pitfalls, working agreements by topic, decisions index and ADR template), all with `factory-template` marks. | T-26 skills. |
 | 2026-10-17 | T-29 | `memory.py` + `factory memory check`: AGENTS.md over 120 lines, superseded ADRs still cited outside `docs/decisions/`, duplicated ADR numbers, links to missing files (AGENTS.md, CLAUDE.md, docs/**); read-only. Done while the T-26 review runs. | Finish T-26 after its review. |
 | 2026-10-17 | T-26 | Four skills (`factory-init`, `factory-design`, `factory-implement`, `factory-status`) with short SKILL.md and references (approval rules, reviews table, lead flow, memory, recover); frontmatter/reference/CLI-command tests. Fresh-context review against the design: 0 blockers, 8 major + minors, all fixed (checks asked at init, design never modifies code, warning before editing an approved design, reviewer output read until the final JSON, finish may pause, no-review tasks skip submit, general unblock flow, ...). `status` rows now include the reviewer. This review also serves as the M6 review (T-24/T-25 are covered by tests against the design text). M6 done. 490 tests green. | M7: T-27 doctor, T-28 init. |
+| 2026-10-17 | T-27 | `init.doctor` + `factory doctor`: Git (root, branch, pending changes, worktrees), Orca (check, repo registered, base branch, orca-cli skill installed), agents Orca finds (`agent hooks status`), gh (installed, authenticated), stack, check commands (config > package.json scripts with the lock's runner > pyproject tools > Makefile; else "ask"), CI files, existing instructions/docs/skills, previous install, permission-bypass warning from Claude settings; problems/warnings instead of errors. git reads run with `GIT_OPTIONAL_LOCKS=0` so they never rewrite the index. New fixtures: agent hooks status, skills installed. 499 tests green. | T-28 init plan/apply/restore. |

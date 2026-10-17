@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from factory import __version__
+from factory import __version__, cli
 from factory.cli import main
 
 # Every command path of design §9.
@@ -104,7 +104,8 @@ def test_usage_error_without_json_goes_to_stderr(capsys):
     assert "invalid choice" in err
 
 
-def test_not_implemented_human_output(capsys):
+def test_not_implemented_human_output(capsys, monkeypatch):
+    monkeypatch.delitem(cli.HANDLERS, "doctor")
     code, out, err = run(capsys, ["doctor"])
     assert code == 1
     assert out == ""

@@ -16,3 +16,5 @@ results (search is disabled here).
 - `repo-show-not-found.json`: `repo show --repo path:<unregistered>` (exit 1).
 - `terminal-show-stale.json`: `terminal show` with a handle Orca does not know (exit 1).
 - `worktree-show-not-found.json`: `worktree show` of a workspace that does not exist (exit 1).
+- `agent-hooks-status.json`: `orca agent hooks status` (which agents Orca finds: claude installed, codex not).
+- `skills-installed.json`: `orca skills installed`, trimmed to id, name, providers and source.
