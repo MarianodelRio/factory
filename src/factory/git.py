@@ -5,13 +5,18 @@ Raises FactoryError with these codes:
 - not_a_git_repo (EXIT_PRECONDITION): the working directory is not inside a Git repository.
 - git_failed (EXIT_ERROR): any other git failure; the message carries the command and stderr.
 - commit_failed (EXIT_PRECONDITION): `git commit` was refused (e.g. by a hook); nothing is committed.
+- push_rejected (EXIT_UNAVAILABLE): the remote refused the push; the local branch is intact.
+- gh_unavailable / gh_failed (EXIT_UNAVAILABLE): `gh` is not installed, or it failed.
 """
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
+import tempfile
 from pathlib import Path
+from typing import Any
 
 from factory.output import EXIT_ERROR, EXIT_PRECONDITION, EXIT_UNAVAILABLE, FactoryError
 
@@ -135,3 +140,45 @@ def changed_files(base: str, cwd: Path) -> list[str]:
     """Files changed on the branch since it left `base`."""
     merge_base = run(["merge-base", base, "HEAD"], cwd)
     return run(["diff", "--name-only", merge_base, "HEAD"], cwd).splitlines()
+
+
+def push_branch(branch: str, cwd: Path) -> None:
+    """Push only `branch` to origin, never forced."""
+    try:
+        run(["push", "-q", "-u", "origin", f"refs/heads/{branch}:refs/heads/{branch}"], cwd)
+    except FactoryError as exc:
+        if exc.code != "git_failed":
+            raise
+        message = f"the push of {branch} was rejected; the branch is intact. {exc.message}"
+        raise FactoryError("push_rejected", message, EXIT_UNAVAILABLE) from exc
+
+
+def _gh(args: list[str], cwd: Path) -> str:
+    try:
+        done = subprocess.run(["gh", *args], cwd=cwd, capture_output=True, text=True)
+    except FileNotFoundError as exc:
+        raise FactoryError("gh_unavailable", "gh is not installed", EXIT_UNAVAILABLE) from exc
+    if done.returncode != 0:
+        raise FactoryError("gh_failed", f"gh {' '.join(args[:2])} failed: {done.stderr.strip()}", EXIT_UNAVAILABLE)
+    return done.stdout.strip()
+
+
+def gh_version(cwd: Path) -> str:
+    return _gh(["--version"], cwd)
+
+
+def pr_for_branch(branch: str, cwd: Path) -> dict[str, Any] | None:
+    """The open pull request whose head is `branch`, if any."""
+    found = json.loads(_gh(["pr", "list", "--head", branch, "--json", "number,url"], cwd) or "[]")
+    return {"number": int(found[0]["number"]), "url": found[0]["url"]} if found else None
+
+
+def pr_create(base: str, head: str, title: str, body: str, cwd: Path) -> dict[str, Any]:
+    with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False, encoding="utf-8") as file:
+        file.write(body)
+    try:
+        url = _gh(["pr", "create", "--base", base, "--head", head, "--title", title, "--body-file", file.name],
+                  cwd).splitlines()[-1]
+    finally:
+        os.unlink(file.name)
+    return {"number": int(url.rstrip("/").rsplit("/", 1)[1]), "url": url}

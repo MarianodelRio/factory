@@ -126,6 +126,10 @@ def task_review(args: argparse.Namespace) -> Result:
     return tasks.review(args.task, args.type, args.agent, task_context())
 
 
+def task_publish(args: argparse.Namespace) -> Result:
+    return tasks.publish(args.task, task_context())
+
+
 def task_finish(args: argparse.Namespace) -> Result:
     return tasks.finish(args.task, args.memory, task_context())
 
@@ -154,6 +158,7 @@ HANDLERS: dict[str, Handler] = {
     "task submit": task_submit,
     "task review": task_review,
     "task finish": task_finish,
+    "task publish": task_publish,
 }
 
 

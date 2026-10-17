@@ -695,3 +695,59 @@ def _outside_scope(task: dict[str, Any], files: list[str]) -> list[str]:
         path for path in files
         if not path.startswith(("docs/", ".factory/")) and not any(fnmatch.fnmatch(path, g) for g in scope)
     ]
+
+
+def publish(task_id: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
+    """Push the task branch (only it, never forced) and open its PR against the base branch, or
+    reuse the open one (design §5.6). Without a usable `gh` the PR is left to the person."""
+    task, record = _started(task_id, ctx)
+    if record["state"] != "done":
+        _reject(record, "publish", f"it is {record['state']}; finish it first")
+    base = orca.base_branch(ctx.main_checkout)
+    branch = record["workspace"]["branch"]
+    git.push_branch(branch, ctx.main_checkout)
+
+    warnings: list[str] = []
+    pull_request = None
+    try:
+        git.gh_version(ctx.main_checkout)
+        pull_request = git.pr_for_branch(branch, ctx.main_checkout) or git.pr_create(
+            base, branch, f"{task_id}: {task['title']}", pr_body(task, record), ctx.main_checkout
+        )
+    except FactoryError as exc:
+        if exc.code not in ("gh_unavailable", "gh_failed"):
+            raise
+        warnings.append(f"{exc.message}: the branch {branch} is pushed; open the PR against {base} yourself")
+
+    if pull_request:
+        def apply(state: State) -> State:
+            state["pull_request"] = pull_request
+            return state
+
+        record = ctx.store.update_task(task_id, apply, "publish")
+        warnings += _card(task, record)
+    return {"task": task_id, "branch": branch, "pull_request": pull_request}, warnings
+
+
+def pr_body(task: dict[str, Any], record: State) -> str:
+    """PR description from the task: change, AC with evidence, reviews with every finding, memory
+    and what remains pending (design §5.6)."""
+    lines = [f"Task {task['id']} of change {task['change']} "
+             f"(design: `.factory/changes/{task['change']}/design.md`).", "", "## Acceptance criteria", ""]
+    for ac, how in task["acceptance"].items():
+        entry = record["acceptance"].get(ac) or {}
+        evidence = Path(entry["evidence"]).name if entry.get("evidence") else "no evidence"
+        lines.append(f"- {ac} ({how}): {entry.get('status', 'pending')} — evidence `{evidence}`")
+    checks = record.get("checks") or {}
+    lines += ["", f"Project checks: {checks.get('status', 'not run')}.", "", "## Reviews", ""]
+    if not record["reviews"]:
+        lines.append("- none required")
+    for review in record["reviews"]:
+        lines.append(f"- {review['type']} by {review['reviewer']}, round {review['round']}: {review['verdict']}")
+        for finding in review["findings"]:
+            where = f"{finding.get('file', '')}:{finding.get('line', '')}".strip(":")
+            lines.append(f"  - {finding['severity']} {where}: {finding['problem']}")
+    lines += ["", "## Memory", "", str(record.get("memory") or "none"), "", "## Pending", ""]
+    pending = [f"changed outside the task scope: `{p}`" for p in record.get("scope_warnings") or []]
+    lines += [f"- {p}" for p in pending] or ["- nothing"]
+    return "\n".join(lines) + "\n"
