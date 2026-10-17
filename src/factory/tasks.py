@@ -253,17 +253,17 @@ def claim(task_id: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
     ctx.store.create_claim(task_id, 1)
     try:
         workspace = orca.create_workspace(task_id, base, ctx.main_checkout)
-    except FactoryError:
-        ctx.store.release_claim(task_id)
+
+        def start(state: State) -> State:
+            state = transition(state, "claim", current="ready")
+            state["workspace"] = {"orca_id": workspace["id"], "branch": workspace["branch"]}
+            state["attempts"] = [new_attempt(1)]
+            return state
+
+        ctx.store.update_task(task_id, start, "claim")
+    except Exception:
+        ctx.store.release_claim(task_id)  # the task goes back to ready
         raise
-
-    def start(state: State) -> State:
-        state = transition(state, "claim", current="ready")
-        state["workspace"] = {"orca_id": workspace["id"], "branch": workspace["branch"]}
-        state["attempts"] = [new_attempt(1)]
-        return state
-
-    ctx.store.update_task(task_id, start, "claim")
     next_action = f"launch the lead agent (factory task launch {task_id})"
     warnings = orca.update_card(workspace["id"], task_id, task["title"], "in_progress", next_action)
     data = {"task": task_id, "state": "in_progress", "workspace": workspace["id"], "path": workspace["path"],
@@ -276,18 +276,22 @@ def launch(
 ) -> tuple[dict[str, Any], list[str]]:
     """Open the lead agent in the task's workspace with the brief `/factory-implement <id>`."""
     task = _task(task_id, ctx)
-    record = ctx.store.read_task(task_id)
-    if record is None or record["state"] != "in_progress":
-        state = record["state"] if record else view(task, ctx)["state"]
-        _reject({"task": task_id}, "launch", f"it is {state}; claim it first")
-    if record["attempts"][-1]["agent"] is not None:
-        message = f"attempt {record['attempts'][-1]['id']} of {task_id} already has a lead agent"
-        raise FactoryError("already_launched", message, EXIT_CONFLICT)
-    if effort and not model:
-        raise FactoryError("effort_needs_model", "--effort requires --model", 2)
+    if ctx.store.read_task(task_id) is None:
+        _reject({"task": task_id}, "launch", f"it is {view(task, ctx)['state']}; claim it first")
     orca.check(_min_version(ctx))
 
-    _set_attempt(ctx, task_id, {"agent": agent, "reviewer": reviewer, "model": model}, "launch")
+    def mark(state: State) -> State:
+        """Take the attempt for this launch inside the task lock, so two launches never both start."""
+        if state["state"] != "in_progress":
+            _reject(state, "launch", f"it is {state['state']}; claim it first")
+        attempt = state["attempts"][-1]
+        if attempt["agent"] is not None:
+            message = f"attempt {attempt['id']} of {task_id} already has a lead agent"
+            raise FactoryError("already_launched", message, EXIT_CONFLICT)
+        attempt.update(agent=agent, reviewer=reviewer, model=model)
+        return state
+
+    record = ctx.store.update_task(task_id, mark, "launch")
     prompt = f"/factory-implement {task_id}" + (f" --reviewer {reviewer}" if reviewer else "")
     workspace_id = record["workspace"]["orca_id"]
     try:
@@ -320,8 +324,7 @@ def _set_attempt(ctx: Context, task_id: str, fields: dict[str, Any], event: str)
 
 
 def _min_version(ctx: Context) -> str:
-    cfg = config.load_config(ctx.main_checkout / ".factory" / "config.toml")
-    return str(cfg["orca"]["min_version"])
+    return str(_config(ctx)["orca"]["min_version"])
 
 
 def _require_approval_on_base(change_id: str, base: str, ctx: Context) -> None:
@@ -341,14 +344,24 @@ def _started(task_id: str, ctx: Context) -> tuple[dict[str, Any], State]:
     return task, record
 
 
-def card_detail(record: State) -> str | None:
+def pending_reviews(task: dict[str, Any], record: State, cfg: dict[str, Any]) -> list[str]:
+    """Required review types whose latest verdict is not `pass`."""
+    pending = []
+    for kind in effective_reviews(task, cfg):
+        latest = [r for r in record.get("reviews", []) if r["type"] == kind]
+        if not latest or latest[-1]["verdict"] != "pass":
+            pending.append(kind)
+    return pending
+
+
+def card_detail(record: State, pending: list[str] | None = None) -> str | None:
     """The card comment for the task's state (design §7.5)."""
     state = record["state"]
     if state == "in_progress":
         checkpoint = record.get("last_checkpoint") or {}
         return checkpoint.get("next") or "lead agent working"
     if state == "in_review":
-        return "reviews in progress"  # replaced by the pending reviews where they are known
+        return ("pending reviews: " + ", ".join(pending)) if pending else "reviews passed: finish"
     if state == "blocked":
         return str(record["blocked_reason"])
     if state == "done":
@@ -359,11 +372,12 @@ def card_detail(record: State) -> str | None:
     return None
 
 
-def _card(task: dict[str, Any], record: State) -> list[str]:
+def _card(task: dict[str, Any], record: State, ctx: Context) -> list[str]:
     workspace = (record.get("workspace") or {}).get("orca_id")
     if not workspace:
         return []
-    return orca.update_card(workspace, task["id"], task["title"], record["state"], card_detail(record))
+    pending = pending_reviews(task, record, _config(ctx)) if record["state"] == "in_review" else None
+    return orca.update_card(workspace, task["id"], task["title"], record["state"], card_detail(record, pending))
 
 
 def checkpoint(task_id: str, done: str, next_step: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
@@ -386,7 +400,7 @@ def checkpoint(task_id: str, done: str, next_step: str, ctx: Context) -> tuple[d
     data = {"task": task_id, "state": record["state"], "notes": delivered, "paused": paused}
     if paused:
         data["message"] = "paused by the person: stop here; they continue with factory task unblock"
-    return data, _card(task, record)
+    return data, _card(task, record, ctx)
 
 
 def _read_notes(state: State) -> list[dict[str, Any]]:
@@ -412,7 +426,7 @@ def note(task_id: str, text: str, pause: bool, ctx: Context) -> tuple[dict[str, 
 def block(task_id: str, reason: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
     task, _ = _started(task_id, ctx)
     record = ctx.store.update_task(task_id, lambda s: transition(s, "block", reason=reason), "block")
-    return {"task": task_id, "state": "blocked", "reason": reason}, _card(task, record)
+    return {"task": task_id, "state": "blocked", "reason": reason}, _card(task, record, ctx)
 
 
 def unblock(task_id: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
@@ -422,7 +436,7 @@ def unblock(task_id: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
         message = f"{task['change']} is awaiting approval: approve the design again before unblocking"
         raise FactoryError("approval_not_valid", message, EXIT_PRECONDITION)
     record = ctx.store.update_task(task_id, lambda s: transition(s, "unblock"), "unblock")
-    return {"task": task_id, "state": record["state"]}, _card(task, record)
+    return {"task": task_id, "state": record["state"]}, _card(task, record, ctx)
 
 
 def workspace_path(record: State) -> Path:
@@ -435,7 +449,7 @@ def verify(task_id: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
     task, record = _started(task_id, ctx)
     if record["state"] not in ("in_progress", "in_review"):
         _reject(record, "verify", f"it is {record['state']}")
-    cfg = config.load_config(ctx.main_checkout / ".factory" / "config.toml")
+    cfg = _config(ctx)
     cwd = workspace_path(record)
     evidence_dir = ctx.store.root / "evidence" / task_id
     evidence_dir.mkdir(parents=True, exist_ok=True)
@@ -458,6 +472,8 @@ def verify(task_id: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
     commit = git.run(["rev-parse", "HEAD"], cwd)
 
     def apply(state: State) -> State:
+        if state["state"] not in ("in_progress", "in_review"):
+            _reject(state, "verify", f"it became {state['state']} while verifying")
         state["checks"] = {"status": checks_status, "at": now(), "commit": commit, "results": results,
                            "evidence": check_evidence}
         for ac in task["acceptance"]:
@@ -547,11 +563,7 @@ def submit(task_id: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
     reviews = effective_reviews(task, _config(ctx))
     paused = record["state"] == "blocked"
     data = {"task": task_id, "state": record["state"], "notes": delivered, "paused": paused, "reviews": reviews}
-    detail = ("pending reviews: " + ", ".join(reviews)) if reviews else "no reviews required"
-    workspace = record["workspace"]["orca_id"]
-    if paused:
-        return data, _card(task, record)
-    return data, orca.update_card(workspace, task_id, task["title"], "in_review", detail)
+    return data, _card(task, record, ctx)
 
 
 def review(task_id: str, kind: str, agent: str | None, ctx: Context) -> tuple[dict[str, Any], list[str]]:
@@ -611,9 +623,7 @@ def record_review(task_id: str, path: Path, agent: str | None, ctx: Context) -> 
     updated = ctx.store.update_task(task_id, apply, "review")
     saved = updated["reviews"][-1]
     data = {"task": task_id, "state": updated["state"], "review": saved}
-    if updated["state"] == "blocked":
-        return data, _card(task, updated)
-    return data, []
+    return data, _card(task, updated, ctx)
 
 
 def _review_report(path: Path) -> dict[str, Any]:
@@ -646,7 +656,23 @@ def _review_report(path: Path) -> dict[str, Any]:
 
 def finish(task_id: str, memory: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
     """Move the task to `done` only if every closing criterion of design §5.7 holds."""
-    task, record = _started(task_id, ctx)
+    task, _ = _started(task_id, ctx)
+    delivered: list[dict[str, Any]] = []
+
+    def read_notes(state: State) -> State:
+        """Like `submit`, `finish` hands over unread notes first; a pause blocks the task."""
+        if state["state"] not in ("in_progress", "in_review"):
+            _reject(state, "finish", f"it is {state['state']}")
+        delivered.extend(_read_notes(state))
+        if any(n.get("pause") for n in delivered):
+            return transition(state, "block", reason=PAUSED)
+        return state
+
+    record = ctx.store.update_task(task_id, read_notes, "finish_notes")
+    if record["state"] == "blocked":
+        data = {"task": task_id, "state": "blocked", "notes": delivered, "paused": True,
+                "message": "paused by the person before finishing: stop here"}
+        return data, _card(task, record, ctx)
     if record["state"] not in ("in_progress", "in_review"):
         _reject(record, "finish", f"it is {record['state']}")
     base = orca.base_branch(ctx.main_checkout)
@@ -657,10 +683,12 @@ def finish(task_id: str, memory: str, ctx: Context) -> tuple[dict[str, Any], lis
         status = (record["acceptance"].get(ac) or {}).get("status", "pending")
         if status != "verified":
             problems.append(f"{ac} is {status}, not verified")
-    checks = (record.get("checks") or {}).get("status", "not_run")
-    if checks != "passed":
-        problems.append(f"the project checks are {checks}, not passed")
     code_commit = git.last_code_commit(base, cwd)
+    checks = record.get("checks") or {}
+    if checks.get("status", "not_run") != "passed":
+        problems.append(f"the project checks are {checks.get('status', 'not_run')}, not passed")
+    elif not git.is_ancestor(code_commit, checks["commit"], cwd):
+        problems.append("the project checks passed on an older commit: run factory task verify again")
     for kind in effective_reviews(task, _config(ctx)):
         latest = [r for r in record["reviews"] if r["type"] == kind]
         if not latest or latest[-1]["verdict"] != "pass":
@@ -675,18 +703,21 @@ def finish(task_id: str, memory: str, ctx: Context) -> tuple[dict[str, Any], lis
         raise FactoryError("gates_not_met", f"{task_id} cannot be done yet", EXIT_PRECONDITION, problems)
 
     out_of_scope = _outside_scope(task, git.changed_files(base, cwd))
+    commits = git.branch_commits(base, cwd)
 
     def apply(state: State) -> State:
         state = transition(state, "finish")
         state["memory"] = memory
         state["scope_warnings"] = out_of_scope
+        state["commits"] = commits
         return state
 
     updated = ctx.store.update_task(task_id, apply, "finish")
     ctx.store.release_claim(task_id)
     warnings = [f"changed outside the task scope: {path}" for path in out_of_scope]
-    warnings += _card(task, updated)
-    return {"task": task_id, "state": "done", "memory": memory, "scope_warnings": out_of_scope}, warnings
+    warnings += _card(task, updated, ctx)
+    data = {"task": task_id, "state": "done", "memory": memory, "scope_warnings": out_of_scope, "notes": delivered}
+    return data, warnings
 
 
 def _outside_scope(task: dict[str, Any], files: list[str]) -> list[str]:
@@ -728,7 +759,7 @@ def publish(task_id: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
             return state
 
         record = ctx.store.update_task(task_id, apply, "publish")
-        warnings += _card(task, record)
+        warnings += _card(task, record, ctx)
     return {"task": task_id, "branch": branch, "pull_request": pull_request}, warnings
 
 
@@ -766,10 +797,16 @@ def _liveness_and_interrupt(task: dict[str, Any], ctx: Context) -> tuple[str | N
     record = ctx.store.read_task(task["id"])
     if record is None or record["state"] != "in_progress":
         return None, record
+    attempt = record["attempts"][-1]["id"]
     liveness = orca.session_liveness(record["attempts"][-1].get("terminal"))
     if liveness == "finished":
-        record = ctx.store.update_task(task["id"], _if_state(("in_progress",), "interrupt", None), "interrupted")
-        _card(task, record)
+        def interrupt(state: State) -> State:
+            if state["state"] != "in_progress" or state["attempts"][-1]["id"] != attempt:
+                return state  # something else changed the task meanwhile
+            return transition(state, "interrupt")
+
+        record = ctx.store.update_task(task["id"], interrupt, "interrupted")
+        _card(task, record, ctx)
     return liveness, record
 
 
@@ -900,6 +937,9 @@ def recover(task_id: str, confirm: bool, ctx: Context) -> tuple[dict[str, Any], 
         raise FactoryError("workspace_missing", f"the workspace of {task_id} no longer exists in Orca",
                            EXIT_PRECONDITION)
 
+    if ctx.store.read_claim(task_id) is None:
+        raise FactoryError("not_claimed", f"{task_id} has no claim to reassign", EXIT_PRECONDITION)
+
     def apply(state: State) -> State:
         if state["state"] not in ("in_progress", "interrupted"):
             _reject(state, "recover", f"it is {state['state']}")
@@ -910,7 +950,7 @@ def recover(task_id: str, confirm: bool, ctx: Context) -> tuple[dict[str, Any], 
     updated = ctx.store.update_task(task_id, apply, "recover")
     attempt = updated["attempts"][-1]["id"]
     ctx.store.reassign_claim(task_id, attempt)
-    warnings = _card(task, updated)
+    warnings = _card(task, updated, ctx)
     data = {"task": task_id, "state": updated["state"], "attempt": attempt,
             "next_step": f"factory task launch {task_id} --agent <claude|codex>: it continues from the last checkpoint"}
     return data, warnings
@@ -933,8 +973,8 @@ def _recovery_report(
         "git_status": None,
         "commits": None,
     }
-    if not broken:
-        cwd = workspace_path(record)
+    cwd = workspace_path(record)
+    if not broken and cwd.is_dir():
         report["git_status"] = git.run(["status", "--porcelain"], cwd).splitlines()
         base = ctx.base()
         if base:

@@ -189,3 +189,23 @@ def test_effort_without_model_is_a_usage_error(project, fake_orca, capsys):
     code, out = cli(capsys, "task", "launch", TASK, "--agent", "claude", "--effort", "high")
     assert code == 2
     assert orca_calls(fake_orca, "agent launch") == []
+
+
+def _launch(root, results):
+    import os
+    os.chdir(root)
+    results.put(main(["task", "launch", TASK, "--agent", "claude", "--json"]))
+
+
+def test_concurrent_launches_start_one_agent(project, store, fake_orca, capsys):
+    import multiprocessing
+    cli(capsys, "task", "claim", TASK)
+    results = multiprocessing.Queue()
+    procs = [multiprocessing.Process(target=_launch, args=(str(project.root), results)) for _ in range(4)]
+    for p in procs:
+        p.start()
+    for p in procs:
+        p.join()
+    codes = sorted(results.get() for _ in procs)
+    assert codes == [0, 4, 4, 4]
+    assert len(orca_calls(fake_orca, "agent launch")) == 1

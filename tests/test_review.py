@@ -157,3 +157,12 @@ def test_invalid_review_json(working, tmp_path, capsys, content):
     (tmp_path / "bad.json").write_text(content)
     code, out = cli(capsys, "task", "review", TASK, "--record", str(tmp_path / "bad.json"))
     assert (code, out["error"]["code"]) == (3, "review_invalid")
+
+
+def test_card_in_review_lists_pending_reviews(working, fake_orca, tmp_path, capsys):
+    cli(capsys, "task", "submit", TASK)
+    card = orca_calls(fake_orca, "worktree set")[-1]
+    assert card[card.index("--comment") + 1] == "pending reviews: quality"
+    cli(capsys, "task", "review", TASK, "--record", review_file(tmp_path))
+    card = orca_calls(fake_orca, "worktree set")[-1]
+    assert card[card.index("--comment") + 1] == "reviews passed: finish"

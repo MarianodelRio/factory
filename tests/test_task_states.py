@@ -126,3 +126,11 @@ def test_show_unknown_task(project, capsys):
     code, out = cli(capsys, "task", "show", "CHG-0012-09")
     assert code == 3
     assert out["error"]["code"] == "task_not_found"
+
+
+def test_dependency_merged_and_branch_deleted_is_ready(project, store, capsys):
+    finish_on_branch(project, store, "CHG-0012-01", merge=True)
+    path = project.root.parent / "worktrees" / "user" / "CHG-0012-01"
+    git("worktree", "remove", "--force", str(path), cwd=project.root)
+    git("branch", "-D", "user/CHG-0012-01", cwd=project.root)
+    assert tasks_by_id(capsys)["CHG-0012-02"]["state"] == "ready"

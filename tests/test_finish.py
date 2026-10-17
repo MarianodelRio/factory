@@ -149,3 +149,28 @@ def test_all_failing_gates_are_reported_together(ready_to_finish, capsys):
     store = ready_to_finish["store"]
     store.update_task(TASK, lambda s: {**s, "reviews": [], "checks": None}, "x")
     assert len(failing_gates(capsys)) >= 2
+
+
+def test_finish_records_the_branch_commits(ready_to_finish, capsys):
+    from conftest import git
+    finish(capsys)
+    commits = ready_to_finish["store"].read_task(TASK)["commits"]
+    assert commits[-1] == git("rev-parse", "HEAD", cwd=ready_to_finish["workspace"])
+
+
+def test_gate_checks_on_an_older_code_commit(ready_to_finish, capsys, tmp_path):
+    repo, workspace = ready_to_finish["repo"], ready_to_finish["workspace"]
+    repo.commit("src/bookings/model.py", "RULE = 'daily'\n", "Change after verify", cwd=workspace)
+    (tmp_path / "q3.json").write_text(json.dumps(QUALITY))
+    assert main(["task", "review", TASK, "--record", str(tmp_path / "q3.json")]) == 0
+    capsys.readouterr()
+    assert any("checks passed on an older commit" in d for d in failing_gates(capsys))
+
+
+def test_unread_pause_note_stops_finish(ready_to_finish, capsys):
+    assert main(["task", "note", TASK, "--text", "wait", "--pause"]) == 0
+    capsys.readouterr()
+    code, out = finish(capsys)
+    assert code == 0
+    assert out["data"]["paused"] is True
+    assert ready_to_finish["store"].read_task(TASK)["state"] == "blocked"

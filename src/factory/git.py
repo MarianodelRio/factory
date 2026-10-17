@@ -182,3 +182,9 @@ def pr_create(base: str, head: str, title: str, body: str, cwd: Path) -> dict[st
     finally:
         os.unlink(file.name)
     return {"number": int(url.rstrip("/").rsplit("/", 1)[1]), "url": url}
+
+
+def branch_commits(base: str, cwd: Path) -> list[str]:
+    """Commits of the branch since it left `base`, oldest first."""
+    merge_base = run(["merge-base", base, "HEAD"], cwd)
+    return run(["log", "--reverse", "--format=%H", f"{merge_base}..HEAD"], cwd).splitlines()
