@@ -229,3 +229,40 @@ def session_liveness(terminal: str | None) -> str:
     except (KeyError, TypeError):
         return "unknown"
     return "alive" if shown.get("connected") else "finished"
+
+
+# Task state -> (card status, fixed comment or None to use the detail, unread notice); design §7.5.
+CARDS: dict[str, tuple[str, str | None, bool]] = {
+    "in_progress": ("in-progress", None, False),  # detail: next action
+    "in_review": ("in-review", None, False),  # detail: pending reviews
+    "done": ("completed", None, False),  # detail: done_comment()
+    "blocked": ("in-progress", None, True),  # detail: reason for the block
+    "interrupted": ("in-progress", "Interrupted: use /factory-status", True),
+}
+
+
+def done_comment(verified: int, total: int, pr_number: int | None) -> str:
+    text = f"{verified}/{total} AC verified"
+    return f"{text} · PR #{pr_number}" if pr_number else text
+
+
+def update_card(workspace_id: str, task_id: str, title: str, state: str, detail: str | None) -> list[str]:
+    """Update the workspace card for the task's state. Never raises: a failure only gives a
+    warning, and if Orca refuses some value the comment alone is updated."""
+    status, fixed, unread = CARDS[state]
+    comment = fixed or detail or ""
+    selector = ["worktree", "set", "--worktree", f"id:{workspace_id}"]
+    full = [*selector, "--display-name", f"{task_id} {title}", "--workspace-status", status,
+            "--comment", comment, "--unread" if unread else "--read"]
+    try:
+        result = run(full)
+        return [str(w.get("message", w)) for w in result.get("warnings", [])]
+    except OrcaError as exc:
+        first = exc.message
+    except FactoryError as exc:
+        return [f"the Orca card was not updated: {exc.message}"]
+    try:
+        run([*selector, "--comment", comment])
+        return [f"the Orca card only got its comment ({first})"]
+    except FactoryError as exc:
+        return [f"the Orca card was not updated: {exc.message}"]

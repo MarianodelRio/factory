@@ -206,7 +206,7 @@ Goal: answer design §10.3 with evidence and record real outputs for the fakes. 
   Do: `create_workspace(name, base)`, `workspace_exists(id)`, `launch_agent(workspace, agent, prompt, model, effort)` storing Orca's `operationId` and agent handle (`result.outcome.handle`); on a lost response, resend with `--retry-launch <operationId>` (never a new launch). `session_liveness(terminal)` → `alive` (terminal `connected`) `| finished` (terminal closed or missing) `| unknown` (Orca error), per design §7.2.
   Done when: tests: lost response resends with the same operationId and only one agent is recorded; liveness maps each fake answer correctly.
 
-- [ ] T-15 [P] Cards
+- [x] T-15 [P] Cards
   Depends: T-13 · Design: §7.5 · Acceptance: A-23
   Files: `src/factory/orca.py`, `tests/test_cards.py`
   Do: `update_card(workspace, task_state, ...)` following the table of design §7.5 (name, status, comment, unread). Unsupported values → comment only. Failures are logged as warnings, never raised.
@@ -352,7 +352,7 @@ Fill the "Test" column as tasks are completed. "Manual" criteria are checked in 
 | A-20 | T-18 | | |
 | A-21 | T-23 | | |
 | A-22 | T-23 | | |
-| A-23 | T-15 | | |
+| A-23 | T-15 | `test_cards.py::test_card_follows_the_table` (one case per row) | |
 | A-24 | T-13 | `test_orca.py` (closed, unreachable, remote variables, non-local host); claim/launch refusal in T-17 | |
 | A-25 | T-23 | | |
 | A-26 | T-07, T-22, T-23 (no secrets written) | | |
@@ -407,3 +407,4 @@ One line per completed task or session: date, task, what was done, what comes ne
 | 2026-10-17 | T-12 | `tasks.sync_with_design`: while the digest differs from the approval, in_progress/in_review/interrupted tasks are blocked (`design_changed`); when it matches again (re-approval or reverted edit) they return to `blocked_from`; done/paused untouched. Called by `design show` and `design approve`. Re-approval keeps ids, accepts new tasks, refuses removing approved ones. 280 tests green. M3 done. | M3 review, then M4 (T-14, T-15). |
 | 2026-10-17 | M3 review | No blockers. Fixed: §4.5 sync decided on the main checkout's files (a worktree's `design show` can no longer lift a block); approval commit uses `git add -N` + `commit --only`, so a refused commit leaves the person's staged changes intact; interactive approve needs a real terminal and prompts on stderr; approve/reject refuse remote Orca variables; version padding; unexpected Orca shapes → exit 5. 286 tests green. | M4: T-14 and T-15 in parallel. |
 | 2026-10-17 | T-14 | `orca.create_workspace` (worktree create from the base branch, repo by path, no agent, repo setup policy), `workspace_exists` (selector_not_found → False), `launch_agent` (model/effort, effort needs model, one `--retry-launch <operationId>` re-issue when the reply is lost, never a fresh relaunch; returns operation_id + terminal), `session_liveness` (connected → alive, closed/stale → finished, Orca failure or no terminal → unknown). Done sequentially with T-15: both edit `orca.py`. New fixtures for a stale terminal and a missing worktree. 304 tests green. | T-15 cards. |
+| 2026-10-17 | T-15 | `orca.update_card` from the §7.5 table (display name = id + title, status, comment, unread/read), `done_comment`; never raises: failures become warnings, a refused value falls back to a comment-only update, Orca's own warnings are passed on. M4 done. | M4 review, then T-16. |
