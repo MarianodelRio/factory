@@ -31,8 +31,9 @@ First stable release, published as `swfactory` on PyPI and npm.
   keeps the reviews already recorded.
 
 ### Verified
-- End to end on Linux with Claude Code and Orca 1.4.229. Codex support and macOS are implemented
-  but not yet verified on a real machine; Windows is not supported.
+- End to end on Linux with Claude Code and Orca 1.4.229. The test suite passes on Linux and macOS
+  with Python 3.11-3.13. Not yet verified on a real machine: Codex, and macOS with Orca. Windows
+  is not supported.
 
 ## [0.1.0] - 2026-10-18
 
