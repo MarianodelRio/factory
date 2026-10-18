@@ -39,5 +39,5 @@ First stable release, published as `swfactory` on PyPI and npm.
 
 Initial development version (not published to a package registry).
 
-[1.0.0]: https://github.com/MarianodelRio/factory/compare/v0.1.0...v1.0.0
-[0.1.0]: https://github.com/MarianodelRio/factory/releases/tag/v0.1.0
+[1.0.0]: https://github.com/MarianodelRio/swfactory/compare/v0.1.0...v1.0.0
+[0.1.0]: https://github.com/MarianodelRio/swfactory/releases/tag/v0.1.0

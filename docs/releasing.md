@@ -24,7 +24,7 @@ triggers. A change to a skill or role template also bumps the `@N` in its `facto
 1. **GitHub**: in the repository settings, create the environments `pypi` and `npm` (optionally
    with required reviewers, so every publish waits for an approval).
 2. **PyPI**: on <https://pypi.org/manage/account/publishing/>, add a *pending publisher*: project
-   `swfactory`, owner `MarianodelRio`, repository `factory`, workflow `release.yml`,
+   `swfactory`, owner `MarianodelRio`, repository `swfactory`, workflow `release.yml`,
    environment `pypi`. The first release creates the project.
 3. **npm**: trusted publishing can only be configured for a package that already exists, so the
    first version is published by hand from a clean checkout of the release commit:
@@ -33,5 +33,5 @@ triggers. A change to a skill or role template also bumps the `@N` in its `facto
    cp LICENSE npm/LICENSE && cd npm && npm publish --access public
    ```
    Then, on npmjs.com → `swfactory` → Settings → Trusted publishing, add GitHub Actions
-   with owner `MarianodelRio`, repository `factory`, workflow `release.yml`, environment `npm`.
+   with owner `MarianodelRio`, repository `swfactory`, workflow `release.yml`, environment `npm`.
    Until that is done, the npm job of a release fails and can be re-run afterwards.

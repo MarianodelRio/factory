@@ -1,6 +1,6 @@
 # swfactory
 
-The npm launcher for **[swfactory](https://github.com/MarianodelRio/factory)**: a method and a
+The npm launcher for **[swfactory](https://github.com/MarianodelRio/swfactory)**: a method and a
 CLI to build software with coding agents (Claude Code, Codex) on Orca — design, approve, implement
 in isolated workspaces, review and publish with evidence.
 
@@ -21,5 +21,5 @@ To try a command without installing: `npx swfactory --version`.
 
 Prefer Python tooling? `uv tool install swfactory` gives the same `swfactory` command.
 
-See the [README](https://github.com/MarianodelRio/factory#readme) and the
-[user guide](https://github.com/MarianodelRio/factory/blob/main/docs/guide.md).
+See the [README](https://github.com/MarianodelRio/swfactory#readme) and the
+[user guide](https://github.com/MarianodelRio/swfactory/blob/main/docs/guide.md).

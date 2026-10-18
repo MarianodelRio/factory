@@ -2,8 +2,8 @@
 
 [![PyPI](https://img.shields.io/pypi/v/swfactory)](https://pypi.org/project/swfactory/)
 [![npm](https://img.shields.io/npm/v/swfactory)](https://www.npmjs.com/package/swfactory)
-[![CI](https://github.com/MarianodelRio/factory/actions/workflows/ci.yml/badge.svg)](https://github.com/MarianodelRio/factory/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](https://github.com/MarianodelRio/factory/blob/main/LICENSE)
+[![CI](https://github.com/MarianodelRio/swfactory/actions/workflows/ci.yml/badge.svg)](https://github.com/MarianodelRio/swfactory/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](https://github.com/MarianodelRio/swfactory/blob/main/LICENSE)
 
 A method, five agent skills and a CLI to build software with coding agents (Claude Code and Codex)
 on local Orca: design and approve a change, implement each task in its own Orca workspace, review
@@ -14,7 +14,7 @@ Orca runs the agents and the workspaces; the Factory brings the method and keeps
 readable files under `.factory/`. You talk to the agent in natural language (Spanish or English);
 everything it writes to the repository is in English.
 
-The [user guide](https://github.com/MarianodelRio/factory/blob/main/docs/guide.md) explains every
+The [user guide](https://github.com/MarianodelRio/swfactory/blob/main/docs/guide.md) explains every
 step in detail: what each skill does, what you decide, task states, notes and recovery, configuration and what to do when something goes wrong.
 
 ## Requirements
@@ -130,7 +130,7 @@ In a Claude Code (or Codex) terminal in Orca, at the root of your repository:
 ## Development
 
 ```bash
-git clone https://github.com/MarianodelRio/factory && cd factory
+git clone https://github.com/MarianodelRio/swfactory && cd factory
 uv sync                 # create the environment with dev tools
 uv run pytest -q        # tests
 uv run ruff check .     # lint
@@ -138,5 +138,5 @@ uv run mypy src         # typecheck
 uv tool install .       # install the `swfactory` command from this checkout
 ```
 
-Changes are listed in [CHANGELOG.md](https://github.com/MarianodelRio/factory/blob/main/CHANGELOG.md); how to publish a version is in
-[docs/releasing.md](https://github.com/MarianodelRio/factory/blob/main/docs/releasing.md). License: [MIT](https://github.com/MarianodelRio/factory/blob/main/LICENSE).
+Changes are listed in [CHANGELOG.md](https://github.com/MarianodelRio/swfactory/blob/main/CHANGELOG.md); how to publish a version is in
+[docs/releasing.md](https://github.com/MarianodelRio/swfactory/blob/main/docs/releasing.md). License: [MIT](https://github.com/MarianodelRio/swfactory/blob/main/LICENSE).

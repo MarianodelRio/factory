@@ -4,14 +4,14 @@
   "description": "swfactory: build software with coding agents (Claude Code, Codex) on Orca. This package runs the swfactory CLI through uv.",
   "license": "MIT",
   "author": "MarianodelRio",
-  "homepage": "https://github.com/MarianodelRio/factory#readme",
+  "homepage": "https://github.com/MarianodelRio/swfactory#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/MarianodelRio/factory.git",
+    "url": "git+https://github.com/MarianodelRio/swfactory.git",
     "directory": "npm"
   },
   "bugs": {
-    "url": "https://github.com/MarianodelRio/factory/issues"
+    "url": "https://github.com/MarianodelRio/swfactory/issues"
   },
   "keywords": [
     "agents",

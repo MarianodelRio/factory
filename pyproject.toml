@@ -25,10 +25,10 @@ classifiers = [
 dependencies = ["PyYAML>=6.0"]
 
 [project.urls]
-Homepage = "https://github.com/MarianodelRio/factory"
-Documentation = "https://github.com/MarianodelRio/factory/blob/main/docs/guide.md"
-Changelog = "https://github.com/MarianodelRio/factory/blob/main/CHANGELOG.md"
-Issues = "https://github.com/MarianodelRio/factory/issues"
+Homepage = "https://github.com/MarianodelRio/swfactory"
+Documentation = "https://github.com/MarianodelRio/swfactory/blob/main/docs/guide.md"
+Changelog = "https://github.com/MarianodelRio/swfactory/blob/main/CHANGELOG.md"
+Issues = "https://github.com/MarianodelRio/swfactory/issues"
 
 [project.scripts]
 swfactory = "swfactory.cli:run"
