@@ -1,6 +1,6 @@
 # swfactory
 
-[![PyPI](https://img.shields.io/pypi/v/swfactory)](https://pypi.org/project/swfactory/)
+[![PyPI](https://img.shields.io/pypi/v/swfactory?cacheSeconds=3600)](https://pypi.org/project/swfactory/)
 [![CI](https://github.com/MarianodelRio/swfactory/actions/workflows/ci.yml/badge.svg)](https://github.com/MarianodelRio/swfactory/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](https://github.com/MarianodelRio/swfactory/blob/main/LICENSE)
 
@@ -18,7 +18,7 @@ step in detail: what each skill does, what you decide, task states, notes and re
 
 ## Requirements
 
-- Linux or macOS with Git (Windows is not supported).
+- Linux, macOS or Windows, with Git.
 - Orca **1.4.229** or later, running locally (remote hosts are
   refused), with its `orca` CLI on your `PATH`.
 - [Claude Code](https://claude.com/claude-code) and/or Codex, available as agents in Orca.
@@ -116,9 +116,13 @@ In a Claude Code (or Codex) terminal in Orca, at the root of your repository:
   a task `interrupted` only when its terminal is closed. An agent that exited in an open terminal
   looks alive; more than 10 minutes without a checkpoint only gives a warning.
 - Orca does not report the model an agent used; the Factory records the `--model` it passed.
-- **Verified:** end to end on Linux with Claude Code and Orca 1.4.229. **Implemented, not yet
-  verified on a real machine:** Codex (skills in `.agents/skills/`, the approval rule, reviews) and
-  macOS (the CI runs the tests there). **Not supported:** Windows.
+- **Platforms:** verified end to end on Linux with Claude Code and Orca 1.4.229. The CI runs every
+  test on Linux, macOS and Windows; macOS and Windows have not been used with a real Orca yet. On
+  Windows you can also work inside WSL, which behaves like Linux.
+- **Codex** (skills in `.agents/skills/`, the approval rule, reviews) is implemented but has not
+  been checked on a real machine yet.
+- If `orca` or `gh` is not on your `PATH`, point `SWFACTORY_ORCA` or `SWFACTORY_GH` at the program
+  (a path, or a JSON list such as `["C:\\Orca\\resources\\bin\\orca.exe"]`).
 
 ## Development
 

@@ -452,6 +452,15 @@ shared by every workspace of the clone, because it lives in the main checkout.
 | `orca.min_version` | `1.4.229` | Oldest Orca the Factory accepts |
 | `[templates]` | hashes | Written by `/factory-init` to detect files you customized; don't edit |
 
+Two environment variables say how to run the external tools when they are not on your `PATH`:
+`SWFACTORY_ORCA` (Orca's CLI) and `SWFACTORY_GH` (GitHub's CLI). Each is a path to the program, or
+a JSON list of a program and its arguments. On Windows the Factory prefers `orca.exe` to an
+`orca.cmd` shim, and refuses to pass text that `cmd.exe` would reinterpret to a `.cmd` or `.bat`.
+
+Check and acceptance commands run without a shell: on Linux and macOS they are split like a shell
+would, on Windows the program is found on `PATH` and gets the rest of the line as Windows programs
+expect. Use double quotes in them (`python -c "print(1)"`) so they work everywhere.
+
 ## 11. Safety rules
 
 - Nothing is approved or rejected without your explicit message and the permission prompt.
@@ -490,6 +499,9 @@ shared by every workspace of the clone, because it lives in the main checkout.
   the Factory expects; this has not been checked.
 - **Orca doesn't report the model an agent used.** The Factory records the model it asked for, if
   any.
+- **macOS and Windows** pass every test in the CI but have not been used with a real Orca yet. On
+  Windows the Factory looks for Orca's hook files under `%APPDATA%\orca`, which is an assumption.
+  WSL works like Linux.
 - **One task per workspace and one lead per task.** There is no orchestrator running several tasks
   for you; you launch each one.
 - **Local Orca only**, and Orca is the only supported environment.
