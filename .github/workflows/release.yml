@@ -1,7 +1,7 @@
 name: Release
 
-# Push a tag vX.Y.Z (matching pyproject.toml, npm/package.json and CHANGELOG.md) to publish
-# swfactory to PyPI, swfactory to npm, and a GitHub release. See docs/releasing.md.
+# Push a tag vX.Y.Z (matching pyproject.toml and CHANGELOG.md) to publish swfactory to PyPI and
+# create a GitHub release. See docs/releasing.md.
 on:
   push:
     tags: ["v*.*.*"]
@@ -23,15 +23,13 @@ jobs:
         run: |
           version="${GITHUB_REF_NAME#v}"
           python3 - "$version" <<'PY'
-          import json, sys, tomllib
+          import sys, tomllib
           version = sys.argv[1]
-          found = {
-              "pyproject.toml": tomllib.load(open("pyproject.toml", "rb"))["project"]["version"],
-              "npm/package.json": json.load(open("npm/package.json"))["version"],
-          }
-          bad = {name: v for name, v in found.items() if v != version}
-          if bad or f"## [{version}]" not in open("CHANGELOG.md").read():
-              sys.exit(f"tag v{version} does not match: {bad or 'no CHANGELOG.md section'}")
+          found = tomllib.load(open("pyproject.toml", "rb"))["project"]["version"]
+          if found != version:
+              sys.exit(f"tag v{version} does not match pyproject.toml ({found})")
+          if f"## [{version}]" not in open("CHANGELOG.md").read():
+              sys.exit(f"CHANGELOG.md has no section for {version}")
           PY
       - run: uv build
       - uses: actions/upload-artifact@v4
@@ -54,28 +52,8 @@ jobs:
           path: dist/
       - uses: pypa/gh-action-pypi-publish@release/v1
 
-  npm:
-    needs: pypi  # the launcher runs the PyPI package of the same version
-    runs-on: ubuntu-latest
-    environment:
-      name: npm
-      url: https://www.npmjs.com/package/swfactory
-    permissions:
-      contents: read
-      id-token: write  # npm trusted publishing, with provenance
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 22
-          registry-url: https://registry.npmjs.org
-      - run: npm install -g npm@latest  # trusted publishing needs npm 11.5.1 or later
-      - run: cp LICENSE npm/LICENSE
-      - run: npm publish --access public
-        working-directory: npm
-
   github-release:
-    needs: [pypi, npm]
+    needs: pypi
     runs-on: ubuntu-latest
     permissions:
       contents: write

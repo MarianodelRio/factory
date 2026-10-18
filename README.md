@@ -1,7 +1,6 @@
 # swfactory
 
 [![PyPI](https://img.shields.io/pypi/v/swfactory)](https://pypi.org/project/swfactory/)
-[![npm](https://img.shields.io/npm/v/swfactory)](https://www.npmjs.com/package/swfactory)
 [![CI](https://github.com/MarianodelRio/swfactory/actions/workflows/ci.yml/badge.svg)](https://github.com/MarianodelRio/swfactory/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](https://github.com/MarianodelRio/swfactory/blob/main/LICENSE)
 
@@ -24,7 +23,7 @@ step in detail: what each skill does, what you decide, task states, notes and re
   refused), with its `orca` CLI on your `PATH`.
 - [Claude Code](https://claude.com/claude-code) and/or Codex, available as agents in Orca.
 - [uv](https://docs.astral.sh/uv/) (it provides Python 3.11+), with `~/.local/bin` on your `PATH`
-  (`uv tool update-shell` adds it). Installing through npm also needs Node 18+.
+  (`uv tool update-shell` adds it).
 - Optional: [`gh`](https://cli.github.com/), authenticated, to open pull requests. Without it the
   Factory pushes the task branch and leaves the PR to you.
 
@@ -37,17 +36,11 @@ uv tool install swfactory   # the `swfactory` command, in ~/.local/bin
 swfactory install-skill     # copies /factory-init to ~/.claude/skills/ and ~/.agents/skills/
 ```
 
-Or with npm, which runs the same package through uv:
+It is a regular Python package, so `pipx install swfactory` or `pip install swfactory` (inside a
+virtual environment) work too. The skills call `swfactory`, so it has to be installed, not only run
+once. To try it without installing: `uvx swfactory --version`.
 
-```bash
-npm install -g swfactory
-swfactory install-skill
-```
-
-The skills call `swfactory`, so it has to be installed, not only run once. To try it without
-installing: `uvx swfactory --version` or `npx swfactory --version`.
-
-**Upgrade:** `uv tool upgrade swfactory` (or `npm update -g swfactory`), then
+**Upgrade:** `uv tool upgrade swfactory` (or `pipx upgrade swfactory`), then
 `swfactory install-skill`, then `/factory-init` in each project to update its skills.
 
 ## The five skills
@@ -130,7 +123,7 @@ In a Claude Code (or Codex) terminal in Orca, at the root of your repository:
 ## Development
 
 ```bash
-git clone https://github.com/MarianodelRio/swfactory && cd factory
+git clone https://github.com/MarianodelRio/swfactory && cd swfactory
 uv sync                 # create the environment with dev tools
 uv run pytest -q        # tests
 uv run ruff check .     # lint

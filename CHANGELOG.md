@@ -9,7 +9,7 @@ output, the files under `.factory/` (`schema_version`), and the skills' names an
 
 ## [1.0.0] - 2026-10-18
 
-First stable release, published as `swfactory` on PyPI and npm.
+First stable release, published as `swfactory` on PyPI.
 
 ### Added
 - Five skills for Claude Code and Codex: `/factory-init`, `/factory-design`, `/factory-implement`,
@@ -22,7 +22,6 @@ First stable release, published as `swfactory` on PyPI and npm.
   agents, terminals and subagents running in each task.
 - `/factory-init` installs a prompt rule for Codex (`.codex/rules/factory.rules`) so approving or
   rejecting a design asks the person, as Claude Code's `permissions.ask` does.
-- An npm launcher (`npx swfactory`) that runs the CLI through `uvx`.
 - A user guide (`docs/guide.md`).
 
 ### Changed
