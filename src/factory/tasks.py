@@ -62,6 +62,7 @@ TRANSITIONS: dict[tuple[str, str], str] = {
     ("ready", "claim"): "in_progress",  # factory task claim
     ("interrupted", "recover"): "in_progress",  # factory task recover --confirm
     ("in_progress", "recover"): "in_progress",  # only when liveness is unknown (§7.4)
+    ("in_review", "recover"): "in_progress",  # also only when unknown; the new lead submits again
     ("in_progress", "submit"): "in_review",  # factory task submit
     ("in_progress", "finish"): "done",  # factory task finish (gates of §5.7)
     ("in_review", "finish"): "done",
@@ -69,6 +70,7 @@ TRANSITIONS: dict[tuple[str, str], str] = {
     ("in_review", "block"): "blocked",  # also a review that does not converge
     ("interrupted", "block"): "blocked",  # a design change
     ("in_progress", "interrupt"): "interrupted",  # status/recover: the lead agent finished
+    ("in_review", "interrupt"): "interrupted",  # before finish, while the reviews run
 }
 RETURNS = {"unblock", "reapprove"}
 # States that a design change blocks (design §4.5).
@@ -810,19 +812,21 @@ def pr_body(task: dict[str, Any], record: State) -> str:
 
 STALE_MINUTES = 10
 ACTIVE = ("in_progress", "in_review", "blocked", "interrupted")
+# States whose lead agent must still be running: liveness is checked and recover is allowed (§7.2).
+WORKING = ("in_progress", "in_review")
 
 
 def _liveness_and_interrupt(task: dict[str, Any], ctx: Context) -> tuple[str | None, State | None]:
-    """Ask Orca about the lead agent of an `in_progress` task; a finished session without
-    `submit` moves the task to `interrupted` now (design §7.2)."""
+    """Ask Orca about the lead agent of an `in_progress` or `in_review` task; a session that
+    finished before `finish` moves the task to `interrupted` now (design §7.2)."""
     record = ctx.store.read_task(task["id"])
-    if record is None or record["state"] != "in_progress":
+    if record is None or record["state"] not in WORKING:
         return None, record
     attempt = record["attempts"][-1]["id"]
     liveness = orca.session_liveness(record["attempts"][-1].get("terminal"))
     if liveness == "finished":
         def interrupt(state: State) -> State:
-            if state["state"] != "in_progress" or state["attempts"][-1]["id"] != attempt:
+            if state["state"] not in WORKING or state["attempts"][-1]["id"] != attempt:
                 return state  # something else changed the task meanwhile
             return transition(state, "interrupt")
 
@@ -959,7 +963,7 @@ def recover(task_id: str, confirm: bool, ctx: Context) -> tuple[dict[str, Any], 
     liveness, current = _liveness_and_interrupt(task, ctx)
     assert current is not None
     record = current
-    if record["state"] not in ("in_progress", "interrupted"):
+    if record["state"] not in (*WORKING, "interrupted"):
         _reject(record, "recover", f"it is {record['state']}")
     if record["state"] == "interrupted":
         liveness = orca.session_liveness(record["attempts"][-1].get("terminal"))
@@ -978,7 +982,7 @@ def recover(task_id: str, confirm: bool, ctx: Context) -> tuple[dict[str, Any], 
         raise FactoryError("not_claimed", f"{task_id} has no claim to reassign", EXIT_PRECONDITION)
 
     def apply(state: State) -> State:
-        if state["state"] not in ("in_progress", "interrupted"):
+        if state["state"] not in (*WORKING, "interrupted"):
             _reject(state, "recover", f"it is {state['state']}")
         state["attempts"][-1].update(ended_at=now(), result="interrupted")
         state["attempts"].append(new_attempt(len(state["attempts"]) + 1))
@@ -1007,6 +1011,7 @@ def _recovery_report(
         "acceptance": record.get("acceptance"),
         "missing_acceptance": [ac for ac in task["acceptance"]
                                if (record["acceptance"].get(ac) or {}).get("status") != "verified"],
+        "reviews": [{k: r[k] for k in ("type", "round", "verdict", "commit")} for r in record.get("reviews", [])],
         "git_status": None,
         "commits": None,
     }

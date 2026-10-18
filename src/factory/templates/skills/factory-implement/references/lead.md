@@ -6,6 +6,8 @@ Your role: `roles/lead.md`. You own the task end to end, inside its workspace.
 
 - `factory task show <task> --json`: acceptance criteria, `complexity`, `review`, `scope`, state,
   last checkpoint and unread notes. If there is a previous checkpoint, continue from it.
+- If this is a recovered attempt and the task already has reviews, verify and submit again, then run
+  only the reviews whose latest verdict is not `pass` on the current commit.
 - Read the approved design `.factory/changes/<change>/design.md`, `docs/conventions.md` and
   `docs/working-agreements.md`, and the decisions it cites.
 

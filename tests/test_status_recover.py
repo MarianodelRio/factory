@@ -64,6 +64,15 @@ def test_finished_session_without_submit_is_interrupted(working, store, fake_orc
     assert card[card.index("--comment") + 1] == "Interrupted: use /factory-status"
 
 
+def test_session_finished_during_review_is_interrupted(working, store, fake_orca, capsys):
+    cli(capsys, "task", "submit", TASK)
+    assert task_in(status(capsys))["liveness"] == "alive"
+    fake_orca.respond_fixture("terminal show", "terminal-show-closed", target=TERMINAL)
+    data = status(capsys)
+    assert task_in(data)["state"] == "interrupted"
+    assert store.read_task(TASK)["state"] == "interrupted"
+
+
 def test_unknown_liveness_is_never_dead(working, store, fake_orca, capsys):
     fake_orca.fail("terminal show", code="runtime_unavailable")
     data = status(capsys)
@@ -161,7 +170,7 @@ def test_recover_with_unknown_liveness_needs_the_person(working, store, fake_orc
 
 
 def test_recover_a_task_that_is_not_interrupted(working, capsys):
-    cli(capsys, "task", "submit", TASK)
+    cli(capsys, "task", "block", TASK, "--reason", "needs a decision")
     code, out = cli(capsys, "task", "recover", TASK, "--confirm")
     assert (code, out["error"]["code"]) == (3, "invalid_transition")
 
@@ -173,3 +182,28 @@ def test_recover_with_a_broken_link(working, fake_orca, capsys):
     assert out["data"]["broken_link"] is True
     code, out = cli(capsys, "task", "recover", TASK, "--confirm")
     assert (code, out["error"]["code"]) == (3, "workspace_missing")
+
+
+def test_recover_after_an_interrupted_review_keeps_the_reviews(working, store, fake_orca, capsys):
+    cli(capsys, "task", "submit", TASK)
+    review = {"type": "quality", "reviewer": "claude-subagent", "round": 1, "commit": "abc1234",
+              "verdict": "pass", "findings": [], "at": "2026-01-01T00:00:00Z"}
+    store.update_task(TASK, lambda s: {**s, "reviews": [review]}, "review")
+    fake_orca.respond_fixture("terminal show", "terminal-show-closed", target=TERMINAL)
+    _, out = cli(capsys, "task", "recover", TASK)
+    assert out["data"]["state"] == "interrupted"
+    assert out["data"]["reviews"] == [{"type": "quality", "round": 1, "verdict": "pass", "commit": "abc1234"}]
+    code, _ = cli(capsys, "task", "recover", TASK, "--confirm")
+    assert code == 0
+    record = store.read_task(TASK)
+    assert record["state"] == "in_progress"  # the new lead verifies and submits again
+    assert record["reviews"] == [review]
+
+
+def test_recover_during_review_with_unknown_liveness(working, store, fake_orca, capsys):
+    cli(capsys, "task", "submit", TASK)
+    fake_orca.fail("terminal show", code="runtime_unavailable")
+    assert task_in(status(capsys))["state"] == "in_review"
+    code, _ = cli(capsys, "task", "recover", TASK, "--confirm")
+    assert code == 0
+    assert store.read_task(TASK)["state"] == "in_progress"

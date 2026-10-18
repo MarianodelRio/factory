@@ -24,6 +24,8 @@ ALLOWED = [
     ("in_review", "block", "blocked"),
     ("interrupted", "block", "blocked"),
     ("in_progress", "interrupt", "interrupted"),
+    ("in_review", "interrupt", "interrupted"),
+    ("in_review", "recover", "in_progress"),
 ]
 
 

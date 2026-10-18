@@ -1,7 +1,7 @@
 # Recovering an interrupted task (design §7.2, §7.4)
 
 1. `factory task recover <task> --json` (no changes): task, workspace, branch, `git_status`,
-   commits, last checkpoint, `acceptance` (with evidence), `missing_acceptance`, `liveness`,
+   commits, last checkpoint, `acceptance` (with evidence), `missing_acceptance`, `reviews`, `liveness`,
    `broken_link` and a `proposal`.
 2. Compare the acceptance criteria with the evidence and summarize what is missing.
 3. Decide with the person:
@@ -15,7 +15,8 @@
      `orca search "<task>" --json`.
 4. Only after the person confirms: `factory task recover <task> --confirm --json`. It closes the
    previous attempt as interrupted, opens a new one and reassigns the claim. Uncommitted changes
-   stay as they are.
+   stay as they are. A task interrupted in review returns to `in_progress`: the new lead submits
+   again and keeps the reviews already recorded.
 5. Launch the lead for the new attempt: `factory task launch <task> --agent <agent> --reviewer <reviewer> --json`,
    with the agents the person chooses (suggest the previous attempt's, from `factory task show`),
    leaving out `--reviewer` when the task has no conformance review. It continues from the last

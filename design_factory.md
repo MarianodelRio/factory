@@ -231,11 +231,11 @@ tasks:
 |---|---|---|
 | `pending` | Approved, but some dependency is not finished **and integrated into the base branch** | Computed |
 | `ready` | Can be started | Computed |
-| `in_progress` | A lead agent is working on it | `factory task claim`, or `factory task recover --confirm` (from `interrupted`, or from `in_progress` when Orca cannot say whether the agent is alive, §7.4) |
+| `in_progress` | A lead agent is working on it | `factory task claim`, or `factory task recover --confirm` (from `interrupted`, or from `in_progress` or `in_review` when Orca cannot say whether the agent is alive, §7.4) |
 | `in_review` | Implemented; reviews in progress | `factory task submit` |
 | `done` | Closing criteria met (§5.7) | `factory task finish`, from `in_progress` or `in_review` (the gates of §5.7 decide; a task without reviews can close without `submit`) |
 | `blocked` | Needs a decision, is paused or the design changed | `factory task block --reason`, a pause (§7.3), a design change (§4.5) or a review that does not converge (§5.4) |
-| `interrupted` | The agent stopped working before finishing | Computed on query (§7.2) |
+| `interrupted` | The agent stopped working before finishing (from `in_progress` or `in_review`) | Computed on query (§7.2) |
 
 `pending` and `ready` are computed for tasks that do not yet have a state file. A task leaves `blocked` with `factory task unblock`, once the person has resolved the reason and only while the change's approval is valid (or automatically on re-approval, if the reason was the design change).
 
@@ -608,9 +608,9 @@ It is asked in natural language ("¿cómo va todo?", "¿qué está bloqueado?", 
 
 ### 7.2 Whether an agent is alive
 
-On query, the CLI asks Orca about the terminal of the lead agent of each `in_progress` task (the `terminal` stored in the attempt):
+On query, the CLI asks Orca about the terminal of the lead agent of each `in_progress` or `in_review` task (the `terminal` stored in the attempt); the lead runs the reviews and `finish`, so it must still be there while the task is in review:
 - **Alive** (the terminal is connected): shown as active.
-- **Finished without `submit`** (the terminal is closed or no longer exists): the task moves to `interrupted` at that moment.
+- **Finished before `finish`** (the terminal is closed or no longer exists): the task moves to `interrupted` at that moment.
 - **No information** (Orca does not answer, or the attempt has no terminal because the lead started directly inside the workspace, §5.1): shown as "unknown", never as dead.
 
 Orca does not report whether the agent process inside a terminal is still running: an agent that exited while its terminal stays open is shown as alive. The checkpoint warning below covers that case.
@@ -630,7 +630,7 @@ If a note changes requirements or architecture, the agent blocks the task; the d
 1. `factory task recover CHG-0012-01` gathers the task, workspace, branch, `git status`, commits, last checkpoint and evidence. If needed, the skill adds excerpts from the previous session (`orca search`).
 2. It compares the AC with the evidence and summarizes what is missing.
 3. If the previous session is still alive, it only proposes continuing in it. If not, it proposes launching a new agent in the same workspace. If Orca cannot say ("unknown"), it says so and the person decides whether the previous session is gone.
-4. After the person confirms, it closes the previous attempt (`result: interrupted`), records a new one, reassigns the claim and the agent continues from the last checkpoint. Uncommitted changes from the previous attempt are kept as they are.
+4. After the person confirms, it closes the previous attempt (`result: interrupted`), records a new one, reassigns the claim and the agent continues from the last checkpoint. Uncommitted changes from the previous attempt are kept as they are. The task returns to `in_progress` even if it was interrupted in review: the new lead verifies and submits again, keeps the reviews already recorded (a `pass` on the current commit still counts for §5.7) and runs only the missing ones.
 
 The Factory never relaunches anything without confirmation.
 
