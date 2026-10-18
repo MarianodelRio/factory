@@ -3,8 +3,8 @@
 Everything written goes through `mask_secrets`.
 Per task: `<task>.json` (current state, replaced atomically), `<task>.events.jsonl` (append-only
 history; each event carries the resulting state, so a corrupted JSON is rebuilt from the last
-readable event) and `<task>.lock` (the claim). Writers serialize on an `flock` of the events
-file, which is never replaced.
+readable event), `<task>.lock` (the claim) and `.<task>.mutex`, the file writers lock to take
+turns (an exclusive lock that works on Linux, macOS and Windows).
 
 Raises FactoryError with these codes:
 - task_claimed (EXIT_CONFLICT): the claim file already exists.
@@ -14,16 +14,17 @@ Raises FactoryError with these codes:
 
 from __future__ import annotations
 
+import contextlib
 import copy
-import fcntl
 import json
 import os
 import tempfile
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from swfactory import system
 from swfactory.output import EXIT_CONFLICT, EXIT_ERROR, EXIT_PRECONDITION, FactoryError, mask_secrets
 
 State = dict[str, Any]
@@ -151,7 +152,7 @@ class TaskStore:
     def _atomic_write(self, path: Path, text: str) -> None:
         tmp = self._temp_file(text)
         try:
-            os.replace(tmp, path)
+            system.replace(tmp, path)
         except BaseException:
             tmp.unlink(missing_ok=True)
             raise
@@ -168,22 +169,10 @@ class TaskStore:
             raise
         return Path(name)
 
-    def _locked(self, task_id: str) -> _EventsLock:
+    @contextlib.contextmanager
+    def _locked(self, task_id: str) -> Iterator[Any]:
+        """The task's lock; yields its events file open for appending."""
         self.root.mkdir(parents=True, exist_ok=True)
-        return _EventsLock(self._events(task_id))
-
-
-class _EventsLock:
-    """Exclusive flock on the append-only events file; yields it open for appending."""
-
-    def __init__(self, path: Path) -> None:
-        self.path = path
-
-    def __enter__(self) -> Any:
-        self.file = self.path.open("a", encoding="utf-8")
-        fcntl.flock(self.file, fcntl.LOCK_EX)
-        return self.file
-
-    def __exit__(self, *exc: object) -> None:
-        fcntl.flock(self.file, fcntl.LOCK_UN)
-        self.file.close()
+        with system.exclusive_lock(self.root / f".{task_id}.mutex"):
+            with self._events(task_id).open("a", encoding="utf-8", newline="\n") as log:
+                yield log

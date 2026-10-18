@@ -41,7 +41,7 @@ def doctor(root: Path, main_checkout: Path) -> dict[str, Any]:
         "gh": _gh(root),
         "stack": _stack(root),
         "checks": _checks(root, configured),
-        "ci": sorted(str(p.relative_to(root)) for p in (root / ".github" / "workflows").glob("*.y*ml")),
+        "ci": sorted(p.relative_to(root).as_posix() for p in (root / ".github" / "workflows").glob("*.y*ml")),
         "instructions": _instructions(root),
         "factory": {"installed": configured is not None},
     }
@@ -150,13 +150,12 @@ def _instructions(root: Path) -> dict[str, Any]:
     skills = []
     for base in (".claude/skills", ".agents/skills"):
         if (root / base).is_dir():
-            skills += sorted(str(p.relative_to(root)) for p in (root / base).iterdir() if p.is_dir())
+            skills += sorted(p.relative_to(root).as_posix() for p in (root / base).iterdir() if p.is_dir())
     return {
         "agents_md": (root / "AGENTS.md").exists(),
         "claude_md": (root / "CLAUDE.md").exists(),
         "readme": any((root / name).exists() for name in ("README.md", "README.rst", "README")),
-        "docs": sorted(str(p.relative_to(root)) for p in (root / "docs").rglob("*.md")) if (root / "docs").is_dir()
-        else [],
+        "docs": _doc_files(root),
         "skills": skills,
         "other": [name for name in OTHER_INSTRUCTIONS if (root / name).exists()],
     }
@@ -332,9 +331,13 @@ def _docs(root: Path, plan: Plan) -> None:
             plan.respect.append({"path": path, "reason": "review: may duplicate or contradict AGENTS.md"})
 
 
+def _doc_files(root: Path) -> list[str]:
+    folder = root / "docs"
+    return sorted(p.relative_to(root).as_posix() for p in folder.rglob("*.md")) if folder.is_dir() else []
+
+
 def _existing_docs(root: Path) -> list[str]:
-    docs = sorted(str(p.relative_to(root)) for p in (root / "docs").rglob("*.md")) if (root / "docs").is_dir() else []
-    return [p for p in docs if (root / p).read_text(encoding="utf-8").strip()]
+    return [p for p in _doc_files(root) if (root / p).read_text(encoding="utf-8").strip()]
 
 
 def _deletions(root: Path, plan: Plan, deletes: list[tuple[str, str]]) -> None:
@@ -348,13 +351,13 @@ def _deletions(root: Path, plan: Plan, deletes: list[tuple[str, str]]) -> None:
             if not skill.name.startswith("factory-"):
                 continue
             for file in sorted(skill.rglob("*")):
-                if (file.is_file() and str(file.relative_to(folder)) not in current
+                if (file.is_file() and file.relative_to(folder).as_posix() not in current
                         and MARK.search(file.read_text(encoding="utf-8", errors="ignore"))):
-                    proposed[str(file.relative_to(root))] = "leftover from an earlier Factory version"
+                    proposed[file.relative_to(root).as_posix()] = "leftover from an earlier Factory version"
     if (root / "docs").is_dir():
         for file in sorted((root / "docs").rglob("*.md")):
             if not file.read_text(encoding="utf-8").strip():
-                proposed[str(file.relative_to(root))] = "empty document"
+                proposed[file.relative_to(root).as_posix()] = "empty document"
     for path, reason in deletes:
         path = _check_deletable(root, path)
         proposed[path] = reason
@@ -492,12 +495,12 @@ def apply_init(
         target = backup / "files" / path
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(root / path, target)
-    (backup / "manifest.json").write_text(json.dumps({"created": created, "modified": modified,
-                                                      "deleted": deleted}, indent=2) + "\n")
+    manifest = {"created": created, "modified": modified, "deleted": deleted}
+    (backup / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
     for path in created + modified:
         (root / path).parent.mkdir(parents=True, exist_ok=True)
-        (root / path).write_text(plan.writes[path], encoding="utf-8")
+        (root / path).write_text(plan.writes[path], encoding="utf-8", newline="\n")  # LF on every OS
     for path in deleted:
         (root / path).unlink()
 
@@ -552,7 +555,7 @@ def install_skill(home: Path) -> dict[str, Any]:
             target = home / base / rel
             target.parent.mkdir(parents=True, exist_ok=True)
             if not target.exists() or target.read_text(encoding="utf-8") != content:
-                target.write_text(content, encoding="utf-8")
+                target.write_text(content, encoding="utf-8", newline="\n")
                 written.append(str(target))
     return {"installed": [str(home / base / "factory-init") for base in (".claude/skills", ".agents/skills")],
             "written": written}

@@ -6,13 +6,14 @@ internal formats of those tools, so every field is read defensively."""
 from __future__ import annotations
 
 import json
+import os
 import re
 import time
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from swfactory import orca
+from swfactory import orca, system
 from swfactory.output import FactoryError, mask_secrets
 from swfactory.state import State
 
@@ -21,7 +22,8 @@ TEXT_LIMIT = 160
 CODEX_DAYS = 3  # Codex sessions older than this are not scanned
 TERMINAL_LIMIT = "1000"
 INDEX_SECONDS = 2.0  # one scan of the Codex sessions serves every task of one board refresh
-HOOK_DIRS = (".config/orca/agent-hooks", "Library/Application Support/orca/agent-hooks")
+HOOK_DIRS = (".config/orca/agent-hooks", "Library/Application Support/orca/agent-hooks",
+             "AppData/Roaming/orca/agent-hooks")
 SUBAGENT_EVENTS = ("SubagentStart", "SubagentStop")
 # The agent's state after each of its own hook events (Orca keeps no status for ended sessions).
 TURN_STATES = {"SessionStart": "idle", "UserPromptSubmit": "working", "Stop": "done", "SessionEnd": "ended"}
@@ -85,7 +87,10 @@ _spool_cache: dict[Path, tuple[float, int, tuple[dict[str, Any] | None, list[dic
 
 def orca_hooks(home: Path) -> dict[str, Any]:
     """The agents Orca's hooks saw, by terminal pane (`leafId`), and every subagent start/stop."""
-    folder = next((home / d for d in HOOK_DIRS if (home / d).is_dir()), None)
+    candidates = [home / d for d in HOOK_DIRS]
+    if os.environ.get("APPDATA"):  # Windows keeps app data here, not always under the home folder
+        candidates.append(Path(os.environ["APPDATA"]) / "orca" / "agent-hooks")
+    folder = next((path for path in candidates if path.is_dir()), None)
     result: dict[str, Any] = {"ok": folder is not None, "panes": {}, "subagents": []}
     if folder is None:
         return result
@@ -216,7 +221,7 @@ def codex_sessions(home: Path, workspace: Path) -> list[dict[str, Any]]:
     if cached is None or time.monotonic() - cached[0] > INDEX_SECONDS:
         cached = (time.monotonic(), _scan_codex(root))
         _codex_index[root] = cached
-    return cached[1].get(str(workspace), [])
+    return cached[1].get(system.path_key(workspace), [])
 
 
 def _scan_codex(root: Path) -> dict[str, list[dict[str, Any]]]:
@@ -235,7 +240,7 @@ def _scan_codex(root: Path) -> dict[str, list[dict[str, Any]]]:
             continue
         if not isinstance(meta, dict) or not isinstance(meta.get("cwd"), str):
             continue
-        by_cwd.setdefault(meta["cwd"], []).append({
+        by_cwd.setdefault(system.path_key(meta["cwd"]), []).append({
             "id": meta.get("id") or path.stem, "provider": "codex",
             "subagent": "subagent" in json.dumps(meta.get("source", "")).lower(),
             "label": _text(meta.get("agent_nickname") or meta.get("agent_role")),
@@ -254,7 +259,7 @@ def runs(workspace: Path, record: State, view: dict[str, Any], hooks: dict[str, 
     lead = record["attempts"][-1].get("terminal") if record["attempts"] else None
     found: list[dict[str, Any]] = []
     for terminal in view["terminals"]:
-        if terminal.get("worktreePath") != str(workspace):
+        if not system.same_path(terminal.get("worktreePath"), workspace):
             continue
         pane = hooks["panes"].get(str(terminal.get("leafId")))
         last = terminal.get("lastOutputAt")
@@ -276,7 +281,7 @@ def runs(workspace: Path, record: State, view: dict[str, Any], hooks: dict[str, 
 def _subagents(workspace: Path, hooks: dict[str, Any], home: Path) -> list[dict[str, Any]]:
     merged: dict[str, dict[str, Any]] = {}
     for event in hooks["subagents"]:
-        if event["cwd"] != str(workspace) or not event["id"]:
+        if not system.same_path(event["cwd"], workspace) or not event["id"]:
             continue
         item = merged.setdefault(event["id"], {"kind": "subagent", "provider": event["provider"],
                                                "type": event["type"], "label": None, "state": "running",

@@ -2,18 +2,21 @@
 
 import json
 import subprocess
+import sys
+from pathlib import Path
 
-from conftest import git, orca_error
+from conftest import FAKES, git, orca_error
 
 
-def run(*argv, cwd):
-    return subprocess.run(list(argv), cwd=cwd, capture_output=True, text=True)
+def run(tool, *argv, cwd):
+    """Run a fake tool the way the CLI does (its Python script), so it works on every OS."""
+    return subprocess.run([sys.executable, str(FAKES / tool), *argv], cwd=cwd, capture_output=True, text=True)
 
 
 def test_repo_has_remote_and_worktrees(repo):
     worktree = repo.add_worktree("feature")
     listing = git("worktree", "list", "--porcelain", cwd=worktree)
-    assert listing.splitlines()[0] == f"worktree {repo.root}"
+    assert Path(listing.splitlines()[0].removeprefix("worktree ")).resolve() == repo.root.resolve()
     assert git("rev-parse", "origin/main", cwd=repo.root) == git("rev-parse", "HEAD", cwd=repo.root)
 
 

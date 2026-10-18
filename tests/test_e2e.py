@@ -36,7 +36,7 @@ Store a rule.
   review: [quality, conformance]
   scope: ["src/**"]
   acceptance:
-    AC-01: "python -c 'import sys; sys.exit(0)'"
+    AC-01: 'python -c "import sys; sys.exit(0)"'
     AC-02: manual
 - id: {change}-02
   title: Export
@@ -44,7 +44,7 @@ Store a rule.
   complexity: trivial
   review: []
   acceptance:
-    AC-03: "python -c 'import sys; sys.exit(0)'"
+    AC-03: 'python -c "import sys; sys.exit(0)"'
 ```
 
 ## Risks and open questions
@@ -71,7 +71,7 @@ def initialized(repo, fake_orca, fake_gh, monkeypatch, capsys):
     plan = ok(capsys, "init", "--plan")
     ok(capsys, "init", "--apply", plan["plan_id"])
     config = repo.root / ".factory/config.toml"
-    config.write_text(config.read_text().replace("[checks]\n", "[checks]\ntest = \"python -c 'print(1)'\"\n", 1))
+    config.write_text(config.read_text().replace("[checks]\n", "[checks]\ntest = 'python -c \"print(1)\"'\n", 1))
     git("add", "-A", cwd=repo.root)
     git("commit", "-q", "-m", "Install the Software Factory", cwd=repo.root)
     return repo

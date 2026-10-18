@@ -50,4 +50,4 @@ def _documents(root: Path) -> list[Path]:
 
 
 def _finding(kind: str, path: Path, root: Path, detail: str) -> dict[str, str]:
-    return {"check": kind, "file": str(path.relative_to(root)), "detail": detail}
+    return {"check": kind, "file": path.relative_to(root).as_posix(), "detail": detail}

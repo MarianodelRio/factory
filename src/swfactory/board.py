@@ -5,10 +5,9 @@ polls `/api/board`; it runs in the background and stops by itself when nobody lo
 from __future__ import annotations
 
 import collections
-import contextlib
-import fcntl
 import json
 import os
+import secrets
 import signal
 import socket
 import socketserver
@@ -18,13 +17,12 @@ import threading
 import time
 import urllib.request
 import webbrowser
-from collections.abc import Iterator
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib import resources
 from pathlib import Path
 from typing import Any
 
-from swfactory import activity, config, design, orca, tasks
+from swfactory import activity, config, design, orca, system, tasks
 from swfactory.output import EXIT_CONFLICT, EXIT_ERROR, EXIT_UNAVAILABLE, FactoryError, mask_secrets
 from swfactory.state import TaskStore, now
 
@@ -35,6 +33,10 @@ IDLE_CHECK_SECONDS = 15.0
 DONE_STEP_SECONDS = 60.0  # a done task's next step (merged? PR?) costs git calls: reuse it this long
 INFO_FILE = "board.json"
 LOCK_FILE = "board.lock"
+TOKEN_HEADER = "X-Swfactory-Token"
+# Set by `start` so it recognizes the server it launched (on Windows a venv's python.exe is a
+# launcher, so the server's pid is not the pid `start` sees).
+LAUNCH_VARIABLE = "SWFACTORY_BOARD_LAUNCH"
 LOG_FILE = "board.log"
 COLUMNS = ("needs_you", "backlog", "in_progress", "in_review", "done")
 
@@ -224,9 +226,9 @@ def _activity(store: TaskStore, rows: list[dict[str, Any]], hooks: dict[str, Any
     items: list[dict[str, Any]] = []
     for path in sorted(store.root.glob("*.events.jsonl")):
         items += _task_events(path)
-    by_workspace = {r["workspace"].split("::", 1)[1]: r["id"] for r in rows if r.get("workspace")}
+    by_workspace = {system.path_key(r["workspace"].split("::", 1)[1]): r["id"] for r in rows if r.get("workspace")}
     for event in hooks["subagents"]:
-        owner = by_workspace.get(event["cwd"] or "")
+        owner = by_workspace.get(system.path_key(event["cwd"] or ""))
         if owner and event["at"]:
             verb = "started" if event["event"] == "SubagentStart" else "finished"
             items.append({"at": event["at"], "task": owner, "event": "subagent",
@@ -264,13 +266,16 @@ class _Server(ThreadingHTTPServer):
 
 
 def serve(main_checkout: Path, state_dir: Path, port: int, idle_minutes: float, home: Path) -> None:
-    """Serve the board in the foreground until stopped or idle for `idle_minutes`."""
+    """Serve the board in the foreground until stopped (`POST /stop` with the token in
+    `board.json`, Ctrl-C or SIGTERM) or idle for `idle_minutes`."""
     other = running(main_checkout, state_dir)
-    if other and other.get("pid") != os.getpid():
+    if other:
         raise FactoryError("board_running", f"a board is already running at {other['url']}", EXIT_CONFLICT)
     lock = threading.Lock()
     cache: dict[str, Any] = {"at": 0.0, "body": b""}
     last_seen = [time.monotonic()]
+    token = secrets.token_urlsafe(24)
+    stopping = threading.Event()
 
     def board_body() -> bytes:
         with lock:
@@ -281,10 +286,16 @@ def serve(main_checkout: Path, state_dir: Path, port: int, idle_minutes: float, 
             return bytes(cache["body"])
 
     class Handler(BaseHTTPRequestHandler):
-        def do_GET(self) -> None:  # noqa: N802 (http.server API)
+        def _allowed(self) -> bool:
             bound = self.server.server_port  # type: ignore[attr-defined]
-            if self.headers.get("Host") not in (f"127.0.0.1:{bound}", f"localhost:{bound}"):
-                return self._send(403, "text/plain", b"forbidden")  # another site through DNS rebinding
+            if self.headers.get("Host") in (f"127.0.0.1:{bound}", f"localhost:{bound}"):
+                return True
+            self._send(403, "text/plain", b"forbidden")  # another site through DNS rebinding
+            return False
+
+        def do_GET(self) -> None:  # noqa: N802 (http.server API)
+            if not self._allowed():
+                return
             path = self.path.split("?", 1)[0]
             if path == "/health":
                 health = {"factory_board": True, "pid": os.getpid(), "repo": str(main_checkout)}
@@ -299,6 +310,14 @@ def serve(main_checkout: Path, state_dir: Path, port: int, idle_minutes: float, 
                     error = {"error": f"{type(exc).__name__}: {exc}"}
                     return self._send(500, "application/json", json.dumps(error).encode("utf-8"))
             self._send(404, "text/plain", b"not found")
+
+        def do_POST(self) -> None:  # noqa: N802 (http.server API)
+            if not self._allowed():
+                return
+            if self.path != "/stop" or not secrets.compare_digest(self.headers.get(TOKEN_HEADER, ""), token):
+                return self._send(403, "text/plain", b"forbidden")
+            self._send(200, "application/json", b'{"stopping": true}')
+            stopping.set()
 
         def _send(self, status: int, kind: str, body: bytes) -> None:
             self.send_response(status)
@@ -317,33 +336,33 @@ def serve(main_checkout: Path, state_dir: Path, port: int, idle_minutes: float, 
         raise FactoryError("board_port_busy", f"cannot listen on 127.0.0.1:{port}: {exc}", EXIT_UNAVAILABLE) from exc
     bound = server.server_address[1]
     info_path = state_dir / INFO_FILE
-    info_path.write_text(json.dumps({"pid": os.getpid(), "port": bound, "url": f"http://127.0.0.1:{bound}/",
-                                     "started_at": now(), "repo": str(main_checkout)}) + "\n")
-    stopped = threading.Event()
+    info = {"pid": os.getpid(), "port": bound, "url": f"http://127.0.0.1:{bound}/", "started_at": now(),
+            "repo": str(main_checkout), "token": token, "launch": os.environ.get(LAUNCH_VARIABLE)}
+    info_path.write_text(json.dumps(info) + "\n", encoding="utf-8")
 
-    def stop(*_: Any) -> None:
-        threading.Thread(target=server.shutdown, daemon=True).start()
-
-    def watch_idle() -> None:
-        while not stopped.wait(IDLE_CHECK_SECONDS):
+    def watch() -> None:
+        while not stopping.wait(IDLE_CHECK_SECONDS):
             if time.monotonic() - last_seen[0] > idle_minutes * 60:
-                stop()
+                stopping.set()
+        server.shutdown()
 
     if threading.current_thread() is threading.main_thread():
-        signal.signal(signal.SIGTERM, stop)
-    threading.Thread(target=watch_idle, daemon=True).start()
+        signal.signal(signal.SIGTERM, lambda *_: stopping.set())
+    threading.Thread(target=watch, daemon=True).start()
     try:
         server.serve_forever(poll_interval=0.5)
     except KeyboardInterrupt:
         pass
     finally:
-        stopped.set()
+        stopping.set()
         server.server_close()
-        if _read_info(state_dir).get("pid") == os.getpid():
+        if _read_info(state_dir).get("token") == token:
             info_path.unlink(missing_ok=True)
 
 
 # --- Background process: start, status, stop, open ------------------------------------------------
+# The board is told apart from any other process by HTTP (its /health names this repository and
+# its pid), never by inspecting process ids: on Windows a "probe" signal would kill the process.
 
 
 def _read_info(state_dir: Path) -> dict[str, Any]:
@@ -363,49 +382,18 @@ def _health(info: dict[str, Any]) -> dict[str, Any] | None:
     return health if isinstance(health, dict) and health.get("factory_board") else None
 
 
-def _is_board_process(pid: Any) -> bool:
-    """True if `pid` is alive and runs `swfactory board serve` (so a reused pid is never signalled)."""
-    if not isinstance(pid, int) or pid <= 0:
-        return False
-    try:
-        os.kill(pid, 0)
-    except OSError:
-        return False
-    try:
-        command = Path(f"/proc/{pid}/cmdline").read_bytes().replace(b"\x00", b" ").decode(errors="replace")
-    except OSError:  # no /proc (macOS): ask ps
-        try:
-            command = subprocess.run(["ps", "-o", "command=", "-p", str(pid)], capture_output=True, text=True,
-                                     timeout=5).stdout
-        except (OSError, subprocess.SubprocessError):
-            return False
-    return "swfactory" in command and "board serve" in command
-
-
 def running(main_checkout: Path, state_dir: Path) -> dict[str, Any] | None:
-    """The board serving this repository and answering, or None. The info file is removed only
-    when its process is gone."""
+    """The board serving this repository and answering, or None. An info file nobody answers for
+    (checked twice, in case the board is just busy) is removed."""
     info = _read_info(state_dir)
     if not info:
         return None
-    health = _health(info)
-    if health and health.get("pid") == info.get("pid") and health.get("repo") == str(main_checkout):
-        return info
-    if not _is_board_process(info.get("pid")):
-        (state_dir / INFO_FILE).unlink(missing_ok=True)
+    for _ in range(2):
+        health = _health(info)
+        if health and health.get("pid") == info.get("pid") and health.get("repo") == str(main_checkout):
+            return info
+    (state_dir / INFO_FILE).unlink(missing_ok=True)
     return None
-
-
-@contextlib.contextmanager
-def _start_lock(state_dir: Path) -> Iterator[None]:
-    """One `start` at a time, so two quick `board open` never launch two servers."""
-    state_dir.mkdir(parents=True, exist_ok=True)
-    with (state_dir / LOCK_FILE).open("w") as handle:
-        fcntl.flock(handle, fcntl.LOCK_EX)
-        try:
-            yield
-        finally:
-            fcntl.flock(handle, fcntl.LOCK_UN)
 
 
 def _free_port(preferred: int) -> int:
@@ -417,67 +405,61 @@ def _free_port(preferred: int) -> int:
             return 0  # the server picks a free one
 
 
-def _wait_healthy(state_dir: Path, pid: int | None, deadline: float) -> dict[str, Any] | None:
-    while time.monotonic() < deadline:
-        info = _read_info(state_dir)
-        if info and (pid is None or info.get("pid") == pid) and _health(info):
-            return info
-        time.sleep(0.1)
-    return None
-
-
 def start(main_checkout: Path, state_dir: Path, port: int | None) -> dict[str, Any]:
     """Start the board in the background, or return the one already running."""
-    with _start_lock(state_dir):
+    with system.exclusive_lock(state_dir / LOCK_FILE):  # two quick `board open` never launch two
         current = running(main_checkout, state_dir)
         if current:
-            return {**current, "running": True, "started": False}
-        slow = _read_info(state_dir)
-        if slow:  # its process is alive but did not answer: give it a moment before giving up
-            current = _wait_healthy(state_dir, slow.get("pid"), time.monotonic() + START_TIMEOUT)
-            if current:
-                return {**current, "running": True, "started": False}
-            message = f"a board process ({slow.get('pid')}) is not answering: stop it or remove {state_dir / INFO_FILE}"
-            raise FactoryError("board_unresponsive", message, EXIT_ERROR)
+            return {**_public(current), "running": True, "started": False}
         cfg = config.load_config(main_checkout / ".factory" / "config.toml")
         chosen = _free_port(port or cfg["board"]["port"])
+        launch = secrets.token_hex(8)
         with (state_dir / LOG_FILE).open("a", encoding="utf-8") as log:
             process = subprocess.Popen(
                 [sys.executable, "-m", "swfactory", "board", "serve", "--port", str(chosen)],
                 cwd=main_checkout, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
-                start_new_session=True,
+                env={**os.environ, LAUNCH_VARIABLE: launch}, **system.detached(),
             )
         deadline = time.monotonic() + START_TIMEOUT
         while time.monotonic() < deadline and process.poll() is None:
-            info = _wait_healthy(state_dir, process.pid, min(deadline, time.monotonic() + 0.5))
-            if info:
-                return {**info, "running": True, "started": True}
+            info = _read_info(state_dir)
+            if info.get("launch") == launch and _health(info):
+                return {**_public(info), "running": True, "started": True}
+            time.sleep(0.1)
         if process.poll() is None:
             process.terminate()
     raise FactoryError("board_not_started", f"the board did not start; see {state_dir / LOG_FILE}", EXIT_ERROR)
 
 
+def _public(info: dict[str, Any]) -> dict[str, Any]:
+    """The info file without its token (the token only stops the board)."""
+    return {k: v for k, v in info.items() if k not in ("token", "launch")}
+
+
 def status(main_checkout: Path, state_dir: Path) -> dict[str, Any]:
     current = running(main_checkout, state_dir)
-    return {**current, "running": True} if current else {"running": False}
+    return {**_public(current), "running": True} if current else {"running": False}
 
 
 def stop(main_checkout: Path, state_dir: Path) -> dict[str, Any]:
-    """Stop this repository's board: only a process that answers as it, or runs `board serve`."""
-    info = running(main_checkout, state_dir) or _read_info(state_dir)
-    pid = info.get("pid")
-    if not info or not (_health(info) or _is_board_process(pid)):
-        (state_dir / INFO_FILE).unlink(missing_ok=True)
+    """Ask this repository's board to stop, with the token only it and this user can read."""
+    current = running(main_checkout, state_dir)
+    if not current:
         return {"running": False, "stopped": False}
-    assert isinstance(pid, int)
-    os.kill(pid, signal.SIGTERM)
-    deadline = time.monotonic() + 5
-    while time.monotonic() < deadline and _is_board_process(pid):
+    request = urllib.request.Request(f"http://127.0.0.1:{int(current['port'])}/stop", data=b"", method="POST",
+                                     headers={TOKEN_HEADER: str(current.get("token", ""))})
+    try:
+        with urllib.request.urlopen(request, timeout=5):
+            pass
+    except OSError as exc:
+        raise FactoryError("board_not_stopped", f"the board did not accept the stop: {exc}", EXIT_ERROR) from exc
+    deadline = time.monotonic() + 10
+    while time.monotonic() < deadline and _health(current):
         time.sleep(0.1)
-    if _is_board_process(pid):
-        os.kill(pid, signal.SIGKILL)
+    if _health(current):
+        raise FactoryError("board_not_stopped", "the board is still answering; try again", EXIT_ERROR)
     (state_dir / INFO_FILE).unlink(missing_ok=True)
-    return {"running": False, "stopped": True, "pid": pid}
+    return {"running": False, "stopped": True, "pid": current["pid"]}
 
 
 def open_board(main_checkout: Path, state_dir: Path, port: int | None) -> tuple[dict[str, Any], list[str]]:

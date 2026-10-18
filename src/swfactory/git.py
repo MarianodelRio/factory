@@ -18,6 +18,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+from swfactory import system
 from swfactory.output import EXIT_ERROR, EXIT_PRECONDITION, EXIT_UNAVAILABLE, FactoryError
 
 
@@ -28,7 +29,8 @@ def run(args: list[str], cwd: Path | None = None) -> str:
     # commands such as `status` never rewrite the index.
     env = {**os.environ, "LC_ALL": "C", "GIT_OPTIONAL_LOCKS": "0"}
     try:
-        result = subprocess.run(command, cwd=cwd, env=env, capture_output=True, text=True)
+        result = subprocess.run(command, cwd=cwd, env=env, capture_output=True, text=True, encoding="utf-8",
+                                errors="replace")
     except FileNotFoundError as error:
         if cwd is not None and not cwd.is_dir():
             raise FactoryError("git_failed", f"directory does not exist: {cwd}", EXIT_ERROR) from error
@@ -138,8 +140,11 @@ def push_branch(branch: str, cwd: Path) -> None:
 
 
 def _gh(args: list[str], cwd: Path) -> str:
+    command = system.tool_command("gh", "SWFACTORY_GH")
+    system.check_batch_arguments(command, args)
     try:
-        done = subprocess.run(["gh", *args], cwd=cwd, capture_output=True, text=True)
+        done = subprocess.run([*command, *args], cwd=cwd, capture_output=True, text=True, encoding="utf-8",
+                              errors="replace")
     except FileNotFoundError as exc:
         raise FactoryError("gh_unavailable", "gh is not installed", EXIT_UNAVAILABLE) from exc
     if done.returncode != 0:

@@ -23,7 +23,7 @@ def ready_to_finish(repo, fake_orca, monkeypatch, capsys, tmp_path):
     folder = repo.root / FOLDER
     folder.mkdir(parents=True)
     (folder / "design.md").write_text(DESIGN)
-    configure(repo, {"test": "python -c 'print(1)'"})
+    configure(repo, {"test": 'python -c "print(1)"'})
     assert main(["design", "approve", CHANGE, "--message", "apruebo CHG-0012"]) == 0
     assert main(["task", "claim", TASK]) == 0
     store = TaskStore(repo.root / ".factory" / "state")

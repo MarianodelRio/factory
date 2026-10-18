@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: ["**"]
   pull_request:
   workflow_call:
 
@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
         python: ["3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v5
@@ -27,4 +27,8 @@ jobs:
       - run: uv run ruff check .
       - run: uv run mypy src
       - run: uv run pytest -q
+        env:
+          # The tests themselves write files without naming an encoding; the code under test
+          # always names UTF-8, so this only affects the test fixtures on Windows.
+          PYTHONUTF8: "1"
 

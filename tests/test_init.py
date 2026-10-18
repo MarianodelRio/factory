@@ -2,7 +2,7 @@ import json
 import tomllib
 
 import pytest
-from conftest import git, load_fixture
+from conftest import git, load_fixture, set_home
 from test_doctor import snapshot
 
 from swfactory.cli import main
@@ -239,7 +239,10 @@ def test_symlinked_skills_folder_is_refused(project, capsys, tmp_path):
     outside = tmp_path / "outside"
     outside.mkdir()
     (project.root / ".claude").mkdir()
-    (project.root / ".claude/skills").symlink_to(outside)
+    try:
+        (project.root / ".claude/skills").symlink_to(outside, target_is_directory=True)
+    except OSError:
+        pytest.skip("this system does not let the user create symbolic links")
     data = plan(capsys)
     code, out = cli(capsys, "init", "--apply", data["plan_id"])
     assert (code, out["error"]["code"]) == (3, "unsafe_path")
@@ -282,7 +285,7 @@ def test_malformed_settings_are_respected_with_a_warning(project, capsys):
 
 
 def test_install_skill_for_the_user(tmp_path, monkeypatch, capsys):
-    monkeypatch.setenv("HOME", str(tmp_path))
+    set_home(monkeypatch, tmp_path)
     data = ok_cli(capsys, "install-skill")
     for base in (".claude/skills", ".agents/skills"):
         assert (tmp_path / base / "factory-init/SKILL.md").read_text().startswith("---\nname: factory-init")

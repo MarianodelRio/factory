@@ -359,4 +359,7 @@ def _emit(envelope: dict[str, Any], as_json: bool, code: int) -> int:
 
 
 def run() -> None:
+    for stream in (sys.stdout, sys.stderr):  # Windows pipes default to the ANSI code page
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
     sys.exit(main())

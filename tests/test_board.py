@@ -6,6 +6,7 @@ import time
 import urllib.request
 
 import pytest
+from conftest import set_home
 from test_claim_launch import TASK, cli, orca_calls
 from test_claim_launch import project as project  # noqa: F401
 
@@ -17,7 +18,7 @@ from swfactory.state import TaskStore
 def home(tmp_path, monkeypatch):
     path = tmp_path / "home"
     path.mkdir()
-    monkeypatch.setenv("HOME", str(path))  # the background server reads the agents' folders from here
+    set_home(monkeypatch, path)  # the background server reads the agents' folders from here
     return path
 
 
@@ -156,6 +157,11 @@ def test_server_serves_the_page_and_the_data_then_stops_when_idle(working, home,
     assert health == {"factory_board": True, "pid": os.getpid(), "repo": str(working.root)}
     with pytest.raises(urllib.error.HTTPError):
         get(url + "nope")
+    wrong_token = urllib.request.Request(url + "stop", data=b"", method="POST", headers={"X-Swfactory-Token": "x"})
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        urllib.request.urlopen(wrong_token, timeout=5)
+    assert refused.value.code == 403
+    assert get(url + "health")[0] == 200  # still serving
     other_site = urllib.request.Request(url + "api/board", headers={"Host": "evil.example:80"})
     with pytest.raises(urllib.error.HTTPError) as refused:
         urllib.request.urlopen(other_site, timeout=5)

@@ -28,7 +28,6 @@ import datetime
 import fnmatch
 import json
 import re
-import shlex
 import shutil
 import subprocess
 from collections.abc import Callable
@@ -38,7 +37,7 @@ from typing import Any, NoReturn
 
 import yaml
 
-from swfactory import config, design, git, orca
+from swfactory import config, design, git, orca, system
 from swfactory.output import (
     EXIT_CONFLICT,
     EXIT_PRECONDITION,
@@ -502,10 +501,11 @@ def _run_evidence(command: str, cwd: Path, output: Path, ctx: Context) -> tuple[
     """Run one check or AC command (an argument list, never a shell) and save its evidence.
     Returns (`passed` | `failed` | `not_run`, evidence path relative to the state dir)."""
     try:
-        done = subprocess.run(shlex.split(command), cwd=cwd, capture_output=True, text=True)
+        done = subprocess.run(system.command_line(command), cwd=cwd, capture_output=True, text=True,
+                              encoding="utf-8", errors="replace")
     except (ValueError, OSError) as exc:
         output.write_text(f"command: {command}\nnot run: {exc}\n", encoding="utf-8")
-        return "not_run", str(output.relative_to(ctx.store.root))
+        return "not_run", output.relative_to(ctx.store.root).as_posix()
     output.write_text(
         mask_secrets(
             f"command: {command}\nexit code: {done.returncode}\n\n"
@@ -513,7 +513,7 @@ def _run_evidence(command: str, cwd: Path, output: Path, ctx: Context) -> tuple[
         ),
         encoding="utf-8",
     )
-    return ("passed" if done.returncode == 0 else "failed"), str(output.relative_to(ctx.store.root))
+    return ("passed" if done.returncode == 0 else "failed"), output.relative_to(ctx.store.root).as_posix()
 
 
 def verify_manual(task_id: str, ac: str, evidence: Path, ctx: Context) -> tuple[dict[str, Any], list[str]]:
@@ -534,7 +534,7 @@ def verify_manual(task_id: str, ac: str, evidence: Path, ctx: Context) -> tuple[
     target = ctx.store.root / "evidence" / task_id / f"{ac}{evidence.suffix}"
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(evidence, target)
-    relative = str(target.relative_to(ctx.store.root))
+    relative = target.relative_to(ctx.store.root).as_posix()
 
     def apply(state: State) -> State:
         state["acceptance"][ac] = {"status": "verified", "evidence": relative}

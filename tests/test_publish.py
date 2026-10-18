@@ -1,9 +1,7 @@
 import json
-import shutil
-import sys
 
 import pytest
-from conftest import FAKES, git
+from conftest import git
 from test_claim_launch import TASK, orca_calls
 from test_finish import ready_to_finish as ready_to_finish  # noqa: F401
 
@@ -88,12 +86,7 @@ def test_push_never_forces(done, fake_gh, capsys):
 
 def test_without_gh_the_branch_is_pushed_and_the_pr_left_to_the_person(done, capsys, tmp_path,
                                                                         monkeypatch, fake_orca):
-    bin_dir = tmp_path / "bin"
-    bin_dir.mkdir()
-    (bin_dir / "git").symlink_to(shutil.which("git"))
-    (bin_dir / "python3").symlink_to(sys.executable)
-    (bin_dir / "orca").symlink_to(FAKES / "orca")
-    monkeypatch.setenv("PATH", str(bin_dir))
+    monkeypatch.setenv("SWFACTORY_GH", str(tmp_path / "no-such-gh"))
     code, out = publish(capsys)
     assert code == 0, out
     assert remote_branches(done["repo"]) == ["main", f"user/{TASK}"]

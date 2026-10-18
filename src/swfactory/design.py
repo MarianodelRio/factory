@@ -433,14 +433,14 @@ def _write_and_commit(folder: Path, files: dict[str, str], message: str) -> str:
     previous = {name: (folder / name).read_text(encoding="utf-8") if (folder / name).exists() else None
                 for name in files}
     for name, content in files.items():
-        (folder / name).write_text(content, encoding="utf-8")
+        (folder / name).write_text(content, encoding="utf-8", newline="\n")
     root = git.toplevel(folder)
     try:
-        return git.commit_paths([str(folder.relative_to(root))], message, root)
+        return git.commit_paths([folder.relative_to(root).as_posix()], message, root)
     except FactoryError:
         for name, before in previous.items():
             if before is None:
                 (folder / name).unlink(missing_ok=True)
             else:
-                (folder / name).write_text(before, encoding="utf-8")
+                (folder / name).write_text(before, encoding="utf-8", newline="\n")
         raise

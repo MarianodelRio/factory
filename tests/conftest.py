@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -56,6 +57,15 @@ def isolated_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(gitconfig))
     monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
     monkeypatch.setenv("PATH", f"{FAKES}{os.pathsep}{os.environ['PATH']}")
+    # The fakes are Python scripts: run them with this Python, which also works on Windows.
+    monkeypatch.setenv("SWFACTORY_ORCA", json.dumps([sys.executable, str(FAKES / "orca")]))
+    monkeypatch.setenv("SWFACTORY_GH", json.dumps([sys.executable, str(FAKES / "gh")]))
+
+
+def set_home(monkeypatch: pytest.MonkeyPatch, path: Path) -> None:
+    """Make `path` the home folder for this process and its children (HOME, or USERPROFILE on Windows)."""
+    monkeypatch.setenv("HOME", str(path))
+    monkeypatch.setenv("USERPROFILE", str(path))
 
 
 @pytest.fixture

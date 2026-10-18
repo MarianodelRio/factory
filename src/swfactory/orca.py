@@ -21,6 +21,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from swfactory import system
 from swfactory.output import EXIT_UNAVAILABLE, EXIT_USAGE, FactoryError, mask_secrets
 
 TIMEOUT = 120
@@ -53,10 +54,14 @@ def unavailable(code: str, message: str) -> FactoryError:
 
 
 def _exec(args: list[str], cwd: Path | None) -> subprocess.CompletedProcess[str]:
+    command = system.tool_command("orca", "SWFACTORY_ORCA")
+    system.check_batch_arguments(command, args)
     try:
-        return subprocess.run(["orca", *args], cwd=cwd, capture_output=True, text=True, timeout=TIMEOUT)
+        return subprocess.run([*command, *args], cwd=cwd, capture_output=True, text=True, encoding="utf-8",
+                              errors="replace", timeout=TIMEOUT)
     except FileNotFoundError as exc:
-        raise unavailable("orca_unavailable", "Orca is not installed or `orca` is not on PATH") from exc
+        message = "Orca is not installed or `orca` is not on PATH (or set SWFACTORY_ORCA)"
+        raise unavailable("orca_unavailable", message) from exc
     except subprocess.TimeoutExpired as exc:
         raise OrcaError(f"orca {' '.join(args)} did not answer in {TIMEOUT}s") from exc
 

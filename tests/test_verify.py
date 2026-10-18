@@ -12,7 +12,7 @@ from swfactory.state import TaskStore
 
 # CHG-0012-01 has AC-01 (a command) and AC-02 (manual).
 DESIGN = VALID.replace("depends_on: [CHG-0012-01, CHG-0007-03]", "depends_on: [CHG-0012-01]").replace(
-    '"pytest tests/bookings/test_recurrence.py::test_weekly"', '"python -c \'import sys; sys.exit(0)\'"')
+    '"pytest tests/bookings/test_recurrence.py::test_weekly"', '\'python -c "import sys; sys.exit(0)"\'')
 
 
 @pytest.fixture
@@ -51,7 +51,7 @@ def cli(capsys, *argv):
 
 
 def test_verify_passes(claimed, store, capsys):
-    configure(claimed, {"test": "python -c 'print(42)'"})
+    configure(claimed, {"test": 'python -c "print(42)"'})
     code, out = cli(capsys, "task", "verify", TASK)
     assert code == 0, out
     record = store.read_task(TASK)
@@ -66,7 +66,7 @@ def test_verify_passes(claimed, store, capsys):
 
 
 def test_commands_run_in_the_task_workspace(claimed, store, capsys):
-    configure(claimed, {"where": "python -c 'import os; print(os.getcwd())'"})
+    configure(claimed, {"where": 'python -c "import os; print(os.getcwd())"'})
     cli(capsys, "task", "verify", TASK)
     record = store.read_task(TASK)
     workspace = record["workspace"]["orca_id"].split("::", 1)[1]
@@ -75,8 +75,8 @@ def test_commands_run_in_the_task_workspace(claimed, store, capsys):
 
 
 def test_verify_fails(claimed, store, capsys):
-    configure(claimed, {"lint": "python -c 'import sys; sys.exit(3)'"})
-    set_ac_command(store, claimed, "python -c 'import sys; sys.exit(1)'")
+    configure(claimed, {"lint": 'python -c "import sys; sys.exit(3)"'})
+    set_ac_command(store, claimed, 'python -c "import sys; sys.exit(1)"')
     code, out = cli(capsys, "task", "verify", TASK)
     assert code == 0
     record = store.read_task(TASK)
@@ -128,7 +128,7 @@ def test_verify_needs_a_started_task(claimed, capsys):
 
 
 def test_evidence_lives_in_the_main_checkout(claimed, store, capsys, monkeypatch):
-    configure(claimed, {"test": "python -c 'print(1)'"})
+    configure(claimed, {"test": 'python -c "print(1)"'})
     workspace = Path(store.read_task(TASK)["workspace"]["orca_id"].split("::", 1)[1])
     monkeypatch.chdir(workspace)
     cli(capsys, "task", "verify", TASK)

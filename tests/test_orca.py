@@ -35,6 +35,7 @@ def test_run_non_json_output(repo, fake_orca):
 
 def test_orca_not_installed(repo, monkeypatch, tmp_path):
     monkeypatch.setenv("PATH", str(tmp_path / "empty"))
+    monkeypatch.delenv("SWFACTORY_ORCA")
     assert failure(orca.run, ["status"]).code == "orca_unavailable"
     assert failure(orca.check, "1.4.229").code == "orca_unavailable"
 
