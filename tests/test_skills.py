@@ -72,6 +72,12 @@ def test_every_cli_command_used_exists():
         assert exc.value.code == 0, command
 
 
+def test_memory_rules_keep_adrs_and_agreements_under_the_persons_control():
+    text = skill_dir("factory-implement").joinpath("references/memory.md").read_text()
+    assert "immutable except its `Status` line" in text and "supersedes it" in text  # A-17
+    assert "save them only if the person accepts" in text  # A-18
+
+
 def test_design_skill_outlines_before_writing():
     text = skill_dir("factory-design").joinpath("SKILL.md").read_text()
     outline, reserve = text.index("**Outline and wait**"), text.index("**Reserve the id**")

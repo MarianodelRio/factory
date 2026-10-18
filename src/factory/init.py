@@ -313,8 +313,10 @@ def _docs(root: Path, plan: Plan) -> None:
     elif "@AGENTS.md" not in claude.splitlines():
         plan.write(root, "CLAUDE.md", claude.rstrip("\n") + "\n\n@AGENTS.md\n", "import AGENTS.md")
     # The repo's own size: files the Factory installs (skills, config, docs) do not count.
+    installed = {"AGENTS.md", "CLAUDE.md", *(f"docs/{doc}" for doc in DOCS_NORMAL)}
+    factory_dirs = (".factory/", "docs/decisions/", *(f"{base}/factory-" for base in SKILL_BASES))
     own = [f for f in git.run(["ls-files"], root).splitlines()
-           if not f.startswith((".claude/", ".agents/", ".factory/", "docs/")) and f not in ("AGENTS.md", "CLAUDE.md")]
+           if f not in installed and not f.startswith(factory_dirs)]
     for doc in DOCS_SMALL if len(own) < SMALL_REPO_FILES else DOCS_NORMAL:
         path = f"docs/{doc}"
         if _read(root, path) is None:

@@ -17,9 +17,10 @@ everything it writes to the repository is in English.
 
 - Linux or macOS with Git.
 - Orca **1.4.229** or later, running locally (remote hosts are
-  refused).
+  refused), with its `orca` CLI on your `PATH`.
 - [Claude Code](https://claude.com/claude-code) and/or Codex, available as agents in Orca.
-- [uv](https://docs.astral.sh/uv/) (it provides Python 3.11+).
+- [uv](https://docs.astral.sh/uv/) (it provides Python 3.11+), with `~/.local/bin` on your `PATH`
+  (`uv tool update-shell` adds it).
 - Optional: [`gh`](https://cli.github.com/), authenticated, to open pull requests. Without it the
   Factory pushes the task branch and leaves the PR to you.
 
@@ -34,8 +35,8 @@ uv tool install .          # the `factory` command, in ~/.local/bin
 factory install-skill      # copies /factory-init to ~/.claude/skills/ and ~/.agents/skills/
 ```
 
-To upgrade later: `git pull && uv tool install --reinstall .`, then run `/factory-init` again in
-each project to update its skills.
+To upgrade later: `git pull && uv tool install --reinstall . && factory install-skill`, then run
+`/factory-init` again in each project to update its skills.
 
 ## The four skills
 
@@ -58,7 +59,7 @@ In a Claude Code (or Codex) terminal in Orca, at the root of your repository:
    /factory-init
    ```
    Read the plan and confirm it. It registers the repo in Orca with its base branch, installs the
-   other three skills, writes `AGENTS.md`, `docs/` and `.factory/config.toml` with your test, lint
+   four skills in the repo, writes `AGENTS.md`, `docs/` and `.factory/config.toml` with your test, lint
    and typecheck commands, and leaves everything uncommitted. Review the diff and commit it on the
    base branch (or ask the agent to).
 
@@ -93,15 +94,16 @@ In a Claude Code (or Codex) terminal in Orca, at the root of your repository:
 
 ## Good to know
 
-- Approving or rejecting a design always needs your explicit message and the client's permission
-  prompt.
+- Approving or rejecting a design always needs your explicit message. In Claude Code it also asks
+  for permission before running the approval; Codex has no equivalent rule yet.
 - A task is `done` only when every acceptance criterion has evidence, the checks pass and the
   required reviews passed on the final commit.
 - The Factory only pushes the task branch: no force push, merge or branch deletion.
-- Orca launches Claude with `--dangerously-skip-permissions` by default (its `agentDefaultArgs`
-  setting); `factory doctor` warns about it. The approval rule still asks.
-- Codex support follows the design but has not been verified on a real machine yet
-  (see [`docs/spike-results.md`](docs/spike-results.md)).
+- Orca may launch Claude with `--dangerously-skip-permissions` (its `agentDefaultArgs` setting).
+  The approval rule still asks in that mode. `factory doctor` warns when Claude's own settings
+  skip permission prompts (`bypassPermissions`); it cannot read Orca's setting.
+- v0.1.0 is verified with Claude Code only. Codex support follows the design but has not been
+  checked on a real machine yet (see [`docs/spike-results.md`](docs/spike-results.md)).
 
 ## Development
 

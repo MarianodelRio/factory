@@ -207,3 +207,17 @@ def test_next_step_after_done(initialized, capsys):
     branch = json.loads((initialized.root / f".factory/state/{task}.json").read_text())["workspace"]["branch"]
     git("merge", "-q", "--no-ff", "-m", "merge", branch, cwd=initialized.root)
     assert next_step() == "nothing: merged into main"
+
+
+def test_next_step_after_a_push_without_pr(initialized, fake_gh, capsys):
+    change = approved_change(initialized, capsys)
+    task = f"{change}-02"
+    ok(capsys, "task", "claim", task)
+    ok(capsys, "task", "launch", task, "--agent", "claude")
+    initialized.commit("src/export.py", "x = 1\n", "Export", cwd=workspace_of(initialized, task))
+    ok(capsys, "task", "verify", task)
+    ok(capsys, "task", "finish", task, "--memory", "none")
+    fake_gh.fail()
+    ok(capsys, "task", "publish", task)  # pushed; the PR is left to the person
+    step = next(t for t in ok(capsys, "status")["tasks"] if t["id"] == task)["next_step"]
+    assert "is pushed: open its PR or merge it into main" in step

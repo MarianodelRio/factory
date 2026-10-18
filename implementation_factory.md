@@ -2,7 +2,7 @@
 
 > **Source of truth:** `design_factory.md` (v1.5). This file says **in what order** to build it and **how to know each step is done**. It does not redefine behavior: when in doubt, the design wins.
 > **Audience:** a Claude Code session (with subagents) that implements the Factory in this repository.
-> **Status:** M0 done; M1 next.
+> **Status:** M0–M8 done except the T-32 tag; Codex verification deferred.
 
 ---
 
@@ -373,6 +373,9 @@ Write here anything the design does not answer or that reality contradicts. Each
 | 2026-10-17 | T-01 | Model (§1.4): Orca does not report the model used. | `attempts[].model` = the `--model` passed, or `null` (agent default). Clarify in design §1.4. | resolved: approved by the person; design §1.4 updated |
 | 2026-10-17 | T-01 | Permissions (§10.1): Orca's `agentDefaultArgs` launches Claude with `--dangerously-skip-permissions`. The "ask" rule still holds (verified). | No launch change (the Factory adds no flags). `factory doctor` reports it as the permission-mode warning of §3.1. Note it in design §10.1. | resolved: approved by the person; design §10.1 updated |
 | 2026-10-17 | T-08 | §1.5 does not say from which states `finish` is allowed (a trivial task has no reviews). | From `in_progress` and `in_review`; the §5.7 gates decide. | resolved: confirmed by the person; design §1.5 updated |
+| 2026-10-18 | T-31 | A lead that dies while the task is `in_review` (reviews, finish) was never detected: liveness was checked only for `in_progress`. | Check liveness in `in_review` too; a closed terminal → `interrupted`; `recover` returns it to `in_progress` keeping the reviews (the new lead submits again). Design §1.5, §7.2, §7.4. | resolved: approved by the person; design updated (v1.6) |
+| 2026-10-18 | M8 review | Design §10.1 said `factory doctor` warns about Orca's `agentDefaultArgs` bypass flags, but Orca keeps that setting in its profile state, which is not readable from files. | Doctor keeps warning only about Claude's `bypassPermissions` setting; §10.1 and the README say so. | resolved: design §10.1 and README corrected |
+| 2026-10-18 | T-31 | T-31 closed without the Claude/Codex role swap (A-04, A-05) and without running A-17, A-18, A-21, A-22 by hand. | v0.1.0 ships verified with Claude only; A-04/A-05 stay deferred with the Codex row above; the others are left to automated tests and skill rules, marked in `docs/e2e-checklist.md`. | resolved: person's choice (2026-10-18) |
 | 2026-10-17 | T-08 | `unblock` and re-approval return the task to "its previous state", but the §1.4 JSON does not store it. | Add `blocked_from` to the task state. | resolved: confirmed by the person; design §1.4 updated |
 | 2026-10-17 | M2 review | §4.5 blocks tasks "in progress" on a design change, but an `interrupted` task could not be blocked, and a paused task could be unblocked on an unapproved design. | `interrupted` tasks are also blocked (`design_changed`) and return on re-approval; `unblock` works only while the approval is valid, whatever the reason (replaces T-08's "unblock does not release design_changed"). | resolved: confirmed by the person; design §1.5 and §4.5 updated |
 | 2026-10-17 | M2 review | With liveness `unknown` (§7.2) a task stays `in_progress` and could never be recovered. | `task recover` also works from `in_progress` when liveness is `unknown`: it says so, and `--confirm` (after the person decides) closes the attempt as interrupted and opens a new one. | resolved: confirmed by the person; design §1.5 and §7.4 updated |

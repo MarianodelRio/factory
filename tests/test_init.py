@@ -296,3 +296,12 @@ def test_installed_factory_files_do_not_make_a_small_repo_normal(project, capsys
     git("commit", "-q", "-m", "Install the Factory", cwd=project.root)
     created = paths(plan(capsys)["create"])
     assert "docs/product.md" not in created and "docs/architecture.md" not in created
+
+
+def test_the_repos_own_docs_count_for_its_size(project, capsys):
+    for n in range(30):
+        (project.root / "docs" / "guide").mkdir(parents=True, exist_ok=True)
+        (project.root / f"docs/guide/page{n}.md").write_text(f"# Page {n}\n")
+    git("add", "-A", cwd=project.root)
+    git("commit", "-q", "-m", "User docs", cwd=project.root)
+    assert "docs/product.md" in paths(plan(capsys)["create"])
