@@ -1,7 +1,8 @@
 import json
+from pathlib import Path
 
 import pytest
-from conftest import git, load_fixture
+from conftest import git, load_fixture, worktree_paths
 from test_approve import CHANGE, DESIGN, FOLDER
 
 from swfactory.cli import main
@@ -49,7 +50,7 @@ def test_claim_creates_workspace_state_claim_and_card(project, store, fake_orca,
     assert create[create.index("--base-branch") + 1] == "main"
     card = orca_calls(fake_orca, "worktree set")[-1]
     assert card[card.index("--workspace-status") + 1] == "in-progress"
-    assert out["data"]["path"] in git("worktree", "list", "--porcelain", cwd=project.root)
+    assert Path(out["data"]["path"]).resolve() in worktree_paths(project.root)
 
 
 def test_second_claim_is_a_conflict(project, capsys):

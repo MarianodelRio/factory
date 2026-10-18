@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from conftest import load_fixture, orca_error
 
@@ -8,7 +10,7 @@ from swfactory.output import EXIT_UNAVAILABLE, EXIT_USAGE, FactoryError
 def test_create_workspace(repo, fake_orca):
     workspace = orca.create_workspace("CHG-0012-01", "main", repo.root)
     assert workspace["branch"] == "user/CHG-0012-01"
-    assert workspace["path"].endswith("/CHG-0012-01")
+    assert Path(workspace["path"]).name == "CHG-0012-01"
     assert workspace["id"].endswith("::" + workspace["path"])
     call = fake_orca.calls()[-1]
     assert call[:2] == ["worktree", "create"]

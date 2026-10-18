@@ -62,6 +62,13 @@ def isolated_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("SWFACTORY_GH", json.dumps([sys.executable, str(FAKES / "gh")]))
 
 
+def worktree_paths(root: Path) -> set[Path]:
+    """Every worktree of the clone as a resolved path (git prints C:/... on Windows)."""
+    listing = git("worktree", "list", "--porcelain", cwd=root)
+    return {Path(line.removeprefix("worktree ")).resolve() for line in listing.splitlines()
+            if line.startswith("worktree ")}
+
+
 def set_home(monkeypatch: pytest.MonkeyPatch, path: Path) -> None:
     """Make `path` the home folder for this process and its children (HOME, or USERPROFILE on Windows)."""
     monkeypatch.setenv("HOME", str(path))

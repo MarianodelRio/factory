@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 import pytest
-from conftest import git, load_fixture
+from conftest import git, load_fixture, worktree_paths
 
 from swfactory.cli import main
 
@@ -154,8 +154,8 @@ def test_two_tasks_in_parallel(initialized, capsys):
     assert status["summary"]["tasks"] == {"in_progress": 2}
     workspaces = {t["workspace"] for t in status["tasks"]}
     assert len(workspaces) == 2
-    listing = git("worktree", "list", "--porcelain", cwd=initialized.root)
-    assert all(ws.split("::", 1)[1] in listing for ws in workspaces)
+    listed = worktree_paths(initialized.root)
+    assert all(Path(ws.split("::", 1)[1]).resolve() in listed for ws in workspaces)
 
 
 def test_interruption_and_recovery(initialized, fake_orca, capsys):

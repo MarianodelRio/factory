@@ -338,7 +338,9 @@ def serve(main_checkout: Path, state_dir: Path, port: int, idle_minutes: float, 
     info_path = state_dir / INFO_FILE
     info = {"pid": os.getpid(), "port": bound, "url": f"http://127.0.0.1:{bound}/", "started_at": now(),
             "repo": str(main_checkout), "token": token, "launch": os.environ.get(LAUNCH_VARIABLE)}
-    info_path.write_text(json.dumps(info) + "\n", encoding="utf-8")
+    pending = state_dir / f".{INFO_FILE}.{os.getpid()}.tmp"  # readers never see a half-written file
+    pending.write_text(json.dumps(info) + "\n", encoding="utf-8")
+    system.replace(pending, info_path)
 
     def watch() -> None:
         while not stopping.wait(IDLE_CHECK_SECONDS):

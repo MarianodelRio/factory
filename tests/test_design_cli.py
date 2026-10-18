@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import pytest
 import yaml
@@ -43,7 +44,7 @@ def test_register_without_id_reserves_the_next_one(project, capsys):
     assert (project.root / ".factory/changes/CHG-0001").is_dir()
     _, out = cli(capsys, "design", "register")
     assert out["data"]["change"] == "CHG-0002"
-    assert out["data"]["design"].endswith(".factory/changes/CHG-0002/design.md")
+    assert Path(out["data"]["design"]).as_posix().endswith(".factory/changes/CHG-0002/design.md")
 
 
 def test_register_validates_a_design(project, capsys):
