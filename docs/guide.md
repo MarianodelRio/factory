@@ -1,0 +1,451 @@
+# Software Factory — user guide
+
+This guide explains what the Factory does and how to use it, from the point of view of the person
+working with it. For installation, see the [README](../README.md).
+
+## 1. What it is
+
+The Software Factory is a method for building software with coding agents (Claude Code, Codex),
+plus the tools that enforce it. Every change goes through the same steps:
+
+**design → approve → implement in an isolated workspace → verify with evidence → review →
+publish → remember what was learned**
+
+It is made of:
+
+- **Four skills** you call in plain language from an agent terminal: `/factory-init`,
+  `/factory-design`, `/factory-implement` and `/factory-status`.
+- **A small CLI**, `factory`. The skills use it for everything that must be exact: approvals, task
+  claims, state and evidence. You don't need to use it, but you can.
+- **Readable files** in your repository (`.factory/`, `AGENTS.md`, `docs/`) that hold the designs,
+  the task state and the project's memory.
+
+The Factory does not run agents or manage worktrees itself. **Orca** does: it creates a workspace
+(a Git worktree with its own branch) for each task, launches the agents in it and shows each task
+as a card in its sidebar. The Factory brings the method and keeps the record.
+
+### What it is good for
+
+- Changes big enough to deserve a design: a feature, a refactor, an integration. Truly trivial
+  edits don't need the Factory; ask an agent directly.
+- Working on several tasks at once without them stepping on each other: each task has its own
+  workspace and branch, and your main session stays free.
+- Knowing that "done" means proven: each acceptance criterion has recorded evidence, the checks
+  pass and the reviews passed on the final code.
+- Continuing work with another agent or provider: everything needed is in files, not in a chat.
+
+### What it never does
+
+It never merges, deploys, force-pushes or deletes branches or workspaces. It never approves a
+design without your explicit message. It never deletes or overwrites your files without showing
+you first and keeping a backup.
+
+## 2. Key ideas
+
+| Term | Meaning |
+|---|---|
+| **Change** (`CHG-0001`) | One piece of work you want: a feature, a fix, a refactor. It has one design. |
+| **Design** | `.factory/changes/CHG-0001/design.md`: context, goal and scope, acceptance criteria, approach, tasks, risks. Written by the agent, approved by you. |
+| **Task** (`CHG-0001-01`) | A slice of a change that one agent implements in one workspace. A change has one or more tasks; a task can depend on others. |
+| **Acceptance criterion** (`AC-01`) | A verifiable statement ("Given …, when …, then …") and how it is checked: a command, or `manual` with an evidence file. |
+| **Evidence** | The recorded output of each check and criterion, saved under `.factory/state/evidence/`. |
+| **Checks** | The project's own test, lint, typecheck and build commands, configured once in `.factory/config.toml`. |
+| **Reviews** | Independent reviews of the finished code. *Quality* covers maintainability; *conformance* checks that it does what the approved design says. |
+| **Lead agent** | The agent that implements a task, inside the task's workspace. |
+| **Memory** | What the project learns, kept in `AGENTS.md` and `docs/`: decisions (ADRs), working agreements, known pitfalls, architecture and product notes. |
+
+### Who does what
+
+| You | The agents | Orca |
+|---|---|---|
+| Ask for changes, say OK to outlines, **approve or reject** designs, answer questions, accept or decline working agreements, review and **merge** PRs | Research, design, implement, test, verify, review, propose memory updates, push the task branch | Workspaces and branches, launching agents, the sidebar cards, knowing whether a terminal is still open |
+
+## 3. The life of a change
+
+```
+ you: /factory-design <what you want>
+      │  agent researches the code, shows a short outline, waits for your OK
+      │  writes design.md, self-reviews it, validates it
+      ▼
+ change CHG-0001  ── awaiting approval
+      │  you: "apruebo CHG-0001" / "approve CHG-0001"  (+ the permission prompt)
+      ▼
+ approved: tasks CHG-0001-01, -02 …  ── ready (or pending, waiting for a dependency)
+      │  you: /factory-implement CHG-0001-01 con claude, revisa claude
+      ▼
+ Orca workspace + branch, lead agent launched ── in_progress
+      │  tests first, code, commits, checkpoints, verify (checks + every AC)
+      ▼
+ submit ── in_review
+      │  quality and/or conformance reviews; fix and repeat if needed
+      ▼
+ memory updated on the task branch, finish ── done
+      │  push the branch, open the PR (if gh is available)
+      ▼
+ you review and merge the PR → tasks that depended on it become ready
+```
+
+## 4. Preparing a repository: `/factory-init`
+
+Run it once per repository, and again whenever you upgrade the Factory. (Once per machine you
+also run `factory install-skill`, so `/factory-init` exists before the repo has the Factory.)
+
+**What happens:**
+
+1. **Analysis, without changing anything.** It looks at Git (branch, pending changes, worktrees),
+   Orca (version, whether it is open, local, the repo registered), the agents Orca finds, `gh`, the
+   stack, and the commands for test, lint, typecheck and build. It also looks at existing
+   instructions and documentation, and at a previous Factory installation. If it can't find a check
+   command, it asks you: a task cannot be finished until at least one check is configured.
+2. **One plan with four lists:**
+   - **Create**: skills, `AGENTS.md`, a minimal `CLAUDE.md`, `docs/` adapted to the repo size,
+     `.factory/config.toml`, the approval permission rules, a `.gitignore` entry.
+   - **Modify**: small patches to existing files, shown as a diff.
+   - **Delete**: each item with its reason. These can be Factory leftovers, empty docs,
+     duplicated or contradictory instruction files, or files of tools no longer used. Never code,
+     tests, CI, secrets, decisions or working agreements.
+   - **Respect**: what stays untouched, and why.
+
+   Plus the Orca actions: register the repo, set its base branch, install or update Orca's skills.
+3. **You confirm once.** You can leave items out ("todo menos borrar X", "everything except
+   deleting X"). If you only want to see the plan, say "solo el análisis" / "only the analysis".
+4. **It applies the plan.** Everything it modifies or deletes is first copied to
+   `.factory/state/backups/<timestamp>/`. Then it writes the files and fills `AGENTS.md` and
+   `docs/` from the real code, marking what it could not confirm.
+5. **Nothing is committed.** Review the diff and commit it **on the base branch** (usually `main`),
+   or ask the agent to. Approvals and task workspaces start from that branch.
+
+**Size-adapted docs.** A small repository gets `AGENTS.md` and `docs/conventions.md`. A normal
+one also gets `docs/product.md`, `docs/architecture.md`, `docs/working-agreements.md` and
+`docs/decisions/`.
+
+**Running it again is safe.** It duplicates nothing. Files you customized since the last install
+are shown as a diff and never overwritten without asking.
+
+**Undo.** `factory init --restore <backup>` puts back what a run modified or deleted.
+
+## 5. Designing a change: `/factory-design`
+
+Describe what you want, in your own words:
+
+```
+/factory-design add weekly recurrence to bookings
+```
+
+**What the agent does:**
+
+1. Reads the project context (`AGENTS.md`, `docs/`) and **researches the real code**: files to
+   touch, patterns to follow, existing tests.
+2. Asks only what changes the design. When the request is open, it researches the options and
+   proposes them.
+3. **Shows a short outline and waits.** The outline covers goal and scope, the approach and the
+   alternatives it considered, the acceptance criteria, the tasks and the risks. Nothing is
+   written until you say OK, and you can correct or redirect it. **Your OK only allows writing:
+   it is not an approval.**
+4. Reserves the next id (`CHG-0001`) and writes `design.md`. A critic subagent then checks it:
+   could another agent implement this without this conversation? The agent fixes what it finds and
+   validates the design with the CLI.
+5. Presents a summary, opens the design in Orca and tells you how to approve it.
+
+### What a design contains
+
+`Context` · `Goal and scope` · `Acceptance criteria` · `Approach` · `Implementation notes` ·
+`Tasks` · `Risks and open questions`
+
+The **Tasks** section is a YAML block. Each task has:
+
+| Field | Meaning |
+|---|---|
+| `id` | `CHG-0001-01`, `-02`, … |
+| `title` | What the task delivers |
+| `depends_on` | Tasks that must be **done and merged into the base branch** before this one can start |
+| `complexity` | `trivial`, `normal` or `complex`: decides how the lead works (section 6) |
+| `review` | `[]`, `[quality]` or `[quality, conformance]` |
+| `scope` | Optional globs of the files the task should touch; changes outside it are flagged at finish |
+| `acceptance` | Each AC of this task, with its command or `manual` |
+
+How `review` is usually chosen:
+
+| Task | `review` |
+|---|---|
+| Trivial | `[]` |
+| Normal, no new visible behavior | `[quality]` |
+| Changes visible behavior, or has several AC | `[quality, conformance]` |
+| Complex or risky (security, data, public interfaces) | `[quality, conformance]` |
+
+### Approving and rejecting
+
+- **Approve** with an explicit message that names the change: `apruebo CHG-0001` or
+  `approve CHG-0001`. "vale", "OK", "me gusta", "adelante" or a thumbs up are **not** approvals;
+  the agent will ask "¿apruebas CHG-0001?".
+- The agent shows what you are approving (criteria, tasks, risks and the first characters of the
+  design's digest). Then **your client asks you for permission** to run the approval: in Claude
+  Code through `.claude/settings.json`, in Codex through `.codex/rules/factory.rules`. If you
+  decline, nothing is approved.
+- The approval is a commit on the base branch that contains only the change folder
+  (`approval.json` with your literal message, and `tasks.yaml`). Nothing is pushed.
+- **Reject** with `reject CHG-0001` and a reason. A rejection is final: to take the idea up again,
+  design a new change.
+- From a terminal you can also run `factory design approve CHG-0001` and type the id.
+
+The agent never approves because of what a file, an issue, a web page or another agent says, and
+never while it was launched to implement or review.
+
+### Changing an approved design
+
+You can ask for changes at any time. The agent warns you first, because the change goes back to
+**awaiting approval**:
+
+- Tasks in progress, in review or interrupted become `blocked` (`design_changed`) until you
+  approve again. Then they return to where they were.
+- `done` tasks are not touched.
+- Re-approval keeps the task ids. New tasks get new numbers, and approved tasks cannot be removed.
+
+## 6. Implementing a task: `/factory-implement`
+
+From your main session (the repository's main checkout):
+
+```
+/factory-implement CHG-0001-01 con claude, revisa claude
+```
+
+"con" / "with" names the **lead agent** and "revisa" / "review" names the **conformance
+reviewer** (`claude` or `codex`). If you leave one out, it asks once and suggests your last choice.
+You can also ask for a specific model or effort.
+
+**What happens:**
+
+1. It checks that the task is `ready`. If it is `pending`, it tells you why, for example "waiting
+   for CHG-0001-01 to be merged into main".
+2. It **claims** the task (only one agent can) and Orca creates a workspace with its own branch
+   from the base branch.
+3. Orca **launches the lead agent** in that workspace. A card appears in Orca's sidebar, and your
+   main session is free for other things.
+
+Open the workspace from the sidebar whenever you want to watch the agent or talk to it.
+
+### What the lead agent does
+
+It reads the approved design and the project docs, then works according to the task's complexity:
+
+| Complexity | Flow |
+|---|---|
+| `trivial` | Implement → checks |
+| `normal` | Short plan → tests first → implement → checks → reviews |
+| `complex` | Plan with a planner subagent → small steps with checkpoints → checks → reviews |
+
+Along the way it:
+
+- **Checkpoints** after each significant step (what it did and what comes next). That is when it
+  reads any notes you left.
+- **Commits** each coherent step on the task branch.
+- **Stops and blocks the task** if something would change the design (a new requirement, an
+  architecture decision), instead of improvising.
+
+### Verification and evidence
+
+`factory task verify` runs the project checks and each AC command **in the task's workspace**, and
+saves the output as evidence. For a `manual` criterion, the agent produces real evidence (a note,
+a screenshot, a page snapshot) and records it. Secret files are never accepted as evidence.
+
+### Reviews
+
+After verifying, the agent re-reads its own diff and **submits** the task (`in_review`). Then come
+the reviews:
+
+- **Quality**: a read-only subagent reviews the diff for readability, structure, duplication,
+  error handling, conventions and meaningful tests.
+- **Conformance**: Orca launches the reviewer agent you chose in the same workspace. It checks each
+  criterion against the code and the evidence, and checks that the change stays in scope and
+  respects existing decisions.
+
+Each reviewer ends with a verdict and its findings (`blocker`, `major`, `minor`), and never edits
+files. A review passes only without `blocker` or `major` findings. Otherwise the agent fixes them,
+verifies again and repeats that review. **After two rounds without a pass, the task is blocked**
+(`review_not_converging`), the findings are kept, and it is your call. `minor` findings don't block
+anything; they go in the PR description.
+
+### Memory
+
+Before finishing, the agent asks itself what the project should remember:
+
+| Question | Where it goes |
+|---|---|
+| Was a lasting decision made? | A new ADR in `docs/decisions/`, or one that supersedes an old one |
+| Did you or a reviewer correct something that will come up again? | A working agreement, **only if you accept it** |
+| Did a pitfall of the repo appear? | "Known pitfalls" in `docs/conventions.md` |
+| Did the structure, a flow or an integration change? | `docs/architecture.md` |
+| Did the visible product or its scope change? | `docs/product.md` |
+| Did commands or critical rules change? | `AGENTS.md` |
+
+These updates are committed **on the task branch**, so they reach you in the same PR as the code.
+An accepted ADR is never rewritten. A changed decision gets a new ADR, and the old one only changes
+its `Status` line to "superseded by NNNN".
+
+### When a task is done
+
+`factory task finish` moves the task to `done` only if all of these hold. Otherwise it lists what
+is missing:
+
+- every acceptance criterion is verified with evidence;
+- the project checks passed, on the last commit;
+- every required review passed, on the last commit that changed code;
+- memory was evaluated (even if the answer is "nothing to add");
+- the change's approval is still valid.
+
+Files changed outside the task's `scope` produce a warning, and the conformance review decides if
+it is a deviation.
+
+### Publishing
+
+Depending on `git.pr_on_done` (by default, `offer`), the agent offers to **push the task branch
+and open the PR**. Only that branch is pushed, never forced. The PR body lists the criteria with
+their evidence, the checks, the reviews with their findings, the memory updates and what is
+still pending. Publishing again pushes later commits to the
+same PR. Without a usable `gh`, the branch is pushed and the PR is left to you.
+
+**You review and merge the PR.** Once it is in the base branch, the tasks that depended on it
+become `ready`.
+
+## 7. Following and steering the work: `/factory-status`
+
+Ask in your own words: `/factory-status`, "¿cómo va todo?", "how is CHG-0001-01 going?", "what is
+blocked?".
+
+You get:
+
+- **A summary**: changes awaiting approval and tasks by state.
+- **Each task**: state and reason, agents, workspace and branch, last checkpoint and its age,
+  criteria verified, reviews, PR and **next step**.
+- **What needs you**: approvals, blocked or interrupted tasks, reviews that don't converge, tasks
+  waiting for a merge, and agents with no checkpoint for more than 10 minutes. That last one is
+  only a warning, never treated as a crash.
+
+### Notes and pauses
+
+- **"deja una nota en CHG-0001-01: …"** ("leave a note on …"): the agent reads it at its next
+  checkpoint, or before submitting or finishing.
+- **"pausa CHG-0001-01"** ("pause …"): when the agent reads it, the task becomes `blocked`
+  (`paused`) and the agent stops. To continue, ask to unblock it.
+- The most direct way is still to open the workspace and talk to the agent.
+- If a note changes requirements or architecture, the design has to be adjusted and approved again.
+
+### Blocked tasks
+
+A task is blocked for a reason: `paused`, `design_changed`, `review_not_converging`, or a reason
+the lead gave. Once you have resolved it, unblocking returns the task to where it was. A
+`design_changed` task returns by itself when you approve the design again.
+
+### Interrupted tasks and recovery
+
+If the lead's terminal is closed before the task is done (while in progress or in review),
+`/factory-status` marks the task **interrupted**. Orca can't tell whether the agent inside an open
+terminal is still running, so a session it can't answer about is shown as **unknown**, never as
+dead.
+
+**"recupera CHG-0001-01"** ("recover …") shows what the previous attempt left: `git status`,
+commits, the last checkpoint, the criteria still missing and the reviews already recorded. Then:
+
+- if the previous session is still alive, it only suggests continuing there;
+- otherwise it **asks you** before launching a new agent in the same workspace, which continues
+  from the last checkpoint. Uncommitted files are kept, and so are the reviews already recorded.
+
+### Memory maintenance
+
+"¿cómo está la memoria?" / "how is the memory?" runs a mechanical check of the memory. It looks
+for broken links, documents that cite superseded decisions, duplicated ADR numbers and an
+`AGENTS.md` that is too long. The
+agent adds its own reading (contradictions, outdated docs) and proposes changes as a diff for you
+to commit.
+
+## 8. Task states
+
+| State | Meaning | What to do |
+|---|---|---|
+| `pending` | Approved, but a dependency is not done **and merged** yet | Merge the dependency |
+| `ready` | Can start | `/factory-implement <task>` |
+| `in_progress` | The lead agent is working | Watch, leave notes, or wait |
+| `in_review` | Implemented; reviews running | Wait for the reviews and `finish` |
+| `blocked` | Paused, design changed, review not converging, or a decision is needed | Resolve the reason, then unblock |
+| `interrupted` | The lead stopped before finishing | `recupera <task>` |
+| `done` | All closing criteria met | Publish, then review and merge the PR |
+
+A change is **awaiting approval** while its design has no valid approval (also after editing an
+approved design), **approved** once you approve it, **rejected** if you reject it, and **done** when
+all its tasks are done.
+
+## 9. What lives in your repository
+
+```text
+your-repo/
+├── AGENTS.md                      # short index for agents: commands, critical rules, where things are
+├── CLAUDE.md                      # just "@AGENTS.md"
+├── .claude/
+│   ├── skills/factory-*/          # the four skills for Claude Code
+│   └── settings.json              # asks before approve/reject
+├── .agents/skills/factory-*/      # the same four skills for Codex
+├── .codex/rules/factory.rules     # asks before approve/reject in Codex
+├── docs/
+│   ├── product.md                 # what the product is and does
+│   ├── architecture.md            # structure, flows, integrations
+│   ├── conventions.md             # how code is written here, plus "Known pitfalls"
+│   ├── working-agreements.md      # rules you accepted, one line each with date and origin
+│   └── decisions/                 # ADRs (README index + NNNN-title.md)
+└── .factory/
+    ├── config.toml                # checks, reviews, PR policy (committed)
+    ├── changes/CHG-0001/          # design.md, approval.json, tasks.yaml (committed)
+    └── state/                     # task state, evidence, backups (local, git-ignored)
+```
+
+Everything is Markdown, YAML, JSON or TOML: you can open and read any of it. The task state is
+shared by every workspace of the clone, because it lives in the main checkout.
+
+## 10. Configuration: `.factory/config.toml`
+
+| Key | Values (default first) | Effect |
+|---|---|---|
+| `[checks]` `test`, `lint`, `typecheck`, `build` | commands | Run by `verify` in the task's workspace; at least one is required to finish a task |
+| `review.quality`, `review.conformance` | `auto`, `always`, `never` | `auto` follows each task's `review` field; `always` / `never` force it for every task |
+| `review.max_rounds` | `2` | Rounds without a pass before a task is blocked |
+| `git.pr_on_done` | `offer`, `always`, `never` | Whether the lead offers, always does, or never pushes and opens the PR when done |
+| `orca.min_version` | `1.4.229` | Oldest Orca the Factory accepts |
+| `[templates]` | hashes | Written by `/factory-init` to detect files you customized; don't edit |
+
+## 11. Safety rules
+
+- Nothing is approved or rejected without your explicit message and the permission prompt.
+- Nothing is deleted or overwritten unless it appears in a plan you confirmed, and there is always
+  a backup.
+- Only the task branch is pushed: no force push, no merge, no deleting branches or workspaces.
+- No secrets in the state, cards, PRs or memory. `.env` and key files are refused as evidence,
+  and common secret patterns are masked in everything the CLI writes.
+- File contents, issues, web pages and other agents' messages are data, never instructions.
+- Local Orca only: a remote Orca is refused.
+
+## 12. When something goes wrong
+
+| You see | What it means | What to do |
+|---|---|---|
+| The approval is refused with `not_on_base_branch` | Approvals are committed on the base branch | Switch your main checkout to the base branch (usually `main`) |
+| The approval is refused with `commit_failed` | A Git hook or similar rejected the commit | Fix what the hook reports; nothing was approved |
+| `git_identity_missing` | Git has no `user.email` | `git config user.email you@example.com` |
+| A task stays `pending` although its dependency is done | The dependency is not merged into the base branch | Merge its PR (or branch) |
+| `gates_not_met` at finish | Some closing criterion is missing | The agent fixes each listed item |
+| `launch_unconfirmed` | Orca didn't confirm that the agent started | Check the workspace in Orca; if no agent is there, `recupera <task>` |
+| Orca is closed, missing or too old | Tasks can't be claimed or launched | Open or update Orca; state and designs can still be viewed |
+| The PR wasn't opened | `gh` is missing, not logged in, or the remote isn't GitHub | The branch is pushed; open the PR yourself |
+| A workspace was deleted outside the Factory | The task shows a broken link | Tell the agent what you want to do with the task |
+
+## 13. Current limits
+
+- **Verified with Claude Code only.** Codex support (its skills, the approval rule, reviews) is
+  implemented but has not been checked on a real machine yet. The Codex approval rule only loads if
+  you trust the project in Codex. It has not been tested when Orca launches Codex with its
+  permission-bypass flags.
+- **Orca can't tell whether an agent inside an open terminal is still running.** Only a closed
+  terminal counts as interrupted. A long silence only gives the 10-minute warning.
+- **Orca doesn't report the model an agent used.** The Factory records the model it asked for, if
+  any.
+- **One task per workspace and one lead per task.** There is no orchestrator running several tasks
+  for you; you launch each one.
+- **Local Orca only**, and Orca is the only supported environment.

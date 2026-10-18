@@ -9,6 +9,9 @@ Orca runs the agents and the workspaces; the Factory brings the method and keeps
 readable files under `.factory/`. You talk to the agent in natural language (Spanish or English);
 everything it writes to the repository is in English.
 
+The [user guide](docs/guide.md) explains every step in detail: what each skill does, what you
+decide, task states, notes and recovery, configuration and what to do when something goes wrong.
+
 ## Requirements
 
 - Linux or macOS with Git.
