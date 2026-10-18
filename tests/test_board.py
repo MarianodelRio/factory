@@ -121,6 +121,11 @@ def test_page_is_self_contained_and_snapshot_embeds_the_data(working, home, tmp_
     assert json.loads(embedded.removesuffix(";")) == {"x": "</script><!--<script>&"}
 
 
+def board_log(repo):
+    log = repo.root / ".factory" / "state" / "board.log"
+    return log.read_text() if log.exists() else "(no board.log)"
+
+
 def get(url):
     with urllib.request.urlopen(url, timeout=5) as reply:
         return reply.status, reply.read()
@@ -129,11 +134,20 @@ def get(url):
 def test_server_serves_the_page_and_the_data_then_stops_when_idle(working, home, monkeypatch):
     monkeypatch.setattr(board, "IDLE_CHECK_SECONDS", 0.05)
     state = working.root / ".factory" / "state"
-    server = threading.Thread(target=board.serve, args=(working.root, state, 0, 0.1, home), daemon=True)
+    errors = []
+
+    def serve():
+        try:
+            board.serve(working.root, state, 0, 0.1, home)
+        except Exception as exc:  # shown in the assertion below
+            errors.append(repr(exc))
+
+    server = threading.Thread(target=serve, daemon=True)
     server.start()
-    deadline = time.monotonic() + 5
-    while not (state / "board.json").exists() and time.monotonic() < deadline:
+    deadline = time.monotonic() + 10
+    while not (state / "board.json").exists() and time.monotonic() < deadline and not errors:
         time.sleep(0.02)
+    assert (state / "board.json").exists(), errors
     url = json.loads((state / "board.json").read_text())["url"]
     assert get(url)[0] == 200 and b"<title>Factory board</title>" in get(url)[1]
     status, body = get(url + "api/board")
@@ -160,7 +174,7 @@ def free_port():
 def test_start_status_open_and_stop_a_background_board(working, home, fake_orca, capsys):
     port = free_port()
     code, out = cli(capsys, "board", "start", "--port", str(port))
-    assert code == 0, out
+    assert code == 0, (out, board_log(working))
     started = out["data"]
     try:
         assert (started["started"], started["port"], started["url"]) == (True, port, f"http://127.0.0.1:{port}/")

@@ -357,7 +357,7 @@ def _health(info: dict[str, Any]) -> dict[str, Any] | None:
 
 
 def _is_board_process(pid: Any) -> bool:
-    """True if `pid` is alive and, where the system says it, runs `swfactory board serve`."""
+    """True if `pid` is alive and runs `swfactory board serve` (so a reused pid is never signalled)."""
     if not isinstance(pid, int) or pid <= 0:
         return False
     try:
@@ -365,10 +365,14 @@ def _is_board_process(pid: Any) -> bool:
     except OSError:
         return False
     try:
-        command = Path(f"/proc/{pid}/cmdline").read_bytes()
-    except OSError:
-        return True  # no /proc (macOS): an alive pid is the best evidence there is
-    return b"factory" in command and b"board\x00serve" in command
+        command = Path(f"/proc/{pid}/cmdline").read_bytes().replace(b"\x00", b" ").decode(errors="replace")
+    except OSError:  # no /proc (macOS): ask ps
+        try:
+            command = subprocess.run(["ps", "-o", "command=", "-p", str(pid)], capture_output=True, text=True,
+                                     timeout=5).stdout
+        except (OSError, subprocess.SubprocessError):
+            return False
+    return "swfactory" in command and "board serve" in command
 
 
 def running(main_checkout: Path, state_dir: Path) -> dict[str, Any] | None:
