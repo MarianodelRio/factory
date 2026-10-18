@@ -11,6 +11,7 @@ import json
 import os
 import signal
 import socket
+import socketserver
 import subprocess
 import sys
 import threading
@@ -254,6 +255,12 @@ def snapshot(ctx: tasks.Context, home: Path, out: Path) -> dict[str, Any]:
 
 class _Server(ThreadingHTTPServer):
     daemon_threads = True
+
+    def server_bind(self) -> None:
+        # HTTPServer looks up the host's name (socket.getfqdn), which can hang for a long time on
+        # macOS; the board only listens on 127.0.0.1 and never needs that name.
+        socketserver.TCPServer.server_bind(self)
+        self.server_name, self.server_port = "127.0.0.1", self.server_address[1]
 
 
 def serve(main_checkout: Path, state_dir: Path, port: int, idle_minutes: float, home: Path) -> None:
