@@ -180,6 +180,7 @@ def _permission_warnings(root: Path) -> list[str]:
 
 SKILL_BASES = (".claude/skills", ".agents/skills")
 ASK_RULES = ["Bash(factory design approve:*)", "Bash(factory design reject:*)"]
+CODEX_RULES = ".codex/rules/factory.rules"  # Codex's equivalent of ASK_RULES (design §4.4)
 GITIGNORE_LINE = ".factory/state/"
 SMALL_REPO_FILES = 30
 DOCS_SMALL = ("conventions.md",)
@@ -273,19 +274,19 @@ def build_plan(root: Path, main_checkout: Path, deletes: list[tuple[str, str]]) 
     plan = Plan()
     plan.report, plan.recorded = report, recorded
     plan.warnings = report["warnings"] + [
-        "Codex gets no approval 'ask' rule yet (its mechanism is not verified): approving from Codex rests on "
-        "the skills' rules"
+        f"Codex asks before approve/reject through {CODEX_RULES} (a prompt rule; not verified on a real Codex): "
+        "it loads only if this project is trusted in Codex"
     ]
 
-    for rel, content in _skill_files().items():
-        for base in SKILL_BASES:
-            path = f"{base}/{rel}"
-            current = _read(root, path)
-            if current is None or current == content or recorded.get(path) == _sha(current):
-                plan.write(root, path, content, "update to the current Factory template")
-                plan.tracked[path] = _sha(content)
-            else:
-                plan.customized.append({"path": path, "diff": _diff(path, current, content)})
+    installed = {f"{base}/{rel}": content for rel, content in _skill_files().items() for base in SKILL_BASES}
+    installed[CODEX_RULES] = _template("codex/factory.rules")
+    for path, content in installed.items():
+        current = _read(root, path)
+        if current is None or current == content or recorded.get(path) == _sha(current):
+            plan.write(root, path, content, "update to the current Factory template")
+            plan.tracked[path] = _sha(content)
+        else:
+            plan.customized.append({"path": path, "diff": _diff(path, current, content)})
 
     _docs(root, plan)
     _deletions(root, plan, deletes)
@@ -313,7 +314,7 @@ def _docs(root: Path, plan: Plan) -> None:
     elif "@AGENTS.md" not in claude.splitlines():
         plan.write(root, "CLAUDE.md", claude.rstrip("\n") + "\n\n@AGENTS.md\n", "import AGENTS.md")
     # The repo's own size: files the Factory installs (skills, config, docs) do not count.
-    installed = {"AGENTS.md", "CLAUDE.md", *(f"docs/{doc}" for doc in DOCS_NORMAL)}
+    installed = {"AGENTS.md", "CLAUDE.md", CODEX_RULES, *(f"docs/{doc}" for doc in DOCS_NORMAL)}
     factory_dirs = (".factory/", "docs/decisions/", *(f"{base}/factory-" for base in SKILL_BASES))
     own = [f for f in git.run(["ls-files"], root).splitlines()
            if f not in installed and not f.startswith(factory_dirs)]

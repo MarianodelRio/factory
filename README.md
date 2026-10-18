@@ -94,8 +94,9 @@ In a Claude Code (or Codex) terminal in Orca, at the root of your repository:
 
 ## Good to know
 
-- Approving or rejecting a design always needs your explicit message. In Claude Code it also asks
-  for permission before running the approval; Codex has no equivalent rule yet.
+- Approving or rejecting a design always needs your explicit message. Claude Code and Codex also
+  ask for permission before running it (`.claude/settings.json` and `.codex/rules/factory.rules`;
+  Codex reads project rules only if you trust the project in Codex).
 - A task is `done` only when every acceptance criterion has evidence, the checks pass and the
   required reviews passed on the final commit.
 - The Factory only pushes the task branch: no force push, merge or branch deletion.

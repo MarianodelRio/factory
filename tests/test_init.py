@@ -75,6 +75,9 @@ def test_apply_installs_without_committing(project, capsys):
     settings = json.loads((root / ".claude/settings.json").read_text())
     assert settings["permissions"]["ask"] == ["Bash(factory design approve:*)", "Bash(factory design reject:*)"]
     assert (root / "CLAUDE.md").read_text().splitlines()[-1] == "@AGENTS.md"
+    rules = (root / ".codex/rules/factory.rules").read_text()
+    assert 'pattern = ["factory", "design", ["approve", "reject"]]' in rules and 'decision = "prompt"' in rules
+    assert cfg["templates"][".codex/rules/factory.rules"].startswith("sha256:")
     for skill in SKILLS:
         claude, codex = root / f".claude/skills/{skill}/SKILL.md", root / f".agents/skills/{skill}/SKILL.md"
         assert codex.read_text() == claude.read_text()
@@ -305,3 +308,13 @@ def test_the_repos_own_docs_count_for_its_size(project, capsys):
     git("add", "-A", cwd=project.root)
     git("commit", "-q", "-m", "User docs", cwd=project.root)
     assert "docs/product.md" in paths(plan(capsys)["create"])
+
+
+def test_customized_codex_rules_are_kept_and_shown_as_diff(project, capsys):
+    apply(capsys, plan(capsys)["plan_id"])
+    path = project.root / ".codex/rules/factory.rules"
+    path.write_text(path.read_text() + "# my own rule\n")
+    data = plan(capsys)
+    assert ".codex/rules/factory.rules" not in paths(data["modify"])
+    assert any(c["path"] == ".codex/rules/factory.rules" for c in data["customized"])
+    assert any("factory.rules" in w and "trusted" in w for w in data["warnings"])

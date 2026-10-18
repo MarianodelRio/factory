@@ -105,7 +105,7 @@ my-repository/
 │   ├── skills/factory-*/SKILL.md     # the 4 skills
 │   └── settings.json                 # adds the "ask" rule for approve and reject (§4.4)
 ├── .agents/skills/factory-*/SKILL.md # the 4 skills for Codex
-├── (Codex config)                    # equivalent approval rule; file to be confirmed (§10.3)
+├── .codex/rules/factory.rules        # the same rule for Codex: a `prompt` prefix rule (§4.4)
 ├── docs/
 │   ├── product.md
 │   ├── architecture.md
@@ -363,7 +363,7 @@ Rules: each AC is verifiable and says how it is verified; implementation notes u
 1. The person writes an **explicit approval that names the change**: "apruebo CHG-0012" or "approve CHG-0012".
 2. The skill shows what is being approved (AC, tasks, risks and digest prefix).
 3. It runs `factory design approve CHG-0012 --message "<literal text>"`.
-4. **The client asks the person for permission** for that command: `/factory-init` configures `approve` and `reject` as "always ask" in Claude Code (`permissions.ask`) and with the equivalent mechanism in Codex. That click is the human confirmation.
+4. **The client asks the person for permission** for that command: `/factory-init` configures `approve` and `reject` as "always ask" in Claude Code (`permissions.ask`) and in Codex with a `prefix_rule` for `factory design approve|reject` with `decision = "prompt"` in `.codex/rules/factory.rules` (Codex loads project rules only when the project is trusted in Codex; `/factory-init` says so). That click is the human confirmation.
 5. The CLI checks that the session is on the **base branch**, writes `approval.json` and `tasks.yaml` and commits **only the change's folder**. If the commit fails (for example, a hook), nothing is left approved. It does not push.
 6. The skill says which tasks are ready: "implement with `/factory-implement CHG-0012-01`".
 
