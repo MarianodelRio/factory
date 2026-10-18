@@ -1,0 +1,63 @@
+{
+  "id": "fake",
+  "ok": true,
+  "result": {
+    "worktrees": [
+      {
+        "workspaceKind": "git",
+        "worktreeId": "dec0428a-2c06-47a2-8674-36668146fff8::/home/user/orca/workspaces/factory-sample/CHG-0003-01",
+        "repoId": "dec0428a-2c06-47a2-8674-36668146fff8",
+        "hostId": "local",
+        "terminalPlatform": "linux",
+        "repo": "factory-sample",
+        "path": "/home/user/orca/workspaces/factory-sample/CHG-0003-01",
+        "branch": "refs/heads/user/CHG-0003-01",
+        "isArchived": false,
+        "isMainWorktree": false,
+        "hasHostSidebarActivity": true,
+        "defaultBranch": false,
+        "cliCreated": true,
+        "worktreeInstanceId": "7336797e-7f7b-4dff-97f3-76647a1c68b5",
+        "parentWorktreeId": null,
+        "childWorktreeIds": [],
+        "displayName": "CHG-0003-01 Add JSON save/load of bookings in sample.storage",
+        "workspaceStatus": "completed",
+        "sortOrder": 1792314711359,
+        "lastActivityAt": 1792314552537,
+        "createdAt": 1792314389191,
+        "creatorProvenance": {
+          "kind": "host"
+        },
+        "linkedIssue": null,
+        "linkedPR": null,
+        "linkedLinearIssue": null,
+        "linkedGitLabMR": null,
+        "linkedGitLabIssue": null,
+        "linkedItems": [],
+        "comment": "6/6 AC verified",
+        "isPinned": false,
+        "isActive": false,
+        "unread": false,
+        "liveTerminalCount": 3,
+        "hasAttachedPty": true,
+        "unverifiableTerminalCount": 0,
+        "lastOutputAt": 1792318383722,
+        "preview": null,
+        "status": "active",
+        "agents": [],
+        "terminalVerdict": "live"
+      }
+    ],
+    "hostScope": {
+      "hostIds": [
+        "local"
+      ],
+      "omittedHostIds": []
+    },
+    "totalCount": 7,
+    "truncated": false
+  },
+  "_meta": {
+    "runtimeId": "f3125087-d3e5-4197-b9aa-c07ef2efc632"
+  }
+}

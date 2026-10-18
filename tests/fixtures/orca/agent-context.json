@@ -293,6 +293,50 @@
         "worktree"
       ],
       "positionalArgs": []
+    },
+    {
+      "command": "worktree ps",
+      "path": [
+        "worktree",
+        "ps"
+      ],
+      "usage": "orca worktree ps [--json]",
+      "flags": [
+        "help",
+        "json"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "terminal list",
+      "path": [
+        "terminal",
+        "list"
+      ],
+      "usage": "orca terminal list [--worktree <selector>] [--limit <n>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "worktree",
+        "limit"
+      ],
+      "positionalArgs": []
+    },
+    {
+      "command": "tab create",
+      "path": [
+        "tab",
+        "create"
+      ],
+      "usage": "orca tab create [--url <url>] [--worktree <selector>] [--profile <id>] [--json]",
+      "flags": [
+        "help",
+        "json",
+        "url",
+        "worktree",
+        "profile"
+      ],
+      "positionalArgs": []
     }
   ]
 }

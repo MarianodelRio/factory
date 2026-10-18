@@ -18,3 +18,5 @@ results (search is disabled here).
 - `agent-hooks-status.json`: `orca agent hooks status` (which agents Orca finds: claude installed, codex not).
 - `skills-installed.json`: `orca skills installed`, trimmed to id, name, providers and source.
 - `repo-add.json`: `orca repo add --path <path>` from the spike sandbox.
+- `worktree-ps.json`, `terminal-list.json`: one entry each from `orca worktree ps` / `orca terminal list`; the fake builds its answers from them.
+- `tab create` was not recorded: the board ignores its answer, and the fake returns a minimal envelope.

@@ -16,6 +16,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures" / "orca"
@@ -124,6 +125,33 @@ def show_worktree(argv):
     return worktree_record(body, path, branch, repo_id)
 
 
+def listed_worktrees():
+    """`worktree ps`: one entry per workspace this fake created, shaped like the recorded one."""
+    template = load("worktree-ps")["result"]["worktrees"][0]
+    repo_id = load("worktree-create")["result"]["worktree"]["repoId"]
+    found = []
+    for path in sorted((STATE / "workspaces").glob("*")) if (STATE / "workspaces").is_dir() else []:
+        entry = dict(template, worktreeId=f"{repo_id}::{path}", path=str(path), displayName=path.name)
+        found.append(entry)
+    return {"id": "fake", "ok": True, "result": {"worktrees": found}}
+
+
+def listed_terminals():
+    """`terminal list`: the terminal of each agent launched by this fake, connected."""
+    template = load("terminal-list")["result"]["terminals"][0]
+    handle = load("agent-launch")["result"]["outcome"]["handle"]
+    found = []
+    calls = (STATE / "calls.jsonl").read_text().splitlines() if (STATE / "calls.jsonl").exists() else []
+    for n, line in enumerate(calls):
+        argv = json.loads(line)["argv"]
+        if command_of(argv) == "agent launch" and not flag(argv, "--retry-launch"):
+            worktree = (flag(argv, "--worktree") or "").removeprefix("id:")
+            found.append(dict(template, handle=handle if not found else f"{handle}-{n}", worktreeId=worktree,
+                              worktreePath=worktree.split("::", 1)[-1], leafId=f"leaf-{n}", connected=True,
+                              lastOutputAt=int(time.time() * 1000)))
+    return {"id": "fake", "ok": True, "result": {"terminals": found}}
+
+
 def override(command, target):
     responses = STATE / "responses"
     name = command.replace(" ", "-")
@@ -156,6 +184,12 @@ def main():
         answer(0, create_worktree(argv))
     if command == "worktree show":
         answer(0, show_worktree(argv))
+    if command == "worktree ps":
+        answer(0, listed_worktrees())
+    if command == "terminal list":
+        answer(0, listed_terminals())
+    if command == "tab create":
+        answer(0, {"id": "fake", "ok": True, "result": {"tab": {"url": flag(argv, "--url")}}, "_meta": {}})
     if command == "agent launch" and flag(argv, "--retry-launch"):
         body = load("agent-launch")
         body["result"]["operationId"] = flag(argv, "--retry-launch")

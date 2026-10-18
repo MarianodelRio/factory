@@ -10,6 +10,7 @@ DEFAULTS = {
     "review": {"quality": "auto", "conformance": "auto", "max_rounds": 2},
     "git": {"pr_on_done": "offer"},
     "language": {"artifacts": "en"},
+    "board": {"port": 8765, "idle_minutes": 30},
 }
 
 
@@ -72,6 +73,7 @@ artifacts = "es"
         "review": {"quality": "never", "conformance": "always", "max_rounds": 3},
         "git": {"pr_on_done": "never"},
         "language": {"artifacts": "es"},
+        "board": {"port": 8765, "idle_minutes": 30},
     }
 
 
@@ -140,3 +142,8 @@ def test_invalid_toml(tmp_path):
     path = write(tmp_path, "[review\n")
     message = invalid(path)
     assert str(path) in message
+
+
+@pytest.mark.parametrize("text", ["[board]\nport = 0\n", "[board]\nport = \"8765\"\n", "[board]\nidle_minutes = 0\n"])
+def test_board_values_are_validated(tmp_path, text):
+    assert "board." in invalid(write(tmp_path, text))

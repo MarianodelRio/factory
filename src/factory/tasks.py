@@ -156,15 +156,17 @@ class Context:
         return self._base_error or ""
 
 
-def catalog(ctx: Context) -> dict[str, dict[str, Any]]:
+def catalog(ctx: Context, sync: bool = True) -> dict[str, dict[str, Any]]:
     """Every task of every approved, not rejected change: id -> task definition plus `change`
-    and whether the change's approval is still valid. Syncs each change with its design first."""
+    and whether the change's approval is still valid. Syncs each change with its design first,
+    unless `sync` is False (read-only views)."""
     tasks: dict[str, dict[str, Any]] = {}
     for tasks_file in sorted(ctx.changes_dir.glob("CHG-*/tasks.yaml")):
         folder = tasks_file.parent
         if (folder / "rejection.json").exists():
             continue
-        design.sync_with_main(folder.name, ctx.changes_dir, ctx.store)
+        if sync:
+            design.sync_with_main(folder.name, ctx.changes_dir, ctx.store)
         approval = design.approval_of(folder)
         current = design.digest((folder / "design.md").read_text(encoding="utf-8"))
         approved = approval is not None and approval.get("design_digest") == current
@@ -850,31 +852,12 @@ def status(ctx: Context) -> tuple[dict[str, Any], list[str]]:
     cfg = _config(ctx)
     rows: list[dict[str, Any]] = []
     attention: list[str] = []
-    awaiting = _awaiting_approval(ctx)
+    awaiting = awaiting_approval(ctx)
     attention += [f"{change} is awaiting approval" for change in awaiting]
 
     for task in all_tasks.values():
         liveness, record = _liveness_and_interrupt(task, ctx)
-        row = view(task, ctx)
-        attempt = (record or {}).get("attempts", [{}])[-1] if record and record["attempts"] else {}
-        checkpoint = (record or {}).get("last_checkpoint")
-        age = _minutes_since((checkpoint or {}).get("at") or attempt.get("started_at"))
-        acceptance = (record or {}).get("acceptance") or {}
-        broken = _broken_link(record)
-        reviews = (record or {}).get("reviews", [])
-        row.update(
-            agent=attempt.get("agent"),
-            reviewer=attempt.get("reviewer"),
-            liveness=liveness,
-            last_checkpoint=checkpoint,
-            minutes_since_checkpoint=age,
-            acceptance={"verified": sum(1 for a in acceptance.values() if a.get("status") == "verified"),
-                        "total": len(task["acceptance"])},
-            reviews=[{k: r[k] for k in ("type", "round", "verdict", "commit")} for r in reviews],
-            pull_request=(record or {}).get("pull_request"),
-            broken_link=broken,
-            next_step=_next_step(row, record, task, cfg, ctx),
-        )
+        row = task_row(task, record, liveness, _broken_link(record), cfg, ctx)
         rows.append(row)
         attention += _attention(row)
 
@@ -885,7 +868,31 @@ def status(ctx: Context) -> tuple[dict[str, Any], list[str]]:
     return {"summary": summary, "tasks": rows, "attention": attention}, []
 
 
-def _awaiting_approval(ctx: Context) -> list[str]:
+def task_row(task: dict[str, Any], record: State | None, liveness: str | None, broken: bool | None,
+             cfg: dict[str, Any], ctx: Context, next_step: str | None = None) -> dict[str, Any]:
+    """One task as `status` shows it, from its record and what Orca said about it. `next_step`
+    skips computing it (the board reuses a done task's, which costs git calls)."""
+    row = view(task, ctx)
+    attempt = record["attempts"][-1] if record and record["attempts"] else {}
+    checkpoint = (record or {}).get("last_checkpoint")
+    acceptance = (record or {}).get("acceptance") or {}
+    row.update(
+        agent=attempt.get("agent"),
+        reviewer=attempt.get("reviewer"),
+        liveness=liveness,
+        last_checkpoint=checkpoint,
+        minutes_since_checkpoint=_minutes_since((checkpoint or {}).get("at") or attempt.get("started_at")),
+        acceptance={"verified": sum(1 for a in acceptance.values() if a.get("status") == "verified"),
+                    "total": len(task["acceptance"])},
+        reviews=[{k: r[k] for k in ("type", "round", "verdict", "commit")} for r in (record or {}).get("reviews", [])],
+        pull_request=(record or {}).get("pull_request"),
+        broken_link=broken,
+        next_step=next_step or _next_step(row, record, task, cfg, ctx),
+    )
+    return row
+
+
+def awaiting_approval(ctx: Context) -> list[str]:
     waiting = []
     for folder in sorted(ctx.changes_dir.glob("CHG-*")):
         if not (folder / "design.md").exists() or (folder / "rejection.json").exists():

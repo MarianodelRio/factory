@@ -84,8 +84,11 @@ In a Claude Code (or Codex) terminal in Orca, at the root of your repository:
 4. **Follow it.**
    ```
    /factory-status
+   abre el tablero
    ```
-   You see each task's state, acceptance criteria verified, reviews and the next step. When the
+   You see each task's state, acceptance criteria verified, reviews and the next step. The board
+   is a live kanban in an Orca tab (and in your browser, at the address `factory board status`
+   prints) with every agent and subagent running in each task. When the
    task is `done`, the lead offers to push the branch and open the PR.
 
 5. **Integrate.** Review the PR and merge it yourself; the Factory never merges. Tasks that depend

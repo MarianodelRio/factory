@@ -8,7 +8,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any, NoReturn
 
-from factory import __version__, design, init, memory, paths, tasks
+from factory import __version__, board, config, design, init, memory, paths, tasks
 from factory.output import (
     EXIT_ERROR,
     EXIT_OK,
@@ -136,6 +136,25 @@ def init_command(args: argparse.Namespace) -> Result:
                            args.exclude)
 
 
+def board_command(args: argparse.Namespace) -> Result:
+    main_checkout, state_dir = paths.main_checkout(), paths.state_dir()
+    action = args.command.removeprefix("board ")
+    if action == "start":
+        return board.start(main_checkout, state_dir, args.port), []
+    if action == "open":
+        return board.open_board(main_checkout, state_dir, args.port)
+    if action == "status":
+        return board.status(main_checkout, state_dir), []
+    if action == "stop":
+        return board.stop(main_checkout, state_dir), []
+    if action == "snapshot":
+        return board.snapshot(task_context(), Path.home(), Path(args.file).resolve()), []
+    cfg = config.load_config(main_checkout / ".factory" / "config.toml")
+    board.serve(main_checkout, state_dir, args.port or cfg["board"]["port"], cfg["board"]["idle_minutes"],
+                Path.home())
+    return {"stopped": True}, []
+
+
 def install_skill(args: argparse.Namespace) -> Result:
     return init.install_skill(Path.home()), []
 
@@ -187,6 +206,7 @@ HANDLERS: dict[str, Handler] = {
     "doctor": doctor,
     "init": init_command,
     "install-skill": install_skill,
+    **{f"board {action}": board_command for action in ("start", "open", "status", "stop", "serve", "snapshot")},
 }
 
 
@@ -287,6 +307,20 @@ def build_parser() -> Parser:
     command(memory_cmds, "check", "memory check", "check AGENTS.md, decisions and links")
 
     command(groups, "status", "status", "summary of changes and tasks")
+
+    board_group = groups.add_parser("board", help="local kanban board of the tasks (read-only)")
+    board_cmds = board_group.add_subparsers(dest="action", required=True, metavar="<action>")
+    for name, help_text in (
+        ("start", "start the board in the background"),
+        ("open", "start it if needed and open it in an Orca tab (or the browser)"),
+        ("serve", "serve the board in the foreground"),
+    ):
+        command(board_cmds, name, f"board {name}", help_text).add_argument(
+            "--port", type=int, help="default: board.port in .factory/config.toml")
+    command(board_cmds, "status", "board status", "is the board running, and where")
+    command(board_cmds, "stop", "board stop", "stop the board")
+    command(board_cmds, "snapshot", "board snapshot", "write the board with its data to one HTML file").add_argument(
+        "file")
     return parser
 
 

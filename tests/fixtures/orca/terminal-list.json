@@ -1,0 +1,45 @@
+{
+  "id": "fake",
+  "ok": true,
+  "result": {
+    "terminals": [
+      {
+        "handle": "term_7d7e8081-c364-4948-ad5a-f36a4a34ff73",
+        "ptyId": "dec0428a-2c06-47a2-8674-36668146fff8::/home/user/orca/workspaces/factory-sample/CHG-0003-01@@667ee43d",
+        "incarnationId": "93ce042a-93b9-4f29-921a-c1ddc1b1bd8a",
+        "orphaned": false,
+        "worktreeId": "dec0428a-2c06-47a2-8674-36668146fff8::/home/user/orca/workspaces/factory-sample/CHG-0003-01",
+        "worktreePath": "/home/user/orca/workspaces/factory-sample/CHG-0003-01",
+        "branch": "refs/heads/user/CHG-0003-01",
+        "tabId": "7def3746-9f84-45df-b918-38eda249967c",
+        "leafId": "83e37e28-77db-42d5-85d9-4ca618e1eb09",
+        "title": "✳ Claude Code",
+        "connected": true,
+        "writable": true,
+        "lastOutputAt": 1792318383722,
+        "preview": "> Review task CHG-0003-01",
+        "executionHostId": "local",
+        "agentIdentity": "claude"
+      }
+    ],
+    "hostScope": {
+      "hostIds": [
+        "local"
+      ],
+      "omittedHostIds": []
+    },
+    "topologyRevisions": {
+      "58d62057-f50a-45fb-98a2-7d49dcf0e5c8::/home/user/orca/workspaces/factory/test": 46,
+      "58d62057-f50a-45fb-98a2-7d49dcf0e5c8::/home/user/Desktop/factory": 46,
+      "dec0428a-2c06-47a2-8674-36668146fff8::/home/user/orca/workspaces/factory-sample/CHG-0001-01": 16,
+      "dec0428a-2c06-47a2-8674-36668146fff8::/home/user/Desktop/factory-sample": 16,
+      "dec0428a-2c06-47a2-8674-36668146fff8::/home/user/orca/workspaces/factory-sample/CHG-0002-01": 16,
+      "dec0428a-2c06-47a2-8674-36668146fff8::/home/user/orca/workspaces/factory-sample/CHG-0003-01": 16
+    },
+    "totalCount": 14,
+    "truncated": false
+  },
+  "_meta": {
+    "runtimeId": "f3125087-d3e5-4197-b9aa-c07ef2efc632"
+  }
+}

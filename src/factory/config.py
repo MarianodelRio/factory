@@ -22,6 +22,7 @@ DEFAULTS: dict[str, Any] = {
     "review": {"quality": "auto", "conformance": "auto", "max_rounds": 2},
     "git": {"pr_on_done": "offer"},
     "language": {"artifacts": "en"},
+    "board": {"port": 8765, "idle_minutes": 30},
 }
 
 REVIEW_MODES = ("auto", "always", "never")
@@ -65,6 +66,11 @@ def _validate(config: dict[str, Any]) -> None:
     if type(rounds) is not int or rounds < 1:
         raise _invalid(f"review.max_rounds must be a positive integer, got {rounds!r}")
     _choice("git.pr_on_done", config["git"]["pr_on_done"], PR_MODES)
+    port, idle = config["board"]["port"], config["board"]["idle_minutes"]
+    if type(port) is not int or not 1 <= port <= 65535:
+        raise _invalid(f"board.port must be a TCP port number, got {port!r}")
+    if type(idle) is not int or idle < 1:
+        raise _invalid(f"board.idle_minutes must be a positive integer, got {idle!r}")
 
 
 def _choice(key: str, value: Any, allowed: tuple[str, ...]) -> None:

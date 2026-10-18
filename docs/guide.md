@@ -321,6 +321,44 @@ You get:
   waiting for a merge, and agents with no checkpoint for more than 10 minutes. That last one is
   only a warning, never treated as a crash.
 
+### The board
+
+**"abre el tablero"** / "open the board" (or `factory board open`) opens a live kanban of the
+repository in an Orca browser tab. The same address works in any browser on your machine: it is
+`http://127.0.0.1:8765/` by default (another port if that one is busy; `factory board status`
+prints it).
+
+- **Columns:** *Needs you* (designs awaiting approval, blocked or interrupted tasks, a closed lead
+  terminal, tasks whose design changed), *Backlog* (pending and ready), *In progress*, *In review* and *Done*.
+- **Each card** shows the criteria verified, the checks, the reviews (✓ passed, ✗ failed, ⟳ in
+  progress, with the round), unread notes, the PR, the next step and **what is running**: each
+  agent in the task's workspace (green when it wrote recently, blue while working, red when its
+  terminal is closed) and, under it, its subagents.
+- **Click a card** for the details: last checkpoint, every criterion with how it is verified,
+  review findings, notes, and every terminal, agent and subagent seen in that workspace. The
+  address with `#CHG-0001-01` opens that task directly.
+- **Activity** at the bottom: the latest events of every task (claims, checkpoints, notes,
+  verifications, reviews, subagents starting and finishing).
+
+The board refreshes itself every 5 seconds while it is visible. It is a small local server
+(`127.0.0.1` only) that runs in the background. It does nothing while nobody is looking, and it
+stops by itself after 30 minutes without visits. Close it with **"cierra el tablero"** or
+`factory board stop`, and check it with `factory board status`. `factory board snapshot board.html`
+writes a single file with the current board, to keep or share.
+
+**The board only looks: it never changes anything.** If a lead's terminal is closed, the card says
+so, but marking the task interrupted and recovering it is still done with `/factory-status`.
+
+**Where the information comes from:**
+- the Factory's own state;
+- Orca, for workspaces and terminals;
+- Orca's agent hooks, for each agent's state and the subagents of Claude and Codex;
+- the agents' own session folders, for Claude's subagent descriptions and Codex sessions.
+
+The last two are internal formats of those tools. If one can't be read, the header marks it
+*unavailable* and the rest of the board keeps working. Codex is marked *unverified* (see the
+limits).
+
 ### Notes and pauses
 
 - **"deja una nota en CHG-0001-01: …"** ("leave a note on …"): the agent reads it at its next
@@ -408,6 +446,8 @@ shared by every workspace of the clone, because it lives in the main checkout.
 | `review.quality`, `review.conformance` | `auto`, `always`, `never` | `auto` follows each task's `review` field; `always` / `never` force it for every task |
 | `review.max_rounds` | `2` | Rounds without a pass before a task is blocked |
 | `git.pr_on_done` | `offer`, `always`, `never` | Whether the lead offers, always does, or never pushes and opens the PR when done |
+| `board.port` | `8765` | Port of the local board (another free one is used if it is busy) |
+| `board.idle_minutes` | `30` | The board stops by itself after this long without visits |
 | `orca.min_version` | `1.4.229` | Oldest Orca the Factory accepts |
 | `[templates]` | hashes | Written by `/factory-init` to detect files you customized; don't edit |
 
@@ -444,6 +484,9 @@ shared by every workspace of the clone, because it lives in the main checkout.
   permission-bypass flags.
 - **Orca can't tell whether an agent inside an open terminal is still running.** Only a closed
   terminal counts as interrupted. A long silence only gives the 10-minute warning.
+- **The board's agent and subagent details read internal files** of Orca, Claude Code and Codex,
+  which may change between versions. Codex subagents are shown only if Codex records them the way
+  the Factory expects; this has not been checked.
 - **Orca doesn't report the model an agent used.** The Factory records the model it asked for, if
   any.
 - **One task per workspace and one lead per task.** There is no orchestrator running several tasks
