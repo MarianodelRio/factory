@@ -5,7 +5,7 @@ import pytest
 from conftest import git, load_fixture
 from test_doctor import snapshot
 
-from factory.cli import main
+from swfactory.cli import main
 
 SKILLS = ["factory-init", "factory-design", "factory-implement", "factory-status", "factory-board"]
 
@@ -69,10 +69,10 @@ def test_apply_installs_without_committing(project, capsys):
     assert "AGENTS.md" not in cfg["templates"]  # docs are filled by the agent: created once, then kept
     assert ".factory/state/" in (root / ".gitignore").read_text().splitlines()
     settings = json.loads((root / ".claude/settings.json").read_text())
-    assert settings["permissions"]["ask"] == ["Bash(factory design approve:*)", "Bash(factory design reject:*)"]
+    assert settings["permissions"]["ask"] == ["Bash(swfactory design approve:*)", "Bash(swfactory design reject:*)"]
     assert (root / "CLAUDE.md").read_text().splitlines()[-1] == "@AGENTS.md"
     rules = (root / ".codex/rules/factory.rules").read_text()
-    assert 'pattern = ["factory", "design", ["approve", "reject"]]' in rules and 'decision = "prompt"' in rules
+    assert 'pattern = ["swfactory", "design", ["approve", "reject"]]' in rules and 'decision = "prompt"' in rules
     assert cfg["templates"][".codex/rules/factory.rules"].startswith("sha256:")
     for skill in SKILLS:
         claude, codex = root / f".claude/skills/{skill}/SKILL.md", root / f".agents/skills/{skill}/SKILL.md"
@@ -121,8 +121,8 @@ def test_existing_settings_are_preserved(project, capsys):
     settings = json.loads((project.root / ".claude/settings.json").read_text())
     assert settings["model"] == "opus"
     assert settings["permissions"]["allow"] == ["Bash(npm test)"]
-    assert settings["permissions"]["ask"] == ["Bash(rm:*)", "Bash(factory design approve:*)",
-                                              "Bash(factory design reject:*)"]
+    assert settings["permissions"]["ask"] == ["Bash(rm:*)", "Bash(swfactory design approve:*)",
+                                              "Bash(swfactory design reject:*)"]
 
 
 def test_existing_agents_md_gets_the_factory_section_and_can_be_restored(project, capsys):
@@ -257,7 +257,7 @@ def test_deleted_file_changed_after_the_plan_is_refused(project, capsys):
 def test_templates_section_with_a_comment_is_replaced(project, capsys):
     apply(capsys, plan(capsys)["plan_id"])
     path = project.root / ".factory/config.toml"
-    path.write_text(path.read_text().replace("[templates]", "[templates]  # managed by factory init"))
+    path.write_text(path.read_text().replace("[templates]", "[templates]  # managed by swfactory init"))
     apply(capsys, plan(capsys)["plan_id"])
     assert path.read_text().count("[templates]") == 1
     tomllib.loads(path.read_text())

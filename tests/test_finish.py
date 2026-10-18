@@ -6,8 +6,8 @@ from test_approve import CHANGE, FOLDER
 from test_claim_launch import TASK, orca_calls
 from test_verify import DESIGN, configure
 
-from factory.cli import main
-from factory.state import TaskStore
+from swfactory.cli import main
+from swfactory.state import TaskStore
 
 
 def quality():

@@ -4,8 +4,8 @@ import pytest
 from conftest import git, load_fixture
 from test_approve import CHANGE, DESIGN, FOLDER
 
-from factory.cli import main
-from factory.state import TaskStore
+from swfactory.cli import main
+from swfactory.state import TaskStore
 
 TASK = "CHG-0012-01"
 

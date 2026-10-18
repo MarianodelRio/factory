@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from factory.cli import main
+from swfactory.cli import main
 
 
 def snapshot(root: Path) -> dict[str, str]:

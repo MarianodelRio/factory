@@ -1,41 +1,54 @@
-# Software Factory
+# swfactory
 
-A CLI and five agent skills to develop with coding agents (Claude Code and Codex) on local
-Orca: design and approve a change, implement each task in its
-own Orca workspace, review it and publish it with evidence, and keep what was learned in the
-project's memory.
+[![PyPI](https://img.shields.io/pypi/v/swfactory)](https://pypi.org/project/swfactory/)
+[![npm](https://img.shields.io/npm/v/swfactory)](https://www.npmjs.com/package/swfactory)
+[![CI](https://github.com/MarianodelRio/factory/actions/workflows/ci.yml/badge.svg)](https://github.com/MarianodelRio/factory/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](https://github.com/MarianodelRio/factory/blob/main/LICENSE)
+
+A method, five agent skills and a CLI to build software with coding agents (Claude Code and Codex)
+on local Orca: design and approve a change, implement each task in its own Orca workspace, review
+it and publish it with evidence, follow everything on a live board, and keep what was learned in
+the project's memory.
 
 Orca runs the agents and the workspaces; the Factory brings the method and keeps its state in
 readable files under `.factory/`. You talk to the agent in natural language (Spanish or English);
 everything it writes to the repository is in English.
 
-The [user guide](docs/guide.md) explains every step in detail: what each skill does, what you
-decide, task states, notes and recovery, configuration and what to do when something goes wrong.
+The [user guide](https://github.com/MarianodelRio/factory/blob/main/docs/guide.md) explains every
+step in detail: what each skill does, what you decide, task states, notes and recovery, configuration and what to do when something goes wrong.
 
 ## Requirements
 
-- Linux or macOS with Git.
+- Linux or macOS with Git (Windows is not supported).
 - Orca **1.4.229** or later, running locally (remote hosts are
   refused), with its `orca` CLI on your `PATH`.
 - [Claude Code](https://claude.com/claude-code) and/or Codex, available as agents in Orca.
 - [uv](https://docs.astral.sh/uv/) (it provides Python 3.11+), with `~/.local/bin` on your `PATH`
-  (`uv tool update-shell` adds it).
+  (`uv tool update-shell` adds it). Installing through npm also needs Node 18+.
 - Optional: [`gh`](https://cli.github.com/), authenticated, to open pull requests. Without it the
   Factory pushes the task branch and leaves the PR to you.
 
 ## Install
 
-Once per machine:
+Once per machine, with uv (recommended):
 
 ```bash
-git clone https://github.com/MarianodelRio/factory
-cd factory
-uv tool install .          # the `factory` command, in ~/.local/bin
-factory install-skill      # copies /factory-init to ~/.claude/skills/ and ~/.agents/skills/
+uv tool install swfactory   # the `swfactory` command, in ~/.local/bin
+swfactory install-skill     # copies /factory-init to ~/.claude/skills/ and ~/.agents/skills/
 ```
 
-To upgrade later: `git pull && uv tool install --reinstall . && factory install-skill`, then run
-`/factory-init` again in each project to update its skills.
+Or with npm, which runs the same package through uv:
+
+```bash
+npm install -g swfactory
+swfactory install-skill
+```
+
+The skills call `swfactory`, so it has to be installed, not only run once. To try it without
+installing: `uvx swfactory --version` or `npx swfactory --version`.
+
+**Upgrade:** `uv tool upgrade swfactory` (or `npm update -g swfactory`), then
+`swfactory install-skill`, then `/factory-init` in each project to update its skills.
 
 ## The five skills
 
@@ -47,8 +60,8 @@ To upgrade later: `git pull && uv tool install --reinstall . && factory install-
 | `/factory-board` | The live kanban board: opens it in an Orca tab (or your browser), closes it, gives its URL or saves a snapshot. |
 | `/factory-status` | How everything is going, what needs you, notes and pauses for a running agent ("deja una nota en CHG-…", "pausa CHG-…"), recovering an interrupted task and memory maintenance. |
 
-The skills call the `factory` CLI for everything that must be exact. You do not need to use it,
-but you can: `factory --help` lists every command.
+The skills call the `swfactory` CLI for everything that must be exact. You do not need to use it,
+but you can: `swfactory --help` lists every command.
 
 ## Five-minute walkthrough
 
@@ -88,7 +101,7 @@ In a Claude Code (or Codex) terminal in Orca, at the root of your repository:
    /factory-board
    ```
    You see each task's state, acceptance criteria verified, reviews and the next step. The board
-   is a live kanban in an Orca tab (and in your browser, at the address `factory board status`
+   is a live kanban in an Orca tab (and in your browser, at the address `swfactory board status`
    prints) with every agent and subagent running in each task. When the
    task is `done`, the lead offers to push the branch and open the PR.
 
@@ -104,21 +117,26 @@ In a Claude Code (or Codex) terminal in Orca, at the root of your repository:
   required reviews passed on the final commit.
 - The Factory only pushes the task branch: no force push, merge or branch deletion.
 - Orca may launch Claude with `--dangerously-skip-permissions` (its `agentDefaultArgs` setting).
-  The approval rule still asks in that mode. `factory doctor` warns when Claude's own settings
+  The approval rule still asks in that mode. `swfactory doctor` warns when Claude's own settings
   skip permission prompts (`bypassPermissions`); it cannot read Orca's setting.
 - Orca does not say whether the agent inside a terminal is still running: `/factory-status` marks
   a task `interrupted` only when its terminal is closed. An agent that exited in an open terminal
   looks alive; more than 10 minutes without a checkpoint only gives a warning.
 - Orca does not report the model an agent used; the Factory records the `--model` it passed.
-- v0.1.0 is verified with Claude Code only. Codex support (skills in `.agents/skills/`, the
-  approval rule, reviews) is implemented but has not been checked on a real machine yet.
+- **Verified:** end to end on Linux with Claude Code and Orca 1.4.229. **Implemented, not yet
+  verified on a real machine:** Codex (skills in `.agents/skills/`, the approval rule, reviews) and
+  macOS (the CI runs the tests there). **Not supported:** Windows.
 
 ## Development
 
 ```bash
+git clone https://github.com/MarianodelRio/factory && cd factory
 uv sync                 # create the environment with dev tools
 uv run pytest -q        # tests
 uv run ruff check .     # lint
 uv run mypy src         # typecheck
-uv tool install .       # install the `factory` command
+uv tool install .       # install the `swfactory` command from this checkout
 ```
+
+Changes are listed in [CHANGELOG.md](https://github.com/MarianodelRio/factory/blob/main/CHANGELOG.md); how to publish a version is in
+[docs/releasing.md](https://github.com/MarianodelRio/factory/blob/main/docs/releasing.md). License: [MIT](https://github.com/MarianodelRio/factory/blob/main/LICENSE).

@@ -6,8 +6,8 @@ from conftest import load_fixture
 from test_claim_launch import TASK, orca_calls
 from test_claim_launch import project as project  # noqa: F401
 
-from factory.cli import main
-from factory.state import TaskStore
+from swfactory.cli import main
+from swfactory.state import TaskStore
 
 TERMINAL = load_fixture("agent-launch")["result"]["outcome"]["handle"]
 
@@ -149,7 +149,7 @@ def test_recover_confirm_opens_a_new_attempt_and_keeps_files(working, store, fak
     assert store.read_claim(TASK)["attempt"] == 2
     assert (workspace / "wip.py").read_text() == "half done\n"
     assert len(orca_calls(fake_orca, "agent launch")) == 1  # nothing relaunched
-    assert "factory task launch" in out["data"]["next_step"]
+    assert "swfactory task launch" in out["data"]["next_step"]
 
 
 def test_recover_with_a_live_session_only_proposes_continuing(working, capsys):

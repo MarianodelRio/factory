@@ -1,8 +1,8 @@
 import pytest
 from conftest import load_fixture, orca_error
 
-from factory import orca
-from factory.output import EXIT_UNAVAILABLE, EXIT_USAGE, FactoryError
+from swfactory import orca
+from swfactory.output import EXIT_UNAVAILABLE, EXIT_USAGE, FactoryError
 
 
 def test_create_workspace(repo, fake_orca):

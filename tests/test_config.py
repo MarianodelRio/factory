@@ -1,7 +1,7 @@
 import pytest
 
-from factory.config import load_config
-from factory.output import EXIT_PRECONDITION, FactoryError
+from swfactory.config import load_config
+from swfactory.output import EXIT_PRECONDITION, FactoryError
 
 DEFAULTS = {
     "schema_version": 1,

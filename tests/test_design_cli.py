@@ -4,8 +4,8 @@ import pytest
 import yaml
 from test_design_parse import VALID
 
-from factory.cli import main
-from factory.state import TaskStore
+from swfactory.cli import main
+from swfactory.state import TaskStore
 
 CHANGE = "CHG-0012"
 

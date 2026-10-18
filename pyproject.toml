@@ -1,13 +1,37 @@
 [project]
-name = "factory"
-version = "0.1.0"
-description = "Software Factory: develop with coding agents on local Orca"
+name = "swfactory"
+version = "1.0.0"
+description = "A method and a CLI to build software with coding agents (Claude Code, Codex) on Orca: design, approve, implement, review and publish with evidence."
 readme = "README.md"
 requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "MarianodelRio" }]
+keywords = ["agents", "claude-code", "codex", "orca", "workflow", "cli", "software-factory"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development",
+    "Typing :: Typed",
+]
 dependencies = ["PyYAML>=6.0"]
 
+[project.urls]
+Homepage = "https://github.com/MarianodelRio/factory"
+Documentation = "https://github.com/MarianodelRio/factory/blob/main/docs/guide.md"
+Changelog = "https://github.com/MarianodelRio/factory/blob/main/CHANGELOG.md"
+Issues = "https://github.com/MarianodelRio/factory/issues"
+
 [project.scripts]
-factory = "factory.cli:run"
+swfactory = "swfactory.cli:run"
 
 [dependency-groups]
 dev = ["pytest>=8", "pytest-xdist>=3", "ruff>=0.6", "mypy>=1.11", "types-PyYAML"]

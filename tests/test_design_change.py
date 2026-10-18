@@ -4,9 +4,9 @@ import pytest
 import yaml
 from test_approve import CHANGE, DESIGN, FOLDER
 
-from factory.cli import main
-from factory.state import TaskStore
-from factory.tasks import DESIGN_CHANGED, PAUSED, transition
+from swfactory.cli import main
+from swfactory.state import TaskStore
+from swfactory.tasks import DESIGN_CHANGED, PAUSED, transition
 
 NEW_TASK = """- id: CHG-0012-03
   title: Notify users

@@ -7,7 +7,7 @@ from conftest import FAKES, git
 from test_claim_launch import TASK, orca_calls
 from test_finish import ready_to_finish as ready_to_finish  # noqa: F401
 
-from factory.cli import main
+from swfactory.cli import main
 
 MINOR = {"severity": "minor", "file": "src/bookings/model.py", "line": 1, "problem": "name is vague",
          "fix": "rename RULE"}

@@ -9,8 +9,8 @@ import pytest
 from test_claim_launch import TASK, cli, orca_calls
 from test_claim_launch import project as project  # noqa: F401
 
-from factory import board, tasks
-from factory.state import TaskStore
+from swfactory import board, tasks
+from swfactory.state import TaskStore
 
 
 @pytest.fixture

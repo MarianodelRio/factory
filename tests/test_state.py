@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from factory.output import FactoryError
-from factory.state import TaskStore, empty_state
+from swfactory.output import FactoryError
+from swfactory.state import TaskStore, empty_state
 
 TASK = "CHG-0001-01"
 

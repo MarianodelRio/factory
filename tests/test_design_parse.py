@@ -1,7 +1,7 @@
 import pytest
 
-from factory.design import digest, next_change_id, parse_design
-from factory.output import EXIT_PRECONDITION, FactoryError
+from swfactory.design import digest, next_change_id, parse_design
+from swfactory.output import EXIT_PRECONDITION, FactoryError
 
 VALID = """# CHG-0012 — Recurring bookings
 

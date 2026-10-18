@@ -6,7 +6,7 @@ import yaml
 from conftest import git
 from test_design_parse import VALID
 
-from factory.cli import main
+from swfactory.cli import main
 
 CHANGE = "CHG-0012"
 DESIGN = VALID.replace("depends_on: [CHG-0012-01, CHG-0007-03]", "depends_on: [CHG-0012-01]")
@@ -103,7 +103,7 @@ def test_failing_pre_commit_hook_leaves_nothing_approved(project, capsys):
 
 
 def test_interactive_approval(project, capsys, monkeypatch):
-    monkeypatch.setattr("factory.cli.stdin_is_terminal", lambda: True)
+    monkeypatch.setattr("swfactory.cli.stdin_is_terminal", lambda: True)
     monkeypatch.setattr("builtins.input", lambda: "CHG-0012")
     code = main(["design", "approve", CHANGE])
     assert code == 0
@@ -113,7 +113,7 @@ def test_interactive_approval(project, capsys, monkeypatch):
 
 
 def test_interactive_wrong_id_is_refused(project, capsys, monkeypatch):
-    monkeypatch.setattr("factory.cli.stdin_is_terminal", lambda: True)
+    monkeypatch.setattr("swfactory.cli.stdin_is_terminal", lambda: True)
     monkeypatch.setattr("builtins.input", lambda: "CHG-0021")
     assert main(["design", "approve", CHANGE]) == 3
     assert "approval_not_confirmed" in capsys.readouterr().err
@@ -175,7 +175,7 @@ def test_reapproval_after_edit_replaces_files(project, capsys):
 
 
 def test_interactive_needs_a_terminal(project, capsys, monkeypatch):
-    monkeypatch.setattr("factory.cli.stdin_is_terminal", lambda: False)
+    monkeypatch.setattr("swfactory.cli.stdin_is_terminal", lambda: False)
     code = main(["design", "approve", CHANGE, "--json"])
     assert code == 3
     assert json.loads(capsys.readouterr().out)["error"]["code"] == "approval_not_confirmed"

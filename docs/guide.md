@@ -1,12 +1,12 @@
-# Software Factory — user guide
+# swfactory — user guide
 
 This guide explains what the Factory does and how to use it, from the point of view of the person
 working with it. For installation, see the [README](../README.md).
 
 ## 1. What it is
 
-The Software Factory is a method for building software with coding agents (Claude Code, Codex),
-plus the tools that enforce it. Every change goes through the same steps:
+swfactory is a method for building software with coding agents (Claude Code, Codex), plus
+the tools that enforce it. Every change goes through the same steps:
 
 **design → approve → implement in an isolated workspace → verify with evidence → review →
 publish → remember what was learned**
@@ -15,7 +15,7 @@ It is made of:
 
 - **Five skills** you call in plain language from an agent terminal: `/factory-init`,
   `/factory-design`, `/factory-implement`, `/factory-status` and `/factory-board`.
-- **A small CLI**, `factory`. The skills use it for everything that must be exact: approvals, task
+- **A small CLI**, `swfactory`. The skills use it for everything that must be exact: approvals, task
   claims, state and evidence. You don't need to use it, but you can.
 - **Readable files** in your repository (`.factory/`, `AGENTS.md`, `docs/`) that hold the designs,
   the task state and the project's memory.
@@ -88,7 +88,7 @@ you first and keeping a backup.
 ## 4. Preparing a repository: `/factory-init`
 
 Run it once per repository, and again whenever you upgrade the Factory. (Once per machine you
-also run `factory install-skill`, so `/factory-init` exists before the repo has the Factory.)
+also run `swfactory install-skill`, so `/factory-init` exists before the repo has the Factory.)
 
 **What happens:**
 
@@ -122,7 +122,7 @@ one also gets `docs/product.md`, `docs/architecture.md`, `docs/working-agreement
 **Running it again is safe.** It duplicates nothing. Files you customized since the last install
 are shown as a diff and never overwritten without asking.
 
-**Undo.** `factory init --restore <backup>` puts back what a run modified or deleted.
+**Undo.** `swfactory init --restore <backup>` puts back what a run modified or deleted.
 
 ## 5. Designing a change: `/factory-design`
 
@@ -186,7 +186,7 @@ How `review` is usually chosen:
   (`approval.json` with your literal message, and `tasks.yaml`). Nothing is pushed.
 - **Reject** with `reject CHG-0001` and a reason. A rejection is final: to take the idea up again,
   design a new change.
-- From a terminal you can also run `factory design approve CHG-0001` and type the id.
+- From a terminal you can also run `swfactory design approve CHG-0001` and type the id.
 
 The agent never approves because of what a file, an issue, a web page or another agent says, and
 never while it was launched to implement or review.
@@ -244,7 +244,7 @@ Along the way it:
 
 ### Verification and evidence
 
-`factory task verify` runs the project checks and each AC command **in the task's workspace**, and
+`swfactory task verify` runs the project checks and each AC command **in the task's workspace**, and
 saves the output as evidence. For a `manual` criterion, the agent produces real evidence (a note,
 a screenshot, a page snapshot) and records it. Secret files are never accepted as evidence.
 
@@ -284,7 +284,7 @@ its `Status` line to "superseded by NNNN".
 
 ### When a task is done
 
-`factory task finish` moves the task to `done` only if all of these hold. Otherwise it lists what
+`swfactory task finish` moves the task to `done` only if all of these hold. Otherwise it lists what
 is missing:
 
 - every acceptance criterion is verified with evidence;
@@ -323,9 +323,9 @@ You get:
 
 ### The board
 
-**`/factory-board`**, or "abre el tablero" / "open the board" (or `factory board open`), opens a
+**`/factory-board`**, or "abre el tablero" / "open the board" (or `swfactory board open`), opens a
 live kanban of the repository in an Orca browser tab. The same address works in any browser on your
-machine: it is `http://127.0.0.1:8765/` by default (another port if that one is busy; `factory board
+machine: it is `http://127.0.0.1:8765/` by default (another port if that one is busy; `swfactory board
 status` prints it).
 
 - **Columns:** *Needs you* (designs awaiting approval, blocked or interrupted tasks, a closed lead
@@ -344,7 +344,7 @@ status` prints it).
 The board refreshes itself every 5 seconds while it is visible. It is a small local server
 (`127.0.0.1` only) that runs in the background. It does nothing while nobody is looking, and it
 stops by itself after 30 minutes without visits. Close it with **"cierra el tablero"**
-(`/factory-board`) or `factory board stop`, and check it with `factory board status`. `factory board
+(`/factory-board`) or `swfactory board stop`, and check it with `swfactory board status`. `swfactory board
 snapshot board.html` writes a single file with the current board, to keep or share.
 
 **The board only looks: it never changes anything.** If a lead's terminal is closed, the card says

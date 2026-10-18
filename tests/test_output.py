@@ -1,6 +1,6 @@
 import json
 
-from factory.output import EXIT_PRECONDITION, FactoryError, error_envelope, ok_envelope, render
+from swfactory.output import EXIT_PRECONDITION, FactoryError, error_envelope, ok_envelope, render
 
 
 def test_ok_envelope():

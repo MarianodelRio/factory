@@ -7,8 +7,8 @@ from test_approve import CHANGE, FOLDER
 from test_claim_launch import TASK
 from test_design_parse import VALID
 
-from factory.cli import main
-from factory.state import TaskStore
+from swfactory.cli import main
+from swfactory.state import TaskStore
 
 # CHG-0012-01 has AC-01 (a command) and AC-02 (manual).
 DESIGN = VALID.replace("depends_on: [CHG-0012-01, CHG-0007-03]", "depends_on: [CHG-0012-01]").replace(

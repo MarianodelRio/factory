@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Factory board</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0b0d10;
+    --panel: #111418;
+    --card: #161a1f;
+    --card-hover: #1b2026;
+    --line: #232931;
+    --line-soft: #1c2127;
+    --text: #e6e9ee;
+    --muted: #8b95a3;
+    --faint: #5c6673;
+    --needs: #f0b44c;
+    --backlog: #7b8794;
+    --progress: #5aa9f0;
+    --review: #a98bf5;
+    --done: #4cc38a;
+    --bad: #f0645c;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font: 13px/1.45 var(--sans); overflow-x: hidden; }
+  button, select { font: inherit; color: inherit; }
+  .mono { font-family: var(--mono); font-size: 12px; }
+  .muted { color: var(--muted); }
+  .faint { color: var(--faint); }
+
+  header {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px;
+    padding: 14px 20px; background: rgba(11, 13, 16, .92); backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .brand { display: flex; align-items: baseline; gap: 10px; }
+  .brand b { font-size: 15px; letter-spacing: .2px; }
+  .brand .mono { color: var(--muted); }
+  .counts { display: flex; flex-wrap: wrap; gap: 6px; }
+  .count { padding: 2px 9px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); }
+  .count b { color: var(--text); font-weight: 600; margin-right: 4px; }
+  .spacer { flex: 1; }
+  .sources { display: flex; gap: 6px; }
+  .source { font-size: 11px; padding: 1px 7px; border-radius: 4px; background: var(--panel); color: var(--faint);
+            border: 1px solid var(--line-soft); }
+  .source.ok { color: var(--muted); }
+  .source.ok::before { content: "● "; color: var(--done); }
+  .source.unavailable::before { content: "○ "; }
+  .source.unverified::before { content: "◐ "; color: var(--needs); }
+  .live { display: flex; align-items: center; gap: 7px; color: var(--muted); white-space: nowrap; }
+  .live .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--done); box-shadow: 0 0 0 0 rgba(76,195,138,.6);
+               animation: pulse 2s infinite; }
+  .live.stale .dot { background: var(--bad); animation: none; }
+  .live.snapshot .dot { background: var(--faint); animation: none; }
+  select { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; max-width: 220px; }
+
+  .banner { margin: 12px 20px 0; padding: 8px 12px; border: 1px solid rgba(240,100,92,.35); border-radius: 8px;
+            background: rgba(240,100,92,.08); color: #f3b1ac; display: none; }
+  .banner.show { display: block; }
+
+  main { padding: 16px 20px 28px; }
+  .board { display: grid; grid-template-columns: repeat(5, minmax(230px, 1fr)); gap: 14px; overflow-x: auto;
+           padding-bottom: 6px; }
+  .column { min-width: 230px; }
+  .column h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; padding: 0 2px;
+               font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+  .column h2::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--accent); }
+  .column h2 span { color: var(--faint); font-weight: 500; }
+  .stack { display: flex; flex-direction: column; gap: 9px; }
+  .empty { padding: 18px 10px; border: 1px dashed var(--line); border-radius: 10px; text-align: center; color: var(--faint); }
+
+  .card {
+    position: relative; padding: 11px 12px 10px 14px; background: var(--card); border: 1px solid var(--line-soft);
+    border-radius: 10px; cursor: pointer; transition: background .15s, border-color .15s, transform .15s;
+  }
+  .card::before { content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 0 3px 3px 0;
+                  background: var(--accent); opacity: .9; }
+  .card:hover { background: var(--card-hover); border-color: var(--line); transform: translateY(-1px); }
+  .card .top { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
+  .card .top .mono { color: var(--muted); }
+  .chip { margin-left: auto; font-size: 10.5px; padding: 1px 7px; border-radius: 999px; color: var(--accent);
+          background: color-mix(in srgb, var(--accent) 13%, transparent); white-space: nowrap; }
+  .card .title { font-weight: 550; margin-bottom: 8px; }
+  .reason { margin: -2px 0 8px; color: var(--needs); font-size: 12px; }
+  .bar { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+  .bar .track { flex: 1; height: 4px; border-radius: 4px; background: var(--line); overflow: hidden; }
+  .bar .fill { height: 100%; background: var(--accent); border-radius: 4px; transition: width .4s; }
+  .bar .mono { color: var(--muted); font-size: 11px; }
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-bottom: 6px; }
+  .tag { font-size: 11px; padding: 0 6px; border-radius: 4px; border: 1px solid var(--line); color: var(--muted); }
+  .tag.pass { color: var(--done); border-color: rgba(76,195,138,.35); }
+  .tag.fail { color: var(--bad); border-color: rgba(240,100,92,.35); }
+  .tag.wait { color: var(--review); border-color: rgba(169,139,245,.35); }
+  .agents { display: flex; flex-direction: column; gap: 3px; margin: 6px 0 2px; }
+  .agent { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted); min-width: 0; }
+  .agent .name { color: var(--text); }
+  .agent .ell { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .sub { padding-left: 14px; color: var(--faint); }
+  .pip { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
+  .pip.active { background: var(--done); animation: pulse 2s infinite; }
+  .pip.working { background: var(--progress); animation: pulse 2s infinite; }
+  .pip.closed { background: var(--bad); }
+  .pip.done { background: transparent; border: 1px solid var(--faint); }
+  .next { margin-top: 7px; padding-top: 7px; border-top: 1px solid var(--line-soft); color: var(--muted); font-size: 12px;
+          display: flex; gap: 6px; }
+  .next b { color: var(--faint); font-weight: 500; }
+  .badge { font-size: 10.5px; padding: 0 6px; border-radius: 999px; background: rgba(240,180,76,.15); color: var(--needs); }
+  .more { width: 100%; padding: 6px; background: transparent; border: 1px dashed var(--line); border-radius: 8px;
+          color: var(--muted); cursor: pointer; }
+
+  .activity { margin-top: 22px; border: 1px solid var(--line-soft); border-radius: 12px; background: var(--panel); }
+  .activity h2 { margin: 0; padding: 11px 14px; font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
+                 color: var(--muted); border-bottom: 1px solid var(--line-soft); }
+  .feed { list-style: none; margin: 0; padding: 6px 0; max-height: 280px; overflow-y: auto; }
+  .feed li { display: grid; grid-template-columns: 70px 110px 1fr; gap: 10px; padding: 4px 14px; }
+  .feed li:hover { background: var(--card); }
+  .feed .when { color: var(--faint); }
+  .feed .task { color: var(--muted); }
+
+  .scrim { position: fixed; inset: 0; background: rgba(0,0,0,.45); opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 9; }
+  .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(520px, 100%); background: var(--panel);
+            border-left: 1px solid var(--line); transform: translateX(100%); transition: transform .22s ease; z-index: 10;
+            overflow-y: auto; padding: 18px 20px 30px; }
+  .open .scrim { opacity: 1; pointer-events: auto; }
+  .open .drawer { transform: none; }
+  .drawer .close { position: sticky; top: 0; float: right; background: var(--card); border: 1px solid var(--line);
+                   border-radius: 6px; padding: 2px 9px; cursor: pointer; }
+  .drawer h3 { margin: 2px 0 2px; font-size: 16px; }
+  .drawer h4 { margin: 18px 0 7px; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--faint); }
+  .kv { display: grid; grid-template-columns: 110px 1fr; gap: 4px 10px; }
+  .kv div:nth-child(odd) { color: var(--faint); }
+  .list { display: flex; flex-direction: column; gap: 5px; }
+  .item { padding: 7px 9px; background: var(--card); border: 1px solid var(--line-soft); border-radius: 8px; }
+  .item .head { display: flex; align-items: center; gap: 7px; }
+  .item .detail { margin-top: 3px; color: var(--muted); font-size: 12px; word-break: break-word; }
+
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(90,169,240,.45); } 70% { box-shadow: 0 0 0 6px rgba(90,169,240,0); }
+                     100% { box-shadow: 0 0 0 0 rgba(90,169,240,0); } }
+  @media (max-width: 760px) {
+    header { padding: 12px 16px; }
+    main { padding: 14px 16px 24px; }
+    .board { grid-template-columns: 1fr; }
+    .feed li { grid-template-columns: 60px 1fr; }
+    .feed .task { display: none; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><b>Factory</b><span class="mono" id="repo">…</span><span class="mono faint" id="base"></span></div>
+  <div class="counts" id="counts"></div>
+  <div class="spacer"></div>
+  <select id="filter" aria-label="Filter by change"><option value="">All changes</option></select>
+  <div class="sources" id="sources"></div>
+  <div class="live" id="live"><span class="dot"></span><span id="updated">loading…</span></div>
+</header>
+<div class="banner" id="banner"></div>
+<main>
+  <section class="board" id="board"></section>
+  <section class="activity"><h2>Activity</h2><ul class="feed" id="feed"></ul></section>
+</main>
+<div id="layer"><div class="scrim" id="scrim"></div><aside class="drawer" id="drawer" aria-label="Task details"></aside></div>
+
+<script>
+"use strict";
+const EMBEDDED = __BOARD_DATA__;
+const POLL_MS = 5000;
+const COLUMNS = [
+  ["needs_you", "Needs you", "--needs"], ["backlog", "Backlog", "--backlog"],
+  ["in_progress", "In progress", "--progress"], ["in_review", "In review", "--review"], ["done", "Done", "--done"],
+];
+const STATE_LABEL = { pending: "pending", ready: "ready", in_progress: "in progress", in_review: "in review",
+  blocked: "blocked", interrupted: "interrupted", done: "done" };
+let data = null, lastJson = "", fetchedAt = 0, selected = null, showAllDone = false, failing = false;
+
+const $ = (id) => document.getElementById(id);
+function h(tag, attrs, ...children) {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(attrs || {})) {
+    if (value === null || value === undefined || value === false) continue;
+    if (key === "class") node.className = value;
+    else if (key === "style") node.setAttribute("style", value);
+    else if (key.startsWith("on")) node.addEventListener(key.slice(2), value);
+    else node.setAttribute(key, value);
+  }
+  for (const child of children.flat()) {
+    if (child === null || child === undefined || child === false) continue;
+    node.append(child instanceof Node ? child : document.createTextNode(String(child)));
+  }
+  return node;
+}
+function ago(iso) {
+  if (!iso) return "";
+  const seconds = Math.max(0, (Date.now() - Date.parse(iso)) / 1000);
+  if (seconds < 60) return `${Math.round(seconds)}s ago`;
+  if (seconds < 3600) return `${Math.round(seconds / 60)}m ago`;
+  if (seconds < 86400) return `${Math.round(seconds / 3600)}h ago`;
+  return `${Math.round(seconds / 86400)}d ago`;
+}
+function clock(iso) {
+  const d = new Date(iso);
+  return isNaN(d) ? "" : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" });
+}
+const accent = (column) => `--accent: var(${(COLUMNS.find((c) => c[0] === column) || COLUMNS[1])[2]})`;
+
+function reviewTags(task) {
+  const tags = [];
+  const required = task.required_reviews || [];
+  for (const type of required) {
+    const done = task.review_details.filter((r) => r.type === type);
+    const last = done[done.length - 1];
+    if (!last) tags.push(h("span", { class: "tag" + (task.state === "in_review" ? " wait" : "") },
+      `${type} ${task.state === "in_review" ? "⟳" : "·"}`));
+    else tags.push(h("span", { class: "tag " + (last.verdict === "pass" ? "pass" : "fail") },
+      `${type} ${last.verdict === "pass" ? "✓" : "✗"}${last.round > 1 ? " r" + last.round : ""}`));
+  }
+  return tags;
+}
+function pipClass(run) {
+  if (run.state === "closed") return "pip closed";
+  if (run.kind === "subagent") return run.state === "running" ? "pip working" : "pip done";
+  if (run.state === "working") return "pip working";
+  return run.active ? "pip active" : "pip";
+}
+function runName(run) {
+  if (run.kind === "subagent") return [run.provider, run.type].filter(Boolean).join(" ") || "subagent";
+  if (run.kind === "agent") return run.provider + (run.role === "lead" ? " · lead" : "");
+  return run.role === "lead" ? "lead terminal" : "terminal";
+}
+function agentLines(task) {
+  const runs = task.runs || [];
+  const agents = runs.filter((r) => r.kind === "agent" || r.role === "lead");
+  const terminals = (agents.length ? agents : runs.filter((r) => r.kind === "terminal"))
+    .filter((r) => task.state !== "done" || r.state !== "closed");
+  const subs = runs.filter((r) => r.kind === "subagent");
+  const lines = terminals.slice(0, 3).map((run) => h("div", { class: "agent" },
+    h("span", { class: pipClass(run) }), h("span", { class: "name" }, runName(run)),
+    h("span", { class: "ell faint" }, run.state === "closed" ? "terminal closed" : (run.last_activity ? ago(run.last_activity) : run.state))));
+  const running = subs.filter((s) => s.state === "running");
+  for (const sub of running.slice(0, 2)) {
+    lines.push(h("div", { class: "agent sub" }, "↳ ", h("span", { class: pipClass(sub) }),
+      h("span", { class: "ell" }, sub.label || runName(sub))));
+  }
+  const rest = subs.length - Math.min(running.length, 2);
+  if (rest > 0) lines.push(h("div", { class: "agent sub" }, `↳ ${rest} subagent${rest > 1 ? "s" : ""} ${running.length > 2 ? "" : "done"}`.trim()));
+  if (!lines.length && task.agent) lines.push(h("div", { class: "agent" }, h("span", { class: "pip" }),
+    h("span", { class: "name" }, task.agent), h("span", { class: "faint" }, task.liveness === "unknown" ? "Orca can't say" : "")));
+  return lines.length ? h("div", { class: "agents" }, lines) : null;
+}
+function taskCard(task) {
+  const total = task.acceptance.total, verified = task.acceptance.verified;
+  const reason = task.column === "needs_you"
+    ? (task.broken_link ? "workspace deleted in Orca"
+      : task.design_changed && task.state !== "blocked" ? "design changed: approve it again"
+      : task.liveness === "finished" && task.state !== "interrupted"
+        ? "lead's terminal is closed: recover it with /factory-status" : task.reason)
+    : (task.state === "pending" ? task.reason : null);
+  const pr = task.pull_request ? h("span", { class: "tag" }, `PR #${task.pull_request.number}`) : null;
+  return h("article", { class: "card", style: accent(task.column), onclick: () => openDrawer(task.id) },
+    h("div", { class: "top" }, h("span", { class: "mono" }, task.id),
+      h("span", { class: "chip" }, STATE_LABEL[task.state] || task.state)),
+    h("div", { class: "title" }, task.title),
+    reason ? h("div", { class: "reason" }, reason) : null,
+    total ? h("div", { class: "bar" }, h("div", { class: "track" },
+      h("div", { class: "fill", style: `width:${Math.round(100 * verified / total)}%` })),
+      h("span", { class: "mono" }, `${verified}/${total} AC`)) : null,
+    h("div", { class: "row" }, reviewTags(task),
+      task.checks ? h("span", { class: "tag " + (task.checks === "passed" ? "pass" : "fail") }, `checks ${task.checks}`) : null,
+      pr, task.unread_notes ? h("span", { class: "badge" }, `${task.unread_notes} note${task.unread_notes > 1 ? "s" : ""}`) : null),
+    task.state !== "done" ? agentLines(task) : null,
+    task.next_step && task.state !== "done" && task.next_step !== reason
+      ? h("div", { class: "next" }, h("b", {}, "next"), h("span", {}, task.next_step)) : null);
+}
+function changeCard(change) {
+  return h("article", { class: "card", style: accent("needs_you") },
+    h("div", { class: "top" }, h("span", { class: "mono" }, change.id), h("span", { class: "chip" }, "awaiting approval")),
+    h("div", { class: "title" }, change.title),
+    h("div", { class: "next" }, h("b", {}, "next"), h("span", {}, `review the design, then “apruebo ${change.id}”`)));
+}
+
+function render() {
+  if (!data) return;
+  const filter = $("filter").value;
+  $("repo").textContent = data.repo;
+  $("base").textContent = data.base ? `· ${data.base}` : "";
+  $("counts").replaceChildren(...COLUMNS.filter(([key]) => data.counts[key]).map(([key, label]) =>
+    h("span", { class: "count" }, h("b", {}, data.counts[key]), label.toLowerCase())));
+  $("sources").replaceChildren(...Object.entries(data.sources).map(([name, state]) =>
+    h("span", { class: `source ${state}`, title: `${name}: ${state}` }, name)));
+  const options = [["", "All changes"], ...data.changes.map((c) => [c.id, `${c.id} · ${c.title}`])];
+  if ($("filter").options.length !== options.length) {
+    $("filter").replaceChildren(...options.map(([value, label]) => h("option", { value }, label)));
+    $("filter").value = filter;
+  }
+  const tasks = data.tasks.filter((t) => !filter || t.change === filter);
+  const columns = COLUMNS.map(([key, label, color]) => {
+    let cards = tasks.filter((t) => t.column === key).map(taskCard);
+    if (key === "needs_you") {
+      cards = data.changes.filter((c) => c.state === "awaiting_approval" && (!filter || c.id === filter)).map(changeCard).concat(cards);
+    }
+    let extra = null;
+    if (key === "done" && cards.length > 5 && !showAllDone) {
+      extra = h("button", { class: "more", onclick: () => { showAllDone = true; render(); } }, `show ${cards.length - 5} more`);
+      cards = cards.slice(-5);
+    }
+    return h("div", { class: "column", style: `--accent: var(${color})` },
+      h("h2", {}, label, h("span", {}, cards.length + (extra ? "+" : ""))),
+      h("div", { class: "stack" }, cards.length ? cards : h("div", { class: "empty" }, "nothing here"), extra));
+  });
+  $("board").replaceChildren(...columns);
+  const feed = data.activity.filter((a) => !filter || a.task.startsWith(filter));
+  $("feed").replaceChildren(...(feed.length ? feed.map((a) => h("li", {},
+    h("span", { class: "when mono", title: a.at }, clock(a.at)), h("span", { class: "task mono" }, a.task),
+    h("span", {}, a.text))) : [h("li", {}, h("span", { class: "faint" }, "no activity yet"))]));
+  let wanted = "";
+  try { wanted = decodeURIComponent(location.hash.slice(1)); } catch (error) { wanted = ""; }
+  if (selected) openDrawer(selected, true);
+  else if (wanted) openDrawer(wanted);
+  tick();
+}
+
+function section(title, ...content) { return [h("h4", {}, title), ...content]; }
+function openDrawer(id, refresh) {
+  const task = data && data.tasks.find((t) => t.id === id);
+  if (!task) return closeDrawer();
+  selected = id;
+  if (location.hash !== "#" + id) history.replaceState(null, "", "#" + id);
+  const cp = task.last_checkpoint;
+  const runs = task.runs || [];
+  const drawer = $("drawer");
+  const scroll = drawer.scrollTop;
+  drawer.replaceChildren(...[
+    h("button", { class: "close", onclick: closeDrawer }, "close ✕"),
+    h("div", { class: "mono muted" }, `${task.id} · ${task.change}`),
+    h("h3", {}, task.title),
+    h("div", { class: "row" }, h("span", { class: "chip", style: accent(task.column) + ";margin-left:0" }, STATE_LABEL[task.state]),
+      task.reason ? h("span", { class: "muted" }, task.reason) : null),
+    section("Overview", h("div", { class: "kv" },
+      h("div", {}, "next step"), h("div", {}, task.next_step || "—"),
+      h("div", {}, "lead"), h("div", {}, [task.agent, task.model].filter(Boolean).join(" · ") || "—"),
+      h("div", {}, "reviewer"), h("div", {}, task.reviewer || "—"),
+      h("div", {}, "attempts"), h("div", {}, task.attempts || "—"),
+      h("div", {}, "complexity"), h("div", {}, task.complexity || "—"),
+      h("div", {}, "branch"), h("div", { class: "mono" }, task.branch || "—"),
+      h("div", {}, "liveness"), h("div", {}, task.liveness || "—"),
+      h("div", {}, "started"), h("div", {}, task.started_at ? ago(task.started_at) : "—"))),
+    cp ? section("Last checkpoint", h("div", { class: "item" },
+      h("div", { class: "head" }, h("span", { class: "faint" }, ago(cp.at))),
+      h("div", {}, (cp.done || []).join("; ")), h("div", { class: "detail" }, "next: " + cp.next))) : [],
+    section(`Acceptance criteria · ${task.acceptance.verified}/${task.acceptance.total}`, h("div", { class: "list" },
+      task.criteria.map((c) => h("div", { class: "item" }, h("div", { class: "head" },
+        h("span", { class: "tag " + (c.status === "verified" ? "pass" : c.status === "failed" ? "fail" : "") }, c.status),
+        h("span", { class: "mono" }, c.id)), h("div", { class: "detail mono" }, c.how))))),
+    section("Reviews", task.review_details.length ? h("div", { class: "list" }, task.review_details.map((r) =>
+      h("div", { class: "item" }, h("div", { class: "head" },
+        h("span", { class: "tag " + (r.verdict === "pass" ? "pass" : "fail") }, r.verdict),
+        h("span", {}, `${r.type} · round ${r.round}`), h("span", { class: "faint mono" }, r.commit)),
+        r.findings.map((f) => h("div", { class: "detail" }, `${f.severity} ${f.file || ""}: ${f.problem}`))))) :
+      h("div", { class: "faint" }, (task.required_reviews || []).length ? "none recorded yet" : "none required")),
+    section(`Running in this task · ${runs.length}`, runs.length ? h("div", { class: "list" }, runs.map((run) =>
+      h("div", { class: "item" + (run.kind === "subagent" ? " sub" : "") }, h("div", { class: "head" },
+        h("span", { class: pipClass(run) }), h("span", {}, runName(run)), h("span", { class: "faint" }, run.state),
+        h("span", { class: "faint", style: "margin-left:auto" }, ago(run.last_activity || run.started))),
+        run.label ? h("div", { class: "detail" }, run.label) : null,
+        run.detail ? h("div", { class: "detail faint" }, run.detail) : null))) :
+      h("div", { class: "faint" }, "nothing seen for this workspace")),
+    task.notes.length ? section("Notes", h("div", { class: "list" }, task.notes.map((n) => h("div", { class: "item" },
+      h("div", { class: "head" }, h("span", { class: "tag" }, n.pause ? "pause" : "note"),
+        h("span", { class: "faint" }, n.read ? "read" : "unread"), h("span", { class: "faint", style: "margin-left:auto" }, ago(n.at))),
+      h("div", { class: "detail" }, n.text))))) : []].flat());
+  if (refresh) drawer.scrollTop = scroll;
+  document.getElementById("layer").className = "open";
+}
+function closeDrawer() {
+  selected = null;
+  document.getElementById("layer").className = "";
+  if (location.hash) history.replaceState(null, "", location.pathname + location.search);
+}
+
+function tick() {
+  const live = $("live");
+  if (EMBEDDED) { live.className = "live snapshot"; $("updated").textContent = `snapshot · ${clock(data.generated_at)}`; return; }
+  live.className = "live" + (failing ? " stale" : "");
+  $("updated").textContent = failing ? "board unreachable" : `updated ${ago(new Date(fetchedAt).toISOString())}`;
+}
+async function poll() {
+  if (document.hidden) return;
+  try {
+    const reply = await fetch("api/board", { cache: "no-store" });
+    const text = await reply.text();
+    const parsed = JSON.parse(text);
+    if (!reply.ok) throw new Error(parsed.error || reply.statusText);
+    failing = false; fetchedAt = Date.now();
+    $("banner").className = "banner" + (parsed.orca_error ? " show" : "");
+    $("banner").textContent = parsed.orca_error ? `Orca is not answering (${parsed.orca_error}): agents and liveness are unknown.` : "";
+    const key = text.replace(/"generated_at": "[^"]*"/, "");  // changes every time; not worth a repaint
+    if (key !== lastJson) { lastJson = key; data = parsed; render(); } else tick();
+  } catch (error) {
+    failing = true; tick();
+    $("banner").className = "banner show";
+    $("banner").textContent = `Could not refresh the board: ${error.message}. Is it still running? (swfactory board status)`;
+  }
+}
+
+$("filter").addEventListener("change", render);
+$("scrim").addEventListener("click", closeDrawer);
+document.addEventListener("keydown", (event) => { if (event.key === "Escape") closeDrawer(); });
+if (EMBEDDED) { data = EMBEDDED; render(); }
+else {
+  poll();
+  setInterval(poll, POLL_MS);
+  setInterval(tick, 1000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
+}
+</script>
+</body>
+</html>

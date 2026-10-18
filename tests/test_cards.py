@@ -1,6 +1,6 @@
 import pytest
 
-from factory import orca
+from swfactory import orca
 
 WS = "repo::/w/CHG-0012-01"
 

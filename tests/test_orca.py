@@ -3,8 +3,8 @@ import copy
 import pytest
 from conftest import load_fixture, orca_error
 
-from factory import orca
-from factory.output import EXIT_UNAVAILABLE, FactoryError
+from swfactory import orca
+from swfactory.output import EXIT_UNAVAILABLE, FactoryError
 
 
 def failure(fn, *args):

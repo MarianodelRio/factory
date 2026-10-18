@@ -1,8 +1,8 @@
-__pycache__/
-*.pyc
-.venv/
-dist/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
 .coverage
+dist/
+.mypy_cache/
+*.pyc
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.venv/

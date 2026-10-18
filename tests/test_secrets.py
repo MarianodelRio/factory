@@ -7,8 +7,8 @@ from test_claim_launch import TASK, orca_calls
 from test_verify import claimed as claimed  # noqa: F401
 from test_verify import cli, configure
 
-from factory.output import is_secret_file, mask_secrets
-from factory.state import TaskStore
+from swfactory.output import is_secret_file, mask_secrets
+from swfactory.state import TaskStore
 
 TOKENS = [
     "ghp_" + "a" * 36,

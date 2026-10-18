@@ -4,8 +4,8 @@ import pytest
 from test_claim_launch import TASK, orca_calls
 from test_claim_launch import project as project  # noqa: F401 - reuse the approved project fixture
 
-from factory.cli import main
-from factory.state import TaskStore
+from swfactory.cli import main
+from swfactory.state import TaskStore
 
 
 @pytest.fixture

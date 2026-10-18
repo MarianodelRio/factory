@@ -6,9 +6,9 @@ from test_claim_launch import TASK, orca_calls
 from test_claim_launch import project as project  # noqa: F401
 from test_verify import configure
 
-from factory import tasks
-from factory.cli import main
-from factory.state import TaskStore
+from swfactory import tasks
+from swfactory.cli import main
+from swfactory.state import TaskStore
 
 
 @pytest.fixture
@@ -42,7 +42,7 @@ def workspace_head():
 
     from conftest import git
 
-    from factory.state import TaskStore
+    from swfactory.state import TaskStore
     record = TaskStore(Path.cwd() / ".factory" / "state").read_task("CHG-0012-01")
     return git("rev-parse", "HEAD", cwd=record["workspace"]["orca_id"].split("::", 1)[1])
 

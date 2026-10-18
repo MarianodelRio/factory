@@ -2,9 +2,9 @@ import json
 
 import pytest
 
-from factory import __version__, cli
-from factory.cli import main
-from factory.output import FactoryError
+from swfactory import __version__, cli
+from swfactory.cli import main
+from swfactory.output import FactoryError
 
 # Every command path.
 COMMANDS = [

@@ -4,7 +4,7 @@ import re
 import time
 from pathlib import Path
 
-from factory import activity
+from swfactory import activity
 
 WORKSPACE = Path("/work/repo-CHG-0012-01")
 

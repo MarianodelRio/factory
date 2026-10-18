@@ -1,8 +1,8 @@
 import pytest
 
-from factory.output import EXIT_PRECONDITION, FactoryError
-from factory.state import empty_state
-from factory.tasks import DESIGN_CHANGED, PAUSED, REVIEW_NOT_CONVERGING, transition
+from swfactory.output import EXIT_PRECONDITION, FactoryError
+from swfactory.state import empty_state
+from swfactory.tasks import DESIGN_CHANGED, PAUSED, REVIEW_NOT_CONVERGING, transition
 
 
 def task(state, **fields):

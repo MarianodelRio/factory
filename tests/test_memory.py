@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from factory.cli import main
+from swfactory.cli import main
 
 
 @pytest.fixture

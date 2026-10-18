@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from conftest import git, load_fixture
 
-from factory.cli import main
+from swfactory.cli import main
 
 DESIGN = """# {change} — Recurring bookings
 
@@ -191,7 +191,7 @@ def test_next_step_after_done(initialized, capsys):
     def next_step():
         return next(t for t in ok(capsys, "status")["tasks"] if t["id"] == task)["next_step"]
 
-    assert next_step() == f"factory task publish {task}"
+    assert next_step() == f"swfactory task publish {task}"
     ok(capsys, "task", "publish", task)  # the fake gh opens PR #1
     assert next_step().startswith("merge PR #1")
     branch = json.loads((initialized.root / f".factory/state/{task}.json").read_text())["workspace"]["branch"]

@@ -4,8 +4,8 @@ import pytest
 from conftest import git
 from test_approve import CHANGE, DESIGN, FOLDER
 
-from factory.cli import main
-from factory.state import TaskStore
+from swfactory.cli import main
+from swfactory.state import TaskStore
 
 
 @pytest.fixture

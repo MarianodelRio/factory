@@ -7,13 +7,13 @@ ROLES = ["designer", "design_critic", "lead", "planner", "quality_reviewer", "co
 
 @pytest.mark.parametrize("name", ROLES)
 def test_roles_exist_with_mark(name):
-    text = resources.files("factory").joinpath(f"templates/roles/{name}.md").read_text()
+    text = resources.files("swfactory").joinpath(f"templates/roles/{name}.md").read_text()
     assert text.startswith(f"<!-- factory-template: roles/{name}@")
 
 
 @pytest.mark.parametrize("name", ["quality_reviewer", "conformance_reviewer"])
 def test_reviewers_carry_the_json_contract(name):
-    text = resources.files("factory").joinpath(f"templates/roles/{name}.md").read_text()
+    text = resources.files("swfactory").joinpath(f"templates/roles/{name}.md").read_text()
     kind = name.removesuffix("_reviewer")
     assert f'{{"type": "{kind}", "commit": "<sha>", "verdict": "pass", "findings": [{{"severity": "major"' in text
 
@@ -23,7 +23,7 @@ DOCS = ["AGENTS.md", "CLAUDE.md", "product.md", "architecture.md", "conventions.
 
 
 def template(path):
-    return resources.files("factory").joinpath(f"templates/{path}").read_text()
+    return resources.files("swfactory").joinpath(f"templates/{path}").read_text()
 
 
 @pytest.mark.parametrize("name", DOCS)
@@ -50,7 +50,7 @@ def test_conventions_has_known_pitfalls():
 
 
 def test_design_template_parses():
-    from factory.design import parse_design
+    from swfactory.design import parse_design
 
     text = template("design/design.md").replace("CHG-0000", "CHG-0042")
     parsed = parse_design(text, "CHG-0042", set())

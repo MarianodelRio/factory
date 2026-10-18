@@ -5,14 +5,14 @@ import pytest
 import yaml
 
 SKILLS = ["factory-init", "factory-design", "factory-implement", "factory-status", "factory-board"]
-# Files that `factory init` copies into the skills when installing them.
+# Files that `swfactory init` copies into the skills when installing them.
 INSTALLED = {"references/design-template.md", "references/adr-template.md"} | {
     f"references/roles/{r}.md" for r in ("designer", "design_critic", "lead", "planner", "quality_reviewer")
 }
 
 
 def skill_dir(name):
-    return resources.files("factory").joinpath(f"templates/skills/{name}")
+    return resources.files("swfactory").joinpath(f"templates/skills/{name}")
 
 
 def frontmatter(text):
@@ -54,7 +54,7 @@ def test_references_exist(name):
 
 
 def test_every_cli_command_used_exists():
-    from factory.cli import build_parser
+    from swfactory.cli import build_parser
 
     commands = set()
     for name in SKILLS:
@@ -63,7 +63,8 @@ def test_every_cli_command_used_exists():
         if root.joinpath("references").is_dir():
             texts += [f.read_text() for f in root.joinpath("references").iterdir()]
         for text in texts:
-            commands |= set(re.findall(r"factory (doctor|init|status|design \w+|task \w+|memory \w+)", text))
+            pattern = r"swfactory (doctor|init|status|design \w+|task \w+|memory \w+|board \w+)"
+            commands |= set(re.findall(pattern, text))
     parser = build_parser()
     for command in commands:
         with pytest.raises(SystemExit) as exc:

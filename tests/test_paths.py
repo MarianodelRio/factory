@@ -5,8 +5,8 @@ from pathlib import Path
 import pytest
 from conftest import Repo
 
-from factory import paths
-from factory.output import EXIT_PRECONDITION, EXIT_UNAVAILABLE, FactoryError
+from swfactory import paths
+from swfactory.output import EXIT_PRECONDITION, EXIT_UNAVAILABLE, FactoryError
 
 
 def test_main_checkout_and_state_dir_are_the_same_from_main_and_worktree(repo: Repo) -> None:

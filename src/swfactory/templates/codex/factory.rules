@@ -1,0 +1,16 @@
+# factory-template: codex/factory.rules@1
+# Software Factory: Codex asks the person before approving or rejecting a design.
+# Codex loads project rules only when this project's .codex/ layer is trusted.
+prefix_rule(
+    pattern = ["swfactory", "design", ["approve", "reject"]],
+    decision = "prompt",
+    justification = "Approving or rejecting a design needs the person's explicit permission.",
+    match = [
+        "swfactory design approve CHG-0001 --message 'apruebo CHG-0001' --json",
+        "swfactory design reject CHG-0001 --reason 'not now' --json",
+    ],
+    not_match = [
+        "swfactory design show CHG-0001 --json",
+        "swfactory design register --json",
+    ],
+)
