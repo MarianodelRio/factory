@@ -2,7 +2,7 @@
 
 > **Source of truth:** `design_factory.md` (v1.5). This file says **in what order** to build it and **how to know each step is done**. It does not redefine behavior: when in doubt, the design wins.
 > **Audience:** a Claude Code session (with subagents) that implements the Factory in this repository.
-> **Status:** M0–M8 done except the T-32 tag; Codex verification deferred.
+> **Status:** v0.1.0 released (M0–M8 done); Codex verification deferred.
 
 ---
 
@@ -316,7 +316,7 @@ Goal: answer design §10.3 with evidence and record real outputs for the fakes. 
   Do: install with `uv tool install .`, create a small sample repo, register it in Orca, and walk the full flow with the real tools: `/factory-init`, `/factory-design`, approve from chat (check the permission prompt appears), `/factory-implement ... con codex, revisa claude` from main, watch the workspace, reviews, finish, PR, `/factory-status`, an interruption and recovery. Repeat the key steps with the roles swapped (Claude lead, Codex reviewer) for A-04/A-05.
   Done when: `docs/e2e-checklist.md` lists each step and acceptance criterion with pass/fail and notes; failures become tasks or open questions.
 
-- [ ] T-32 [HUMAN] Release v1
+- [x] T-32 [HUMAN] Release v1
   Depends: T-31
   Files: `README.md`
   Do: README with install (`uv tool install`), requirements, the four skills and a 5-minute walkthrough. Tag `v0.1.0`.
@@ -444,3 +444,5 @@ One line per completed task or session: date, task, what was done, what comes ne
 | 2026-10-17 | M7 review | 1 blocker fixed: `--delete`/writes could leave the repo (`../x`, absolute paths, symlinked folders) — paths are now normalized, must stay inside the repo and never go through a symlink. Also fixed: deletable files limited to `.md/.mdc/.rst` and known instruction files, never `.factory/`, `docs/decisions/`, `docs/working-agreements.md`; plan id covers the content of files to delete; config is an ordinary plan write (backed up, rebuilt from the plan's report, excluded skills keep their recorded hash); `[templates]` header with a comment handled; malformed package.json/pyproject/settings → warnings; plan warns that Codex has no ask rule; the init skill documents `--delete/--reason` and re-passing them to `--apply`. 531 tests green. | M8: T-30 automated end-to-end. |
 | 2026-10-17 | T-30 | `tests/test_e2e.py` through the CLI only: init → commit → register (reserve + validate) → approve → list → claim → launch → commit → checkpoint → verify (+ manual) → submit → conformance launch → record quality and conformance → finish → publish → status; trivial task finishing without submit; design change after approval and re-approval; two tasks in parallel; interruption and recovery. Every automatable criterion in §5 is linked to a test (A-04/A-05 and the manual parts wait for T-31; Codex parts deferred). 536 tests green. | T-31 real run with the person. |
 | 2026-10-18 | T-31 | Real run on `~/Desktop/factory-sample` (local bare remote, Claude only): install, init and update, three designs approved from chat, three tasks implemented in their Orca workspaces with reviews, a note, publish and merge. `docs/e2e-checklist.md` has 12 steps and the result by criterion. Fixed on the way: doctor build-check warning, init commits on the base branch, design outline before writing, Factory files not counted in repo size, next step of a done task, interruption detected in `in_review`. Not run by hand (person's choice): A-17, A-18, A-21, A-22; A-04/A-05 wait for Codex. 547 tests green. | T-32 README and v0.1.0. |
+| 2026-10-18 | M8 review | Fresh-context review of T-30…T-32: 0 blockers, 4 major + 10 minor. Fixed: README claims (doctor warning, upgrade with `install-skill`, approval prompt only in Claude, PATH requirements, four skills per repo), design v1.6 drift (§3, §3.1, §10.1), repo-size filter now leaves out only the Factory's own files, tests for the "is pushed" next step and the memory rules, checklist marks A-17/A-18 unverified and A-10/A-12/A-14 happy path only, plan §6 rows. Kept for later: `status` runs a few git commands per `done` task. 550 tests green. M8 done. | — |
+| 2026-10-18 | T-32 | README with requirements, install, the four skills and a five-minute walkthrough; accepted by the person. Tagged `v0.1.0`. | Codex verification (A-04, A-05) when available. |
