@@ -4,7 +4,7 @@ from importlib import resources
 import pytest
 import yaml
 
-SKILLS = ["factory-init", "factory-design", "factory-implement", "factory-status"]
+SKILLS = ["factory-init", "factory-design", "factory-implement", "factory-status", "factory-board"]
 # Files that `factory init` copies into the skills when installing them.
 INSTALLED = {"references/design-template.md", "references/adr-template.md"} | {
     f"references/roles/{r}.md" for r in ("designer", "design_critic", "lead", "planner", "quality_reviewer")

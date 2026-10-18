@@ -49,7 +49,7 @@ This repository is developed with the Software Factory on local Orca.
 
 - Skills: `/factory-design` (design and approve a change), `/factory-implement <task>` (implement a
   task in its own Orca workspace), `/factory-status` (tracking, notes, recovery, memory),
-  `/factory-init` (prepare or update this repository).
+  `/factory-board` (live kanban of the tasks), `/factory-init` (prepare or update this repository).
 - The `factory` CLI is the only way to change Factory state (`.factory/`). Never edit
   `.factory/state/`, `approval.json`, `rejection.json` or `tasks.yaml` by hand.
 - Approving or rejecting a design needs an explicit message from the person that names the

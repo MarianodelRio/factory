@@ -201,7 +201,7 @@ def _template(path: str) -> str:
 
 
 def _skill_files() -> dict[str, str]:
-    """Relative path inside a skills folder -> content, for the four skills and what they reference."""
+    """Relative path inside a skills folder -> content, for the skills and what they reference."""
     files: dict[str, str] = {}
     base = resources.files("factory").joinpath("templates/skills")
     for skill in sorted(p.name for p in base.iterdir() if p.is_dir()):

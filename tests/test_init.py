@@ -7,7 +7,7 @@ from test_doctor import snapshot
 
 from factory.cli import main
 
-SKILLS = ["factory-init", "factory-design", "factory-implement", "factory-status"]
+SKILLS = ["factory-init", "factory-design", "factory-implement", "factory-status", "factory-board"]
 
 
 @pytest.fixture

@@ -1,6 +1,6 @@
 # Software Factory
 
-A CLI and four agent skills to develop with coding agents (Claude Code and Codex) on local
+A CLI and five agent skills to develop with coding agents (Claude Code and Codex) on local
 Orca: design and approve a change, implement each task in its
 own Orca workspace, review it and publish it with evidence, and keep what was learned in the
 project's memory.
@@ -37,13 +37,14 @@ factory install-skill      # copies /factory-init to ~/.claude/skills/ and ~/.ag
 To upgrade later: `git pull && uv tool install --reinstall . && factory install-skill`, then run
 `/factory-init` again in each project to update its skills.
 
-## The four skills
+## The five skills
 
 | Skill | What for |
 |---|---|
 | `/factory-init` | Prepare or update a repository: it analyzes it, proposes one plan (create, modify, delete with reason, respect, Orca actions) and applies it after a single confirmation, with backups. "solo el análisis" shows the plan only. |
 | `/factory-design` | Design a change: it shows a short outline first, writes the design with its acceptance criteria and tasks, and has it critiqued. You approve it by saying "apruebo CHG-NNNN" (Claude asks for permission before the approval commit). |
 | `/factory-implement` | Implement an approved task: from the main checkout it claims the task, creates its Orca workspace and launches the lead agent there. The lead writes tests and code, checkpoints, verifies every criterion with evidence, runs the reviews, updates the memory and finishes. |
+| `/factory-board` | The live kanban board: opens it in an Orca tab (or your browser), closes it, gives its URL or saves a snapshot. |
 | `/factory-status` | How everything is going, what needs you, notes and pauses for a running agent ("deja una nota en CHG-…", "pausa CHG-…"), recovering an interrupted task and memory maintenance. |
 
 The skills call the `factory` CLI for everything that must be exact. You do not need to use it,
@@ -58,7 +59,7 @@ In a Claude Code (or Codex) terminal in Orca, at the root of your repository:
    /factory-init
    ```
    Read the plan and confirm it. It registers the repo in Orca with its base branch, installs the
-   four skills in the repo, writes `AGENTS.md`, `docs/` and `.factory/config.toml` with your test, lint
+   five skills in the repo, writes `AGENTS.md`, `docs/` and `.factory/config.toml` with your test, lint
    and typecheck commands, and leaves everything uncommitted. Review the diff and commit it on the
    base branch (or ask the agent to).
 
@@ -84,7 +85,7 @@ In a Claude Code (or Codex) terminal in Orca, at the root of your repository:
 4. **Follow it.**
    ```
    /factory-status
-   abre el tablero
+   /factory-board
    ```
    You see each task's state, acceptance criteria verified, reviews and the next step. The board
    is a live kanban in an Orca tab (and in your browser, at the address `factory board status`

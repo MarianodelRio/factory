@@ -13,8 +13,8 @@ publish → remember what was learned**
 
 It is made of:
 
-- **Four skills** you call in plain language from an agent terminal: `/factory-init`,
-  `/factory-design`, `/factory-implement` and `/factory-status`.
+- **Five skills** you call in plain language from an agent terminal: `/factory-init`,
+  `/factory-design`, `/factory-implement`, `/factory-status` and `/factory-board`.
 - **A small CLI**, `factory`. The skills use it for everything that must be exact: approvals, task
   claims, state and evidence. You don't need to use it, but you can.
 - **Readable files** in your repository (`.factory/`, `AGENTS.md`, `docs/`) that hold the designs,
@@ -323,13 +323,14 @@ You get:
 
 ### The board
 
-**"abre el tablero"** / "open the board" (or `factory board open`) opens a live kanban of the
-repository in an Orca browser tab. The same address works in any browser on your machine: it is
-`http://127.0.0.1:8765/` by default (another port if that one is busy; `factory board status`
-prints it).
+**`/factory-board`**, or "abre el tablero" / "open the board" (or `factory board open`), opens a
+live kanban of the repository in an Orca browser tab. The same address works in any browser on your
+machine: it is `http://127.0.0.1:8765/` by default (another port if that one is busy; `factory board
+status` prints it).
 
 - **Columns:** *Needs you* (designs awaiting approval, blocked or interrupted tasks, a closed lead
-  terminal, tasks whose design changed), *Backlog* (pending and ready), *In progress*, *In review* and *Done*.
+  terminal, tasks whose design changed), *Backlog* (pending and ready), *In progress*, *In review*
+  and *Done*.
 - **Each card** shows the criteria verified, the checks, the reviews (✓ passed, ✗ failed, ⟳ in
   progress, with the round), unread notes, the PR, the next step and **what is running**: each
   agent in the task's workspace (green when it wrote recently, blue while working, red when its
@@ -342,9 +343,9 @@ prints it).
 
 The board refreshes itself every 5 seconds while it is visible. It is a small local server
 (`127.0.0.1` only) that runs in the background. It does nothing while nobody is looking, and it
-stops by itself after 30 minutes without visits. Close it with **"cierra el tablero"** or
-`factory board stop`, and check it with `factory board status`. `factory board snapshot board.html`
-writes a single file with the current board, to keep or share.
+stops by itself after 30 minutes without visits. Close it with **"cierra el tablero"**
+(`/factory-board`) or `factory board stop`, and check it with `factory board status`. `factory board
+snapshot board.html` writes a single file with the current board, to keep or share.
 
 **The board only looks: it never changes anything.** If a lead's terminal is closed, the card says
 so, but marking the task interrupted and recovering it is still done with `/factory-status`.
@@ -419,9 +420,9 @@ your-repo/
 ├── AGENTS.md                      # short index for agents: commands, critical rules, where things are
 ├── CLAUDE.md                      # just "@AGENTS.md"
 ├── .claude/
-│   ├── skills/factory-*/          # the four skills for Claude Code
+│   ├── skills/factory-*/          # the five skills for Claude Code
 │   └── settings.json              # asks before approve/reject
-├── .agents/skills/factory-*/      # the same four skills for Codex
+├── .agents/skills/factory-*/      # the same five skills for Codex
 ├── .codex/rules/factory.rules     # asks before approve/reject in Codex
 ├── docs/
 │   ├── product.md                 # what the product is and does
