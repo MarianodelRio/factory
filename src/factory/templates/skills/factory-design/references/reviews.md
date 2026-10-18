@@ -1,4 +1,4 @@
-# Choosing complexity and reviews for each task (design §5.2, §5.4)
+# Choosing complexity and reviews for each task
 
 `complexity` decides how the lead agent works:
 

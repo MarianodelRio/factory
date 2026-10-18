@@ -1,4 +1,4 @@
-# Lead agent flow (design §5.2–§5.7, §6.5)
+# Lead agent flow
 
 Your role: `roles/lead.md`. You own the task end to end, inside its workspace.
 

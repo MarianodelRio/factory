@@ -1,4 +1,4 @@
-"""Load `.factory/config.toml`, fill in the defaults of design §8 and validate known values.
+"""Load `.factory/config.toml`, fill in the defaults and validate known values.
 
 Raises FactoryError "config_invalid" (EXIT_PRECONDITION) for invalid TOML, an unknown
 schema_version or a known key with a bad value. Unknown sections and keys are kept unvalidated.

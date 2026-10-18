@@ -33,11 +33,11 @@ def ok_envelope(data: dict[str, Any], warnings: list[str] | None = None) -> dict
     return {"ok": True, "data": data, "warnings": list(warnings or [])}
 
 
-def error_envelope(error: FactoryError, warnings: list[str] | None = None) -> dict[str, Any]:
+def error_envelope(error: FactoryError) -> dict[str, Any]:
     body: dict[str, Any] = {"code": error.code, "message": error.message}
     if error.details:
         body["details"] = error.details
-    return {"ok": False, "error": body, "warnings": list(warnings or [])}
+    return {"ok": False, "error": body, "warnings": []}
 
 
 def render(envelope: dict[str, Any], as_json: bool) -> str:
@@ -84,7 +84,7 @@ def _scalar(value: Any) -> str:
     return str(value)
 
 
-# Common secret shapes (design §10.1, A-26). Values stop at quotes, commas and backslashes so that
+# Common secret shapes. Values stop at quotes, commas and backslashes so that
 # masking JSON text keeps it valid.
 SECRET_PATTERNS = [
     re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----", re.DOTALL),

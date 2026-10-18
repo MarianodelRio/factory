@@ -1,4 +1,4 @@
-# Recovering an interrupted task (design §7.2, §7.4)
+# Recovering an interrupted task
 
 1. `factory task recover <task> --json` (no changes): task, workspace, branch, `git_status`,
    commits, last checkpoint, `acceptance` (with evidence), `missing_acceptance`, `reviews`, `liveness`,

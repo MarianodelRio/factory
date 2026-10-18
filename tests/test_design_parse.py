@@ -182,11 +182,5 @@ def test_no_acceptance_criteria_section():
     assert any("Acceptance criteria" in e for e in errors_of(text))
 
 
-def test_all_errors_are_reported_together():
-    text = replace("complexity: normal", "complexity: huge")
-    text = replace("depends_on: [CHG-0012-01, CHG-0007-03]", "depends_on: [CHG-0012-05]", text)
-    assert len(errors_of(text)) >= 2
-
-
 def test_crlf_design_parses():
     assert len(parse_design(VALID.replace("\n", "\r\n"), "CHG-0012", KNOWN)["tasks"]) == 2

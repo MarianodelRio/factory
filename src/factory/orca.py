@@ -1,4 +1,4 @@
-"""The only module that runs `orca` (design §1.1, §10). Always with `--json` and argument lists.
+"""The only module that runs `orca`. Always with `--json` and argument lists.
 
 Raises FactoryError (all EXIT_UNAVAILABLE) with these codes:
 - orca_unavailable: `orca` is not installed or not on PATH.
@@ -6,7 +6,7 @@ Raises FactoryError (all EXIT_UNAVAILABLE) with these codes:
   Orca's own code in `orca_code`).
 - orca_outdated: the Orca version is below `[orca] min_version`.
 - orca_not_running: the Orca runtime cannot be reached.
-- orca_not_local: a remote Orca was selected (design §10.1).
+- orca_not_local: a remote Orca was selected.
 - orca_missing_command: a command or flag the Factory uses is not in `orca agent-context`.
 - orca_repo_not_registered / orca_base_branch_unset: no base branch can be read for the repo.
 - effort_needs_model (EXIT_USAGE): `--effort` was given without `--model`.
@@ -138,7 +138,7 @@ def check(min_version: str) -> dict[str, Any]:
 
 
 def require_local() -> None:
-    """Refuse a remote Orca selected through the environment (design §10.1)."""
+    """Refuse a remote Orca selected through the environment."""
     for variable in REMOTE_VARIABLES:
         if os.environ.get(variable):
             raise unavailable("orca_not_local", f"{variable} is set: the Factory only works with local Orca")
@@ -146,7 +146,6 @@ def require_local() -> None:
 
 def base_branch(main_checkout: Path) -> str:
     """The repo's base branch in Orca (`worktreeBaseRef`, set by `/factory-init`)."""
-    require_local()
     try:
         repo = run(["repo", "show", "--repo", f"path:{main_checkout}"])["repo"]
     except OrcaError as exc:
@@ -171,7 +170,7 @@ def _branch_name(ref: str) -> str:
 
 
 def create_workspace(name: str, base: str, main_checkout: Path) -> dict[str, str]:
-    """A new Orca workspace (Git worktree with its own branch) from `base` (design §5.1)."""
+    """A new Orca workspace (Git worktree with its own branch) from `base`."""
     created = run(
         ["worktree", "create", "--repo", f"path:{main_checkout}", "--name", name, "--base-branch", base,
          "--no-parent"]
@@ -231,21 +230,19 @@ def _operation_id(exc: OrcaError) -> str | None:
 
 def session_liveness(terminal: str | None) -> str:
     """`alive` if the agent's terminal is connected, `finished` if it is closed or gone, `unknown`
-    when Orca cannot say (design §7.2). An agent that exited inside an open terminal looks alive."""
+    when Orca cannot say. An agent that exited inside an open terminal looks alive."""
     if not terminal:
         return "unknown"
     try:
         shown = run(["terminal", "show", "--terminal", terminal])["terminal"]
     except OrcaError as exc:
         return "finished" if exc.orca_code == "terminal_handle_stale" else "unknown"
-    except FactoryError:
-        return "unknown"
-    except (KeyError, TypeError):
+    except (FactoryError, KeyError, TypeError):
         return "unknown"
     return "alive" if shown.get("connected") else "finished"
 
 
-# Task state -> (card status, fixed comment or None to use the detail, unread notice); design §7.5.
+# Task state -> (card status, fixed comment or None to use the detail, unread notice).
 # "No notice" leaves Orca's unread flag as it is.
 CARDS: dict[str, tuple[str, str | None, bool]] = {
     "in_progress": ("in-progress", None, False),  # detail: next action
@@ -264,8 +261,6 @@ def done_comment(verified: int, total: int, pr_number: int | None) -> str:
 def update_card(workspace_id: str, task_id: str, title: str, state: str, detail: str | None) -> list[str]:
     """Update the workspace card for the task's state. Never raises: a failure only gives a
     warning, and if Orca refuses some value the comment alone is updated."""
-    if state not in CARDS:
-        return [f"no Orca card defined for state '{state}'"]
     status, fixed, unread = CARDS[state]
     comment = mask_secrets(fixed or detail or "")
     selector = ["worktree", "set", "--worktree", f"id:{workspace_id}"]

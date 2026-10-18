@@ -1,4 +1,4 @@
-"""Task lifecycle (design §1.5, §5, §7).
+"""Task lifecycle.
 
 Raises FactoryError with these codes:
 - invalid_transition (EXIT_PRECONDITION): the action is not allowed from the task's state.
@@ -13,7 +13,7 @@ Raises FactoryError with these codes:
 - approval_not_valid (EXIT_PRECONDITION): unblock while the change's approval is not valid.
 - evidence_not_found / ac_not_in_task / ac_not_manual / secret_file_refused (EXIT_PRECONDITION): bad
   `verify --manual`.
-- review_invalid (EXIT_PRECONDITION): the reviewer JSON does not follow design §5.3.
+- review_invalid (EXIT_PRECONDITION): the reviewer JSON does not follow the reviewer JSON contract.
 - review_agent_missing (EXIT_USAGE): a conformance review without `--agent` or a recorded reviewer.
 - gates_not_met (EXIT_PRECONDITION): `finish` with closing criteria unmet; `details` lists them.
 - session_alive (EXIT_PRECONDITION): `recover --confirm` while Orca says the agent is alive.
@@ -55,16 +55,16 @@ PAUSED = "paused"
 DESIGN_CHANGED = "design_changed"
 REVIEW_NOT_CONVERGING = "review_not_converging"
 
-# (state, action) -> next state, design §1.5. `block` records the previous state in
+# (state, action) -> next state. `block` records the previous state in
 # `blocked_from`; `unblock` and `reapprove` return to it. The callers check the conditions
 # that are not about states: a valid approval for `unblock`, liveness for `recover`.
 TRANSITIONS: dict[tuple[str, str], str] = {
     ("ready", "claim"): "in_progress",  # factory task claim
     ("interrupted", "recover"): "in_progress",  # factory task recover --confirm
-    ("in_progress", "recover"): "in_progress",  # only when liveness is unknown (§7.4)
+    ("in_progress", "recover"): "in_progress",  # only when liveness is unknown
     ("in_review", "recover"): "in_progress",  # also only when unknown; the new lead submits again
     ("in_progress", "submit"): "in_review",  # factory task submit
-    ("in_progress", "finish"): "done",  # factory task finish (gates of §5.7)
+    ("in_progress", "finish"): "done",  # factory task finish (closing gates)
     ("in_review", "finish"): "done",
     ("in_progress", "block"): "blocked",  # task block, a read pause note, a design change
     ("in_review", "block"): "blocked",  # also a review that does not converge
@@ -73,7 +73,7 @@ TRANSITIONS: dict[tuple[str, str], str] = {
     ("in_review", "interrupt"): "interrupted",  # before finish, while the reviews run
 }
 RETURNS = {"unblock", "reapprove"}
-# States that a design change blocks (design §4.5).
+# States that a design change blocks.
 BLOCKED_BY_DESIGN_CHANGE = ("in_progress", "in_review", "interrupted")
 
 
@@ -106,7 +106,7 @@ def _reject(task: State, action: str, why: str) -> NoReturn:
 
 
 def sync_with_design(task_ids: list[str], approved: bool, store: TaskStore) -> None:
-    """Apply design §4.5 to the approved tasks of a change: while the design does not match its
+    """Keep the approved tasks of a change in step with its design: while the design does not match its
     approval, tasks in progress are blocked (`design_changed`); once it matches again (re-approval
     or a reverted edit), those tasks return to their previous state. `done` tasks are not touched."""
     for task_id in task_ids:
@@ -158,7 +158,7 @@ class Context:
 
 def catalog(ctx: Context) -> dict[str, dict[str, Any]]:
     """Every task of every approved, not rejected change: id -> task definition plus `change`
-    and whether the change's approval is still valid. Applies §4.5 to each change first."""
+    and whether the change's approval is still valid. Syncs each change with its design first."""
     tasks: dict[str, dict[str, Any]] = {}
     for tasks_file in sorted(ctx.changes_dir.glob("CHG-*/tasks.yaml")):
         folder = tasks_file.parent
@@ -175,7 +175,7 @@ def catalog(ctx: Context) -> dict[str, dict[str, Any]]:
 
 
 def view(task: dict[str, Any], ctx: Context) -> dict[str, Any]:
-    """The task with its state and the reason it is not ready (design §1.5, §5.1)."""
+    """The task with its state and the reason it is not ready."""
     record = ctx.store.read_task(task["id"])
     state, reason = (record["state"], record.get("blocked_reason")) if record else _computed(task, ctx)
     workspace = (record or {}).get("workspace") or {}
@@ -251,7 +251,7 @@ def new_attempt(number: int) -> dict[str, Any]:
 
 
 def claim(task_id: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
-    """Claim a ready task and create its Orca workspace from the base branch (design §5.1)."""
+    """Claim a ready task and create its Orca workspace from the base branch."""
     task = _task(task_id, ctx)
     if ctx.store.read_claim(task_id) is not None:
         raise FactoryError("task_claimed", f"{task_id} is already claimed", EXIT_CONFLICT)
@@ -367,7 +367,7 @@ def pending_reviews(task: dict[str, Any], record: State, cfg: dict[str, Any]) ->
 
 
 def card_detail(record: State, pending: list[str] | None = None) -> str | None:
-    """The card comment for the task's state (design §7.5)."""
+    """The card comment for the task's state."""
     state = record["state"]
     if state == "in_progress":
         checkpoint = record.get("last_checkpoint") or {}
@@ -385,16 +385,14 @@ def card_detail(record: State, pending: list[str] | None = None) -> str | None:
 
 
 def _card(task: dict[str, Any], record: State, ctx: Context) -> list[str]:
-    workspace = (record.get("workspace") or {}).get("orca_id")
-    if not workspace:
-        return []
+    workspace = record["workspace"]["orca_id"]
     pending = pending_reviews(task, record, _config(ctx)) if record["state"] == "in_review" else None
     return orca.update_card(workspace, task["id"], task["title"], record["state"], card_detail(record, pending))
 
 
 def checkpoint(task_id: str, done: str, next_step: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
     """Record progress and hand over the person's unread notes, marking them read. A pause note
-    moves the task to `blocked` (`paused`) (design §5.2, §7.3)."""
+    moves the task to `blocked` (`paused`)."""
     task, _ = _started(task_id, ctx)
     delivered: list[dict[str, Any]] = []
 
@@ -402,10 +400,7 @@ def checkpoint(task_id: str, done: str, next_step: str, ctx: Context) -> tuple[d
         if state["state"] not in ("in_progress", "in_review"):
             _reject(state, "checkpoint", f"it is {state['state']}")
         state["last_checkpoint"] = {"at": now(), "done": [done], "next": next_step}
-        delivered.extend(_read_notes(state))
-        if any(n.get("pause") for n in delivered):
-            state = transition(state, "block", reason=PAUSED)
-        return state
+        return _deliver_notes(state, delivered)
 
     record = ctx.store.update_task(task_id, apply, "checkpoint")
     paused = record["state"] == "blocked"
@@ -415,16 +410,20 @@ def checkpoint(task_id: str, done: str, next_step: str, ctx: Context) -> tuple[d
     return data, _card(task, record, ctx)
 
 
-def _read_notes(state: State) -> list[dict[str, Any]]:
+def _deliver_notes(state: State, delivered: list[dict[str, Any]]) -> State:
+    """Mark the unread notes as read, adding them to `delivered`; a pause note blocks the task."""
     unread = [n for n in state["notes"] if not n["read"]]
     for note in unread:
         note["read"] = True
-    return [dict(n) for n in unread]
+    delivered.extend(dict(n) for n in unread)
+    if any(n.get("pause") for n in unread):
+        return transition(state, "block", reason=PAUSED)
+    return state
 
 
 def note(task_id: str, text: str, pause: bool, ctx: Context) -> tuple[dict[str, Any], list[str]]:
     """Leave a note (or a pause) for the lead agent; it reads it at its next checkpoint or before
-    `submit` (design §7.3)."""
+    `submit`."""
     _started(task_id, ctx)
 
     def apply(state: State) -> State:
@@ -456,7 +455,7 @@ def workspace_path(record: State) -> Path:
 
 
 def verify(task_id: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
-    """Run the project checks and each AC command in the task's workspace (design §5.5). An AC is
+    """Run the project checks and each AC command in the task's workspace. An AC is
     `verified` only on exit code 0; a command that cannot run is `not_run`, never passed."""
     task, record = _started(task_id, ctx)
     if record["state"] not in ("in_progress", "in_review"):
@@ -516,7 +515,7 @@ def _run_evidence(command: str, cwd: Path, output: Path, ctx: Context) -> tuple[
 
 
 def verify_manual(task_id: str, ac: str, evidence: Path, ctx: Context) -> tuple[dict[str, Any], list[str]]:
-    """Record a `manual` AC with the person's or agent's evidence file (design §5.5)."""
+    """Record a `manual` AC with the person's or agent's evidence file."""
     task, record = _started(task_id, ctx)
     if record["state"] not in ("in_progress", "in_review"):
         _reject(record, "verify", f"it is {record['state']}")
@@ -548,7 +547,7 @@ SEVERITIES = ("blocker", "major", "minor")
 
 
 def effective_reviews(task: dict[str, Any], cfg: dict[str, Any]) -> list[str]:
-    """The task's `review` field, with the config's `always` / `never` applied (design §5.4)."""
+    """The task's `review` field, with the config's `always` / `never` applied."""
     chosen = set(task.get("review") or [])
     for kind in REVIEW_TYPES:
         if cfg["review"][kind] == "always":
@@ -564,17 +563,15 @@ def _config(ctx: Context) -> dict[str, Any]:
 
 def submit(task_id: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
     """Read the person's pending notes and move the task to `in_review`; a pause note blocks it
-    instead (design §5.2)."""
+    instead."""
     task, _ = _started(task_id, ctx)
     delivered: list[dict[str, Any]] = []
 
     def apply(state: State) -> State:
         if state["state"] != "in_progress":
             _reject(state, "submit", f"it is {state['state']}")
-        delivered.extend(_read_notes(state))
-        if any(n.get("pause") for n in delivered):
-            return transition(state, "block", reason=PAUSED)
-        return transition(state, "submit")
+        state = _deliver_notes(state, delivered)
+        return state if state["state"] == "blocked" else transition(state, "submit")
 
     record = ctx.store.update_task(task_id, apply, "submit")
     reviews = effective_reviews(task, _config(ctx))
@@ -584,7 +581,7 @@ def submit(task_id: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
 
 
 def review(task_id: str, kind: str, agent: str | None, ctx: Context) -> tuple[dict[str, Any], list[str]]:
-    """Launch a reviewer (design §5.4): conformance is an Orca agent in the same workspace; quality
+    """Launch a reviewer: conformance is an Orca agent in the same workspace; quality
     is a read-only subagent of the lead unless an agent is named (client without subagents)."""
     task, record = _started(task_id, ctx)
     if record["state"] != "in_review":
@@ -617,7 +614,7 @@ def review(task_id: str, kind: str, agent: str | None, ctx: Context) -> tuple[di
 def record_review(task_id: str, path: Path, agent: str | None, ctx: Context) -> tuple[dict[str, Any], list[str]]:
     """Store a reviewer's JSON with its round and the reviewed commit. `pass` only without
     `blocker` or `major` findings; a type that is not `pass` after `max_rounds` blocks the task
-    with the findings kept (design §5.4)."""
+    with the findings kept."""
     task, record = _started(task_id, ctx)
     report = _review_report(path)
     kind = report["type"]
@@ -678,7 +675,7 @@ def _review_report(path: Path) -> dict[str, Any]:
 
 
 def finish(task_id: str, memory: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
-    """Move the task to `done` only if every closing criterion of design §5.7 holds."""
+    """Move the task to `done` only if every closing criterion holds."""
     task, _ = _started(task_id, ctx)
     delivered: list[dict[str, Any]] = []
 
@@ -686,18 +683,13 @@ def finish(task_id: str, memory: str, ctx: Context) -> tuple[dict[str, Any], lis
         """Like `submit`, `finish` hands over unread notes first; a pause blocks the task."""
         if state["state"] not in ("in_progress", "in_review"):
             _reject(state, "finish", f"it is {state['state']}")
-        delivered.extend(_read_notes(state))
-        if any(n.get("pause") for n in delivered):
-            return transition(state, "block", reason=PAUSED)
-        return state
+        return _deliver_notes(state, delivered)
 
     record = ctx.store.update_task(task_id, read_notes, "finish_notes")
     if record["state"] == "blocked":
         data = {"task": task_id, "state": "blocked", "notes": delivered, "paused": True,
                 "message": "paused by the person before finishing: stop here"}
         return data, _card(task, record, ctx)
-    if record["state"] not in ("in_progress", "in_review"):
-        _reject(record, "finish", f"it is {record['state']}")
     base = orca.base_branch(ctx.main_checkout)
     cwd = workspace_path(record)
     problems: list[str] = []
@@ -744,7 +736,7 @@ def finish(task_id: str, memory: str, ctx: Context) -> tuple[dict[str, Any], lis
 
 
 def _outside_scope(task: dict[str, Any], files: list[str]) -> list[str]:
-    """Files outside the task's `scope` globs, ignoring `docs/` and `.factory/` (design §5.7)."""
+    """Files outside the task's `scope` globs, ignoring `docs/` and `.factory/`."""
     scope = task.get("scope")
     if not scope:
         return []
@@ -756,7 +748,7 @@ def _outside_scope(task: dict[str, Any], files: list[str]) -> list[str]:
 
 def publish(task_id: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
     """Push the task branch (only it, never forced) and open its PR against the base branch, or
-    reuse the open one (design §5.6). Without a usable `gh` the PR is left to the person."""
+    reuse the open one. Without a usable `gh` the PR is left to the person."""
     task, record = _started(task_id, ctx)
     if record["state"] != "done":
         _reject(record, "publish", f"it is {record['state']}; finish it first")
@@ -788,7 +780,7 @@ def publish(task_id: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
 
 def pr_body(task: dict[str, Any], record: State) -> str:
     """PR description from the task: change, AC with evidence, reviews with every finding, memory
-    and what remains pending (design §5.6)."""
+    and what remains pending."""
     lines = [f"Task {task['id']} of change {task['change']} "
              f"(design: `.factory/changes/{task['change']}/design.md`).", "", "## Acceptance criteria", ""]
     for ac, how in task["acceptance"].items():
@@ -812,13 +804,13 @@ def pr_body(task: dict[str, Any], record: State) -> str:
 
 STALE_MINUTES = 10
 ACTIVE = ("in_progress", "in_review", "blocked", "interrupted")
-# States whose lead agent must still be running: liveness is checked and recover is allowed (§7.2).
+# States whose lead agent must still be running: liveness is checked and recover is allowed.
 WORKING = ("in_progress", "in_review")
 
 
 def _liveness_and_interrupt(task: dict[str, Any], ctx: Context) -> tuple[str | None, State | None]:
     """Ask Orca about the lead agent of an `in_progress` or `in_review` task; a session that
-    finished before `finish` moves the task to `interrupted` now (design §7.2)."""
+    finished before `finish` moves the task to `interrupted` now."""
     record = ctx.store.read_task(task["id"])
     if record is None or record["state"] not in WORKING:
         return None, record
@@ -853,7 +845,7 @@ def _minutes_since(timestamp: str | None) -> int | None:
 
 
 def status(ctx: Context) -> tuple[dict[str, Any], list[str]]:
-    """Summary, every task and what needs attention (design §7.1), with liveness from Orca."""
+    """Summary, every task and what needs attention, with liveness from Orca."""
     all_tasks = catalog(ctx)
     cfg = _config(ctx)
     rows: list[dict[str, Any]] = []
@@ -956,7 +948,7 @@ def _after_done(record: State, task: dict[str, Any], ctx: Context) -> str:
 
 
 def recover(task_id: str, confirm: bool, ctx: Context) -> tuple[dict[str, Any], list[str]]:
-    """Gather what an interrupted task left (design §7.4). With `confirm` (after the person
+    """Gather what an interrupted task left. With `confirm` (after the person
     agrees), close the previous attempt as interrupted, open a new one and reassign the claim.
     Files are never touched and nothing is launched."""
     task, _ = _started(task_id, ctx)

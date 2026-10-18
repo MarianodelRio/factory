@@ -5,10 +5,9 @@ import pytest
 import yaml
 
 SKILLS = ["factory-init", "factory-design", "factory-implement", "factory-status"]
-# Files that `factory init` copies into the skills when installing them (T-28).
+# Files that `factory init` copies into the skills when installing them.
 INSTALLED = {"references/design-template.md", "references/adr-template.md"} | {
-    f"references/roles/{r}.md"
-    for r in ("designer", "design_critic", "lead", "planner", "quality_reviewer", "conformance_reviewer")
+    f"references/roles/{r}.md" for r in ("designer", "design_critic", "lead", "planner", "quality_reviewer")
 }
 
 
@@ -74,8 +73,8 @@ def test_every_cli_command_used_exists():
 
 def test_memory_rules_keep_adrs_and_agreements_under_the_persons_control():
     text = skill_dir("factory-implement").joinpath("references/memory.md").read_text()
-    assert "immutable except its `Status` line" in text and "supersedes it" in text  # A-17
-    assert "save them only if the person accepts" in text  # A-18
+    assert "immutable except its `Status` line" in text and "supersedes it" in text
+    assert "save them only if the person accepts" in text
 
 
 def test_design_skill_outlines_before_writing():

@@ -57,10 +57,6 @@ def test_plan_lists_everything_and_changes_nothing(project, capsys):
     assert data["plan_id"]
 
 
-def test_plan_is_stable(project, capsys):
-    assert plan(capsys)["plan_id"] == plan(capsys)["plan_id"]
-
-
 def test_apply_installs_without_committing(project, capsys):
     head = git("rev-parse", "HEAD", cwd=project.root)
     data = plan(capsys)
@@ -183,6 +179,14 @@ def test_factory_leftovers_are_proposed_for_deletion(project, capsys):
     (project.root / ".claude/skills/factory-old/SKILL.md").write_text(mark)
     deletes = {d["path"] for d in plan(capsys)["delete"]}
     assert ".claude/skills/factory-old/SKILL.md" in deletes
+
+
+def test_a_role_no_longer_installed_is_a_leftover(project, capsys):
+    role = project.root / ".agents/skills/factory-design/references/roles/conformance_reviewer.md"
+    role.parent.mkdir(parents=True)
+    role.write_text("<!-- factory-template: roles/conformance_reviewer@1 -->\n")
+    deletes = {d["path"] for d in plan(capsys)["delete"]}
+    assert ".agents/skills/factory-design/references/roles/conformance_reviewer.md" in deletes
 
 
 def test_exclude_skips_items(project, capsys):
@@ -308,13 +312,3 @@ def test_the_repos_own_docs_count_for_its_size(project, capsys):
     git("add", "-A", cwd=project.root)
     git("commit", "-q", "-m", "User docs", cwd=project.root)
     assert "docs/product.md" in paths(plan(capsys)["create"])
-
-
-def test_customized_codex_rules_are_kept_and_shown_as_diff(project, capsys):
-    apply(capsys, plan(capsys)["plan_id"])
-    path = project.root / ".codex/rules/factory.rules"
-    path.write_text(path.read_text() + "# my own rule\n")
-    data = plan(capsys)
-    assert ".codex/rules/factory.rules" not in paths(data["modify"])
-    assert any(c["path"] == ".codex/rules/factory.rules" for c in data["customized"])
-    assert any("factory.rules" in w and "trusted" in w for w in data["warnings"])

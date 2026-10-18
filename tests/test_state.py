@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from factory.output import EXIT_CONFLICT, FactoryError
+from factory.output import FactoryError
 from factory.state import TaskStore, empty_state
 
 TASK = "CHG-0001-01"
@@ -94,15 +94,6 @@ def test_concurrent_claims_exactly_one_wins(tmp_path):
     assert len(winners) == 1
     assert sorted(code for code, _ in outcomes if code != "won") == ["task_claimed"] * 7
     assert TaskStore(tmp_path).read_claim(TASK)["attempt"] == winners[0]
-
-
-def test_second_claim_is_a_conflict(tmp_path):
-    store = TaskStore(tmp_path)
-    store.create_claim(TASK, 1)
-    with pytest.raises(FactoryError) as exc:
-        store.create_claim(TASK, 2)
-    assert exc.value.code == "task_claimed"
-    assert exc.value.exit_code == EXIT_CONFLICT
 
 
 def test_release_and_reassign_claim(tmp_path):

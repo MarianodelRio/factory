@@ -1,4 +1,4 @@
-"""A-26: no secret appears in the state, the cards, the PRs or the evidence."""
+"""No secret appears in the state, the cards, the PRs or the evidence."""
 
 import json
 

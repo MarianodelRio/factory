@@ -34,10 +34,6 @@ class Parser(argparse.ArgumentParser):
         raise UsageError(f"{self.prog}: {message}")
 
 
-def not_implemented(args: argparse.Namespace) -> Result:
-    raise FactoryError("not_implemented", f"'{args.command}' is not implemented yet", EXIT_ERROR)
-
-
 def change_id(value: str) -> str:
     if not design.CHANGE_ID.match(value):
         raise argparse.ArgumentTypeError(f"'{value}' is not a change id (CHG-NNNN)")
@@ -50,13 +46,9 @@ def design_register(args: argparse.Namespace) -> Result:
     return design.register(args.change, paths.changes_dir()), []
 
 
-def main_changes_dir() -> Path:
-    return paths.main_checkout() / ".factory" / "changes"
-
-
 def design_show(args: argparse.Namespace) -> Result:
     store = TaskStore(paths.state_dir())
-    return design.show(args.change, paths.changes_dir(), store, main_changes_dir()), []
+    return design.show(args.change, paths.changes_dir(), store, paths.main_checkout() / ".factory" / "changes"), []
 
 
 def stdin_is_terminal() -> bool:
@@ -139,7 +131,7 @@ def init_command(args: argparse.Namespace) -> Result:
         return init.restore(paths.repo_root(), paths.state_dir(), args.restore), []
     deletes = list(zip(args.delete, args.reason, strict=True))
     if args.plan:
-        return init.plan_init(paths.repo_root(), paths.main_checkout(), deletes), []
+        return init.build_plan(paths.repo_root(), paths.main_checkout(), deletes).data(), []
     return init.apply_init(paths.repo_root(), paths.main_checkout(), paths.state_dir(), args.apply, deletes,
                            args.exclude)
 
@@ -170,7 +162,7 @@ def task_verify(args: argparse.Namespace) -> Result:
     return tasks.verify(args.task, task_context())
 
 
-# Command name ("task launch") -> handler. Filled in as tasks are implemented.
+# Command name ("task launch") -> handler.
 HANDLERS: dict[str, Handler] = {
     "design register": design_register,
     "design show": design_show,
@@ -314,7 +306,7 @@ def main(argv: list[str] | None = None) -> int:
     except UsageError as exc:
         return _emit(error_envelope(FactoryError("usage_error", str(exc), EXIT_USAGE)), as_json, EXIT_USAGE)
 
-    handler = HANDLERS.get(args.command, not_implemented)
+    handler = HANDLERS[args.command]
     try:
         data, warnings = handler(args)
     except FactoryError as exc:

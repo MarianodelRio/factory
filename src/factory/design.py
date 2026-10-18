@@ -1,4 +1,4 @@
-"""Changes: digest, ids and the task block of `design.md` (design §1.4, §4.3).
+"""Changes: digest, ids and the task block of `design.md`.
 
 Raises FactoryError with these codes:
 - design_invalid (EXIT_PRECONDITION): the task block or the acceptance criteria are not valid;
@@ -231,26 +231,22 @@ def reserve_change(changes_dir: Path) -> dict[str, Any]:
 def register(change_id: str, changes_dir: Path) -> dict[str, Any]:
     """Validate the `design.md` of a reserved change."""
     folder = _folder(change_id, changes_dir)
-    if (folder / "rejection.json").exists():
-        message = f"{change_id} was rejected; create a new change to take it up again"
-        raise FactoryError("change_rejected", message, EXIT_PRECONDITION)
+    _refuse_rejected(change_id, folder)
     text = _design_text(folder)
     parsed = parse_design(text, change_id, known_tasks(changes_dir, exclude=change_id))
     return {"change": change_id, "digest": digest(text), **parsed}
 
 
 def show(change_id: str, changes_dir: Path, store: TaskStore, main_changes_dir: Path) -> dict[str, Any]:
-    """Change state (§1.5), digest, criteria, tasks with their stored state, approval or rejection.
+    """Change state, digest, criteria, tasks with their stored state, approval or rejection.
     An invalid design is still shown, with its problems. Whether the design changed after its
-    approval (§4.5) is decided on the main checkout's files, which own the shared task state."""
+    approval is decided on the main checkout's files, which own the shared task state."""
     folder = _folder(change_id, changes_dir)
     text = _design_text(folder)
     try:
         parsed = parse_design(text, change_id, known_tasks(changes_dir, exclude=change_id))
         problems: list[str] = []
-    except FactoryError as exc:
-        if exc.code != "design_invalid":
-            raise
+    except FactoryError as exc:  # parse_design only raises design_invalid
         parsed, problems = {"acceptance_criteria": [], "tasks": []}, exc.details
 
     approval = _read_json(folder / "approval.json")
@@ -286,7 +282,7 @@ def show(change_id: str, changes_dir: Path, store: TaskStore, main_changes_dir: 
 
 
 def sync_with_main(change_id: str, main_changes_dir: Path, store: TaskStore) -> None:
-    """Block or restore the change's tasks (§4.5) from the main checkout's design and approval."""
+    """Block or restore the change's tasks from the main checkout's design and approval."""
     folder = main_changes_dir / change_id
     approval = _read_json(folder / "approval.json")
     if approval is None or not (folder / "design.md").exists():
@@ -310,13 +306,8 @@ def approved_task_ids(folder: Path) -> list[str]:
 
 def known_tasks(changes_dir: Path, exclude: str) -> set[str]:
     """Ids of approved tasks of other changes (their `tasks.yaml`)."""
-    ids: set[str] = set()
-    for tasks_file in sorted(changes_dir.glob("CHG-*/tasks.yaml")):
-        if tasks_file.parent.name == exclude:
-            continue
-        data = yaml.safe_load(tasks_file.read_text(encoding="utf-8")) or {}
-        ids.update(str(t["id"]) for t in data.get("tasks", []) if isinstance(t, dict) and "id" in t)
-    return ids
+    return {task_id for folder in changes_dir.glob("CHG-*") if folder.name != exclude
+            for task_id in approved_task_ids(folder)}
 
 
 def _folder(change_id: str, changes_dir: Path) -> Path:
@@ -344,9 +335,9 @@ def _read_json(path: Path) -> dict[str, Any] | None:
 def approve(
     change_id: str, changes_dir: Path, message: str, method: str, main_checkout: Path, store: TaskStore
 ) -> dict[str, Any]:
-    """Approve the current design (design §4.4): on the base branch, with an explicit message
+    """Approve the current design: on the base branch, with an explicit message
     (`chat`) or the typed id (`terminal`); commit only the change folder. On re-approval the task
-    ids are kept and tasks blocked by the design change return to their state (§4.5)."""
+    ids are kept and tasks blocked by the design change return to their state."""
     folder = _folder(change_id, changes_dir)
     _refuse_rejected(change_id, folder)
     text = _design_text(folder)
@@ -409,7 +400,7 @@ def reject(change_id: str, changes_dir: Path, reason: str, main_checkout: Path) 
 
 
 def _removed_tasks(text: str, folder: Path) -> list[str]:
-    """Problems for approved task ids missing from the design: nothing is deleted (§4.5)."""
+    """Problems for approved task ids missing from the design: nothing is deleted."""
     block = _task_block(normalize(text), []) or []
     ids = {str(t.get("id")) for t in block}
     missing = [i for i in approved_task_ids(folder) if i not in ids]

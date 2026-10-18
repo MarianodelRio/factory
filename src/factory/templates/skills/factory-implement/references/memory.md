@@ -1,4 +1,4 @@
-# Updating memory when closing a task (design §6.3–§6.5)
+# Updating memory when closing a task
 
 Ask yourself:
 

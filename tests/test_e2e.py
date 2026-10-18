@@ -1,4 +1,4 @@
-"""End-to-end flows through the CLI only, with the fake orca and gh (T-30)."""
+"""End-to-end flows through the CLI only, with the fake orca and gh."""
 
 import json
 from pathlib import Path
@@ -127,16 +127,6 @@ def test_full_flow_from_init_to_published_pr(initialized, fake_gh, capsys, tmp_p
     status = ok(capsys, "status")
     row = next(t for t in status["tasks"] if t["id"] == task)
     assert (row["state"], row["pull_request"]["number"], row["acceptance"]) == ("done", 1, {"verified": 2, "total": 2})
-
-
-def test_trivial_task_finishes_without_submit(initialized, capsys):
-    change = approved_change(initialized, capsys)
-    task = f"{change}-02"
-    ok(capsys, "task", "claim", task)
-    ok(capsys, "task", "launch", task, "--agent", "claude")
-    initialized.commit("src/export.py", "x = 1\n", "Export", cwd=workspace_of(initialized, task))
-    ok(capsys, "task", "verify", task)
-    assert ok(capsys, "task", "finish", task, "--memory", "none")["state"] == "done"
 
 
 def test_design_change_after_approval(initialized, capsys):

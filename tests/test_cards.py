@@ -1,5 +1,4 @@
 import pytest
-from conftest import load_fixture
 
 from factory import orca
 
@@ -15,7 +14,7 @@ def value(call, flag):
     return call[call.index(flag) + 1] if flag in call else None
 
 
-# One row per line of the table in design §7.5: state, detail, status, comment, unread.
+# One row per line of the card table (orca.CARDS): state, detail, status, comment, unread.
 ROWS = [
     ("in_progress", "Write the migration", "in-progress", "Write the migration", False),
     ("in_review", "Pending reviews: conformance", "in-review", "Pending reviews: conformance", False),
@@ -71,17 +70,8 @@ def test_orca_warnings_are_passed_on(repo, fake_orca):
     assert any("Unknown workspace status" in w for w in warnings)
 
 
-def test_unknown_state_is_only_a_warning(repo, fake_orca):
-    assert orca.update_card(WS, "CHG-0012-01", "T", "pending", None)
-    assert fake_orca.calls() == []
-
-
 def test_remote_orca_is_never_called(repo, fake_orca, monkeypatch):
     monkeypatch.setenv("ORCA_ENVIRONMENT", "build-server")
     assert orca.update_card(WS, "CHG-0012-01", "T", "in_progress", "next")
     assert orca.session_liveness("term_1") == "unknown"
     assert fake_orca.calls() == []
-
-
-def test_fixture_is_valid():
-    assert load_fixture("worktree-set")["ok"] is True

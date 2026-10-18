@@ -1,6 +1,6 @@
-"""Task state files in `.factory/state/` (design §1.4): the only code that writes them.
+"""Task state files in `.factory/state/`: the only code that writes them.
 
-Everything written goes through `mask_secrets` (design §10.1).
+Everything written goes through `mask_secrets`.
 Per task: `<task>.json` (current state, replaced atomically), `<task>.events.jsonl` (append-only
 history; each event carries the resulting state, so a corrupted JSON is rebuilt from the last
 readable event) and `<task>.lock` (the claim). Writers serialize on an `flock` of the events
@@ -34,7 +34,7 @@ def now() -> str:
 
 
 def empty_state(task_id: str) -> State:
-    """A task state with every field of design §1.4 and nothing recorded yet."""
+    """A task state with every field and nothing recorded yet."""
     return {
         "task": task_id,
         "state": None,

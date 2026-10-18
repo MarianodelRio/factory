@@ -10,7 +10,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from factory import git
-from factory.output import FactoryError
 
 
 def repo_root(cwd: Path | None = None) -> Path:
@@ -20,10 +19,7 @@ def repo_root(cwd: Path | None = None) -> Path:
 
 def main_checkout(cwd: Path | None = None) -> Path:
     """The main checkout of the clone: first entry of `git worktree list --porcelain`."""
-    worktrees = git.worktree_paths(cwd)
-    if not worktrees:
-        raise FactoryError("git_failed", "git worktree list returned no worktrees")
-    return worktrees[0]
+    return git.worktree_paths(cwd)[0]
 
 
 def state_dir(cwd: Path | None = None) -> Path:

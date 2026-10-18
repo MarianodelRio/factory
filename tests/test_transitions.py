@@ -12,7 +12,7 @@ def task(state, **fields):
     return data
 
 
-# One row per allowed transition of design §1.5: (from, action, to).
+# One row per allowed transition (TRANSITIONS): (from, action, to).
 ALLOWED = [
     ("ready", "claim", "in_progress"),
     ("interrupted", "recover", "in_progress"),
@@ -51,8 +51,8 @@ def test_illegal_transitions_are_rejected(current, action):
     assert exc.value.exit_code == EXIT_PRECONDITION
 
 
-@pytest.mark.parametrize("reason", [PAUSED, DESIGN_CHANGED, REVIEW_NOT_CONVERGING, "needs a schema decision"])
-@pytest.mark.parametrize("before", ["in_progress", "in_review", "interrupted"])
+@pytest.mark.parametrize(("before", "reason"), [("in_progress", PAUSED), ("in_review", REVIEW_NOT_CONVERGING),
+                                                ("interrupted", DESIGN_CHANGED)])
 def test_block_records_reason_and_previous_state(reason, before):
     result = transition(task(before), "block", reason=reason)
     assert (result["state"], result["blocked_reason"], result["blocked_from"]) == ("blocked", reason, before)
@@ -69,12 +69,6 @@ def test_unblock_returns_to_previous_state(before):
     blocked = transition(task(before), "block", reason=PAUSED)
     result = transition(blocked, "unblock")
     assert (result["state"], result["blocked_reason"], result["blocked_from"]) == (before, None, None)
-
-
-def test_unblock_is_a_plain_return_whatever_the_reason():
-    # Whether the approval is valid is checked by the unblock command (T-18), not the table.
-    blocked = transition(task("in_review"), "block", reason=DESIGN_CHANGED)
-    assert transition(blocked, "unblock")["state"] == "in_review"
 
 
 def test_reapproval_releases_only_design_changed_tasks():

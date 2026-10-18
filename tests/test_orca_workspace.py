@@ -118,7 +118,7 @@ def test_failure_without_operation_id_is_never_retried(repo, fake_orca):
 
 @pytest.mark.parametrize(("fixture", "exit", "expected"), [
     ("terminal-show-alive", 0, "alive"),
-    ("terminal-show-agent-exited", 0, "alive"),  # Orca cannot tell (design §7.2)
+    ("terminal-show-agent-exited", 0, "alive"),  # Orca cannot tell
     ("terminal-show-closed", 0, "finished"),
     ("terminal-show-stale", 1, "finished"),
 ])

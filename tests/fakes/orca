@@ -28,17 +28,11 @@ REPO = os.environ.get("FAKE_ORCA_REPO")
 DEFAULTS = {
     "status": "status",
     "agent-context": "agent-context",
-    "host list": "host-list",
     "repo show": "repo-show-with-base-ref",
     "repo set-base-ref": "repo-set-base-ref",
-    "worktree list": "worktree-list",
-    "worktree current": "worktree-current",
     "worktree set": "worktree-set",
     "agent launch": "agent-launch",
-    "terminal list": "terminal-list",
     "terminal show": "terminal-show-alive",
-    "terminal close": "terminal-close",
-    "search": "search-disabled",
     "agent hooks status": "agent-hooks-status",
     "skills installed": "skills-installed",
 }

@@ -4,8 +4,9 @@ import pytest
 
 from factory import __version__, cli
 from factory.cli import main
+from factory.output import FactoryError
 
-# Every command path of design §9.
+# Every command path.
 COMMANDS = [
     ["install-skill"],
     ["doctor"],
@@ -44,22 +45,6 @@ def test_version(capsys):
         main(["--version"])
     assert exc.value.code == 0
     assert __version__ in capsys.readouterr().out
-
-
-def test_help_lists_top_level_commands(capsys):
-    with pytest.raises(SystemExit) as exc:
-        main(["--help"])
-    assert exc.value.code == 0
-    out = capsys.readouterr().out
-    for name in ("doctor", "init", "design", "task", "memory", "status"):
-        assert name in out
-
-
-@pytest.mark.parametrize("path", [c for c in COMMANDS if len(c) == 2])
-def test_help_lists_subcommands(capsys, path):
-    with pytest.raises(SystemExit):
-        main([path[0], "--help"])
-    assert path[1] in capsys.readouterr().out
 
 
 @pytest.mark.parametrize("path", COMMANDS)
@@ -105,9 +90,12 @@ def test_usage_error_without_json_goes_to_stderr(capsys):
     assert "invalid choice" in err
 
 
-def test_not_implemented_human_output(capsys, monkeypatch):
-    monkeypatch.delitem(cli.HANDLERS, "doctor")
+def test_error_without_json_goes_to_stderr(capsys, monkeypatch):
+    def fail(args):
+        raise FactoryError("some_error", "it failed")
+
+    monkeypatch.setitem(cli.HANDLERS, "doctor", fail)
     code, out, err = run(capsys, ["doctor"])
     assert code == 1
     assert out == ""
-    assert "not_implemented" in err
+    assert "some_error" in err

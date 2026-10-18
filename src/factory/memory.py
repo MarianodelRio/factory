@@ -1,4 +1,4 @@
-"""`factory memory check` (design §6.6): mechanical checks of the project memory. Read-only."""
+"""`factory memory check`: mechanical checks of the project memory. Read-only."""
 
 from __future__ import annotations
 

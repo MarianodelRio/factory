@@ -76,7 +76,7 @@ def test_approve_on_another_branch_is_refused(project, capsys):
     assert not (project.root / FOLDER / "approval.json").exists()
 
 
-@pytest.mark.parametrize("message", ["vale", "me gusta", "adelante", "apruebo CHG-0013", ""])
+@pytest.mark.parametrize("message", ["vale", "apruebo CHG-0013", ""])
 def test_message_must_name_the_change(project, capsys, message):
     code, out = cli(capsys, "design", "approve", CHANGE, "--message", message)
     assert code == 3

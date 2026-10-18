@@ -129,7 +129,7 @@ def test_gate_approval_not_valid(ready_to_finish, capsys):
     path.write_text(path.read_text() + "\nEdited.\n")
     code, out = finish(capsys)
     assert code == 3
-    # the design change blocks the task first (§4.5); either way it is not done
+    # the design change blocks the task first; either way it is not done
     assert ready_to_finish["store"].read_task(TASK)["state"] != "done"
 
 

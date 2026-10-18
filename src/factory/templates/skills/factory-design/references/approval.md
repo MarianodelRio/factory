@@ -1,4 +1,4 @@
-# Approving and rejecting a change (design §4.4)
+# Approving and rejecting a change
 
 1. The person writes an explicit approval that names the change: "apruebo CHG-0012" or
    "approve CHG-0012". Anything else ("vale", "OK", "me gusta", "adelante", "go ahead", a thumbs

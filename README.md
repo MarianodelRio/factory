@@ -9,10 +9,6 @@ Orca runs the agents and the workspaces; the Factory brings the method and keeps
 readable files under `.factory/`. You talk to the agent in natural language (Spanish or English);
 everything it writes to the repository is in English.
 
-- Design (the contract): [`design_factory.md`](design_factory.md)
-- Implementation plan and progress: [`implementation_factory.md`](implementation_factory.md)
-- Real-run checklist: [`docs/e2e-checklist.md`](docs/e2e-checklist.md)
-
 ## Requirements
 
 - Linux or macOS with Git.
@@ -48,7 +44,7 @@ To upgrade later: `git pull && uv tool install --reinstall . && factory install-
 | `/factory-status` | How everything is going, what needs you, notes and pauses for a running agent ("deja una nota en CHG-…", "pausa CHG-…"), recovering an interrupted task and memory maintenance. |
 
 The skills call the `factory` CLI for everything that must be exact. You do not need to use it,
-but you can: `factory --help`, and the full list in [design §9](design_factory.md#9-cli).
+but you can: `factory --help` lists every command.
 
 ## Five-minute walkthrough
 
@@ -103,8 +99,12 @@ In a Claude Code (or Codex) terminal in Orca, at the root of your repository:
 - Orca may launch Claude with `--dangerously-skip-permissions` (its `agentDefaultArgs` setting).
   The approval rule still asks in that mode. `factory doctor` warns when Claude's own settings
   skip permission prompts (`bypassPermissions`); it cannot read Orca's setting.
-- v0.1.0 is verified with Claude Code only. Codex support follows the design but has not been
-  checked on a real machine yet (see [`docs/spike-results.md`](docs/spike-results.md)).
+- Orca does not say whether the agent inside a terminal is still running: `/factory-status` marks
+  a task `interrupted` only when its terminal is closed. An agent that exited in an open terminal
+  looks alive; more than 10 minutes without a checkpoint only gives a warning.
+- Orca does not report the model an agent used; the Factory records the `--model` it passed.
+- v0.1.0 is verified with Claude Code only. Codex support (skills in `.agents/skills/`, the
+  approval rule, reviews) is implemented but has not been checked on a real machine yet.
 
 ## Development
 

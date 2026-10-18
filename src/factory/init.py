@@ -1,4 +1,4 @@
-"""`factory doctor` and `factory init` (design §3): analysis, plan, apply, backups and restore.
+"""`factory doctor` and `factory init`: analysis, plan, apply, backups and restore.
 
 `doctor` only reads: it never writes to the repository or to Orca.
 """
@@ -24,7 +24,7 @@ OTHER_INSTRUCTIONS = (".cursorrules", ".cursor/rules", ".windsurfrules", "GEMINI
 
 
 def doctor(root: Path, main_checkout: Path) -> dict[str, Any]:
-    """Everything `/factory-init` needs to propose a plan (design §3.1 step 1), without changes."""
+    """Everything `/factory-init` needs to propose a plan , without changes."""
     problems: list[str] = []
     warnings: list[str] = []
     configured = config.load_config(root / ".factory" / "config.toml") if (root / ".factory").is_dir() else None
@@ -176,17 +176,20 @@ def _permission_warnings(root: Path) -> list[str]:
     return warnings
 
 
-# --- init: plan, apply, restore (design §3.1, §3.2) -------------------------------------------------
+# --- init: plan, apply, restore -------------------------------------------------
 
 SKILL_BASES = (".claude/skills", ".agents/skills")
+# Roles each skill reads; the conformance reviewer's role goes in its launch prompt instead.
+SKILL_ROLES = {"factory-design": ("designer", "design_critic"),
+               "factory-implement": ("lead", "planner", "quality_reviewer")}
 ASK_RULES = ["Bash(factory design approve:*)", "Bash(factory design reject:*)"]
-CODEX_RULES = ".codex/rules/factory.rules"  # Codex's equivalent of ASK_RULES (design §4.4)
+CODEX_RULES = ".codex/rules/factory.rules"  # Codex's equivalent of ASK_RULES
 GITIGNORE_LINE = ".factory/state/"
 SMALL_REPO_FILES = 30
 DOCS_SMALL = ("conventions.md",)
 DOCS_NORMAL = ("product.md", "architecture.md", "conventions.md", "working-agreements.md", "decisions/README.md")
 DELETABLE_SUFFIXES = (".md", ".mdc", ".rst")
-# Never deleted or modified by init (design §3.2): approved designs, decisions, working agreements.
+# Never deleted or modified by init: approved designs, decisions, working agreements.
 PROTECTED = (".factory/", "docs/decisions/", "docs/working-agreements.md")
 # The [templates] header (maybe with a comment) and its `"path" = "hash"` lines.
 TEMPLATES_SECTION = re.compile(r'^[ \t]*\[templates\][^\n]*\n(?:[ \t]*(?:"[^"\n]*"[ \t]*=[^\n]*)?\n?)*', re.MULTILINE)
@@ -210,10 +213,9 @@ def _skill_files() -> dict[str, str]:
                     stack.append((entry, f"{rel}/{entry.name}"))
                 elif entry.name.endswith(".md"):
                     files[f"{rel}/{entry.name}"] = entry.read_text(encoding="utf-8")
-    roles = resources.files("factory").joinpath("templates/roles")
-    for skill in ("factory-design", "factory-implement"):
-        for role in roles.iterdir():
-            files[f"{skill}/references/roles/{role.name}"] = role.read_text(encoding="utf-8")
+    for skill, roles in SKILL_ROLES.items():
+        for role in roles:
+            files[f"{skill}/references/roles/{role}.md"] = _template(f"roles/{role}.md")
     files["factory-design/references/design-template.md"] = _template("design/design.md")
     files["factory-implement/references/adr-template.md"] = _template("docs/decisions/adr.md")
     return dict(sorted(files.items()))
@@ -337,16 +339,18 @@ def _existing_docs(root: Path) -> list[str]:
 
 def _deletions(root: Path, plan: Plan, deletes: list[tuple[str, str]]) -> None:
     proposed: dict[str, str] = {}
-    current_skills = {rel.split("/", 1)[0] for rel in _skill_files()}
+    current = set(_skill_files())
     for base in SKILL_BASES:
         folder = root / base
         if not folder.is_dir():
             continue
         for skill in folder.iterdir():
-            if skill.name.startswith("factory-") and skill.name not in current_skills:
-                for file in sorted(skill.rglob("*")):
-                    if file.is_file() and MARK.search(file.read_text(encoding="utf-8", errors="ignore")):
-                        proposed[str(file.relative_to(root))] = "leftover from an earlier Factory version"
+            if not skill.name.startswith("factory-"):
+                continue
+            for file in sorted(skill.rglob("*")):
+                if (file.is_file() and str(file.relative_to(folder)) not in current
+                        and MARK.search(file.read_text(encoding="utf-8", errors="ignore"))):
+                    proposed[str(file.relative_to(root))] = "leftover from an earlier Factory version"
     if (root / "docs").is_dir():
         for file in sorted((root / "docs").rglob("*.md")):
             if not file.read_text(encoding="utf-8").strip():
@@ -455,10 +459,6 @@ def _default_branch(root: Path) -> str:
         return git.current_branch(root) or "main"
 
 
-def plan_init(root: Path, main_checkout: Path, deletes: list[tuple[str, str]]) -> dict[str, Any]:
-    return build_plan(root, main_checkout, deletes).data()
-
-
 def apply_init(
     root: Path, main_checkout: Path, state_dir: Path, plan_id: str, deletes: list[tuple[str, str]], excludes: list[str]
 ) -> tuple[dict[str, Any], list[str]]:
@@ -543,7 +543,7 @@ def restore(root: Path, state_dir: Path, name: str) -> dict[str, Any]:
 
 def install_skill(home: Path) -> dict[str, Any]:
     """Install the `factory-init` skill for this user (Claude and Codex), so `/factory-init` works in
-    a repository that has no Factory yet (design §3)."""
+    a repository that has no Factory yet."""
     files = {rel: content for rel, content in _skill_files().items() if rel.startswith("factory-init/")}
     written = []
     for base in (".claude/skills", ".agents/skills"):

@@ -55,24 +55,24 @@ def worktree_paths(cwd: Path | None = None) -> list[Path]:
     return [Path(line[len(prefix) :]).resolve() for line in output.splitlines() if line.startswith(prefix)]
 
 
-def current_branch(cwd: Path | None = None) -> str:
-    """The checked-out branch, or "" when HEAD is detached."""
+def _try(args: list[str], cwd: Path | None) -> str | None:
+    """`run`, or None when git answers with a failure (unknown ref, unset key, ...)."""
     try:
-        return run(["symbolic-ref", "--short", "-q", "HEAD"], cwd)
+        return run(args, cwd)
     except FactoryError as exc:
         if exc.code == "git_failed":
-            return ""
+            return None
         raise
+
+
+def current_branch(cwd: Path | None = None) -> str:
+    """The checked-out branch, or "" when HEAD is detached."""
+    return _try(["symbolic-ref", "--short", "-q", "HEAD"], cwd) or ""
 
 
 def config_value(key: str, cwd: Path | None = None) -> str:
     """`git config --get <key>`, or "" when it is not set."""
-    try:
-        return run(["config", "--get", key], cwd)
-    except FactoryError as exc:
-        if exc.code == "git_failed":
-            return ""
-        raise
+    return _try(["config", "--get", key], cwd) or ""
 
 
 def commit_paths(paths: list[str], message: str, cwd: Path) -> str:
@@ -97,33 +97,16 @@ def commit_paths(paths: list[str], message: str, cwd: Path) -> str:
 
 def is_ancestor(commit: str, ref: str, cwd: Path | None = None) -> bool:
     """True if `commit` is already contained in `ref`; False if not, or if either is unknown."""
-    try:
-        run(["merge-base", "--is-ancestor", commit, ref], cwd)
-    except FactoryError as exc:
-        if exc.code == "git_failed":
-            return False
-        raise
-    return True
+    return _try(["merge-base", "--is-ancestor", commit, ref], cwd) is not None
 
 
 def ref_exists(ref: str, cwd: Path | None = None) -> bool:
-    try:
-        run(["rev-parse", "--verify", "-q", f"{ref}^{{commit}}"], cwd)
-    except FactoryError as exc:
-        if exc.code == "git_failed":
-            return False
-        raise
-    return True
+    return _try(["rev-parse", "--verify", "-q", f"{ref}^{{commit}}"], cwd) is not None
 
 
 def show_file(ref: str, path: str, cwd: Path | None = None) -> str | None:
     """Content of `path` in `ref`, or None if it is not there."""
-    try:
-        return run(["show", f"{ref}:{path}"], cwd)
-    except FactoryError as exc:
-        if exc.code == "git_failed":
-            return None
-        raise
+    return _try(["show", f"{ref}:{path}"], cwd)
 
 
 NOT_CODE = [":(exclude)docs", ":(exclude).factory"]
