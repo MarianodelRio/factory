@@ -9,7 +9,8 @@ Controlled through the directory in $FAKE_ORCA_DIR:
   order, one per call; after the last one the default answer comes back.
 `worktree create` really creates a Git worktree of the repo in $FAKE_ORCA_REPO under
 $FAKE_ORCA_DIR/workspaces/<name>, so the code under test sees a real workspace.
-`agent launch --retry-launch <operationId>` answers with that same operationId.
+`agent launch --retry-launch <operationId>` answers with that same operationId. `worktree rm`
+really removes the worktree.
 """
 
 import json
@@ -184,6 +185,14 @@ def main():
         answer(0, create_worktree(argv))
     if command == "worktree show":
         answer(0, show_worktree(argv))
+    if command == "worktree rm":
+        selector = (flag(argv, "--worktree") or "").removeprefix("id:")
+        path = selector.split("::", 1)[-1]
+        try:
+            git("worktree", "remove", path, cwd=REPO)
+        except subprocess.CalledProcessError as exc:
+            answer(1, error("worktree_remove_failed", exc.stderr.strip()))
+        answer(0, {"id": "fake", "ok": True, "result": {"removed": True}, "_meta": {}})
     if command == "worktree ps":
         answer(0, listed_worktrees())
     if command == "terminal list":

@@ -19,6 +19,14 @@ output, the files under `.factory/` (`schema_version`), and the skills' names an
   rebased (`gh pr view`); without one, the branch's commits must be in the base. A pull request
   closed without merging needs the person. `swfactory task merged <task>` records a merge the
   Factory cannot see. The board has a *To merge* column and records merges once a minute.
+- Each task chooses how it integrates: `integrate: pr` (the person merges the PR) or
+  `integrate: merge` (`task publish` opens the PR and merges it right away with a merge commit).
+  The default is `git.integrate` (`pr`); the designer asks in the outline.
+- The task branch is pushed when the task is claimed (visible on GitHub from the start) and again
+  when it is finished. The PR is linked to the Orca card.
+- After a merge the remote branch is deleted, and `git.cleanup` (`ask`, `always`, `never`) decides
+  whether the workspace and the local branch are removed. `swfactory task cleanup <task>` removes
+  them (never with uncommitted files), `--keep` keeps them.
 
 ### Changed
 - `done` now means merged: dependencies only wait for their tasks to be `done`, without git checks.

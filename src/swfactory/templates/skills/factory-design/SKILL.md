@@ -26,7 +26,9 @@ changes do not need the Factory: the person can ask an agent directly.
 4. **Outline and wait**: before writing anything, present a short outline (10–20 lines): goal and
    scope; the chosen approach in 2–4 sentences and the alternatives considered with why this one;
    the acceptance criteria, one line each with how they are verified; the tasks (title,
-   dependencies, complexity, reviews); risks and open questions. Then stop. Reserve and write
+   dependencies, complexity, reviews, integration); risks and open questions. For integration ask
+   the person: "PR or direct merge?" (`integrate: pr` — they merge the PR — or `integrate: merge`
+   — merged as soon as it is finished; leave it out to use `git.integrate`). Then stop. Reserve and write
    nothing until the person says OK; apply their corrections or other options and outline again.
    This OK only allows writing the design: it is never an approval.
 5. **Reserve the id**: `swfactory design register --json` creates `.factory/changes/<id>/`.

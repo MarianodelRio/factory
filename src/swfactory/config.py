@@ -20,13 +20,15 @@ DEFAULTS: dict[str, Any] = {
     "orca": {"min_version": "1.4.229"},
     "checks": {},
     "review": {"quality": "auto", "conformance": "auto", "max_rounds": 2},
-    "git": {"pr_on_done": "offer"},
+    "git": {"pr_on_done": "offer", "integrate": "pr", "cleanup": "ask"},
     "language": {"artifacts": "en"},
     "board": {"port": 8765, "idle_minutes": 30},
 }
 
 REVIEW_MODES = ("auto", "always", "never")
 PR_MODES = ("offer", "always", "never")
+INTEGRATE_MODES = ("pr", "merge")
+CLEANUP_MODES = ("ask", "always", "never")
 
 
 def load_config(path: Path) -> dict[str, Any]:
@@ -66,6 +68,8 @@ def _validate(config: dict[str, Any]) -> None:
     if type(rounds) is not int or rounds < 1:
         raise _invalid(f"review.max_rounds must be a positive integer, got {rounds!r}")
     _choice("git.pr_on_done", config["git"]["pr_on_done"], PR_MODES)
+    _choice("git.integrate", config["git"]["integrate"], INTEGRATE_MODES)
+    _choice("git.cleanup", config["git"]["cleanup"], CLEANUP_MODES)
     port, idle = config["board"]["port"], config["board"]["idle_minutes"]
     if type(port) is not int or not 1 <= port <= 65535:
         raise _invalid(f"board.port must be a TCP port number, got {port!r}")

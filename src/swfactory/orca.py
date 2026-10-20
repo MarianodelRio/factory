@@ -184,6 +184,20 @@ def create_workspace(name: str, base: str, main_checkout: Path) -> dict[str, str
     return {"id": created["id"], "path": created["path"], "branch": branch}
 
 
+def link_pull_request(workspace_id: str, number: int) -> list[str]:
+    """Show the pull request on the workspace's card; a failure is only a warning."""
+    try:
+        run(["worktree", "set", "--worktree", f"id:{workspace_id}", "--pr", str(number)])
+    except FactoryError as exc:
+        return [f"the Orca card was not linked to PR #{number}: {exc.message}"]
+    return []
+
+
+def remove_workspace(workspace_id: str) -> None:
+    """Remove a workspace (its worktree folder) from Orca; never forced."""
+    run(["worktree", "rm", "--worktree", f"id:{workspace_id}"])
+
+
 def workspace_exists(workspace_id: str) -> bool:
     try:
         run(["worktree", "show", "--worktree", f"id:{workspace_id}"])

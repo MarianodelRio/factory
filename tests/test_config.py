@@ -8,7 +8,7 @@ DEFAULTS = {
     "orca": {"min_version": "1.4.229"},
     "checks": {},
     "review": {"quality": "auto", "conformance": "auto", "max_rounds": 2},
-    "git": {"pr_on_done": "offer"},
+    "git": {"pr_on_done": "offer", "integrate": "pr", "cleanup": "ask"},
     "language": {"artifacts": "en"},
     "board": {"port": 8765, "idle_minutes": 30},
 }
@@ -39,7 +39,7 @@ def test_empty_file_returns_defaults(tmp_path):
 def test_partial_section_is_merged_with_defaults(tmp_path):
     cfg = load_config(write(tmp_path, '[review]\nquality = "always"\n'))
     assert cfg["review"] == {"quality": "always", "conformance": "auto", "max_rounds": 2}
-    assert cfg["git"] == {"pr_on_done": "offer"}
+    assert cfg["git"] == {"pr_on_done": "offer", "integrate": "pr", "cleanup": "ask"}
 
 
 def test_full_valid_config(tmp_path):
@@ -71,7 +71,7 @@ artifacts = "es"
         "orca": {"min_version": "1.5.0"},
         "checks": {"test": "pytest", "lint": "ruff check .", "typecheck": "mypy src"},
         "review": {"quality": "never", "conformance": "always", "max_rounds": 3},
-        "git": {"pr_on_done": "never"},
+        "git": {"pr_on_done": "never", "integrate": "pr", "cleanup": "ask"},
         "language": {"artifacts": "es"},
         "board": {"port": 8765, "idle_minutes": 30},
     }
@@ -147,3 +147,8 @@ def test_invalid_toml(tmp_path):
 @pytest.mark.parametrize("text", ["[board]\nport = 0\n", "[board]\nport = \"8765\"\n", "[board]\nidle_minutes = 0\n"])
 def test_board_values_are_validated(tmp_path, text):
     assert "board." in invalid(write(tmp_path, text))
+
+
+@pytest.mark.parametrize(("key", "value"), [("integrate", "squash"), ("cleanup", "sometimes")])
+def test_invalid_integration_and_cleanup(tmp_path, key, value):
+    assert f"git.{key}" in invalid(write(tmp_path, f'[git]\n{key} = "{value}"\n'))

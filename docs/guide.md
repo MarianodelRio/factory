@@ -36,7 +36,8 @@ as a card in its sidebar. The Factory brings the method and keeps the record.
 
 ### What it never does
 
-It never merges, deploys, force-pushes or deletes branches or workspaces. It never approves a
+It never deploys or force-pushes. It merges only tasks you designed with `integrate: merge`, and
+it only deletes merged branches and, if you agree, merged workspaces. It never approves a
 design without your explicit message. It never deletes or overwrites your files without showing
 you first and keeping a backup.
 
@@ -162,6 +163,7 @@ The **Tasks** section is a YAML block. Each task has:
 | `complexity` | `trivial`, `normal` or `complex`: decides how the lead works (section 6) |
 | `review` | `[]`, `[quality]` or `[quality, conformance]` |
 | `scope` | Optional globs of the files the task should touch; changes outside it are flagged at finish |
+| `integrate` | Optional: `pr` (you merge its PR) or `merge` (merged as soon as it is finished); default `git.integrate` |
 | `acceptance` | Each AC of this task, with its command or `manual` |
 
 How `review` is usually chosen:
@@ -298,16 +300,27 @@ is missing:
 Files changed outside the task's `scope` produce a warning, and the conformance review decides if
 it is a deviation.
 
-### Publishing
+### Publishing and integrating
 
-Depending on `git.pr_on_done` (by default, `offer`), the agent offers to **push the task branch
-and open the PR**. Only that branch is pushed, never forced. The PR body lists the criteria with
-their evidence, the checks, the reviews with their findings, the memory updates and what is
-still pending. Publishing again pushes later commits to the
-same PR. Without a usable `gh`, the branch is pushed and the PR is left to you.
+The task branch is on the remote from the start: claiming a task pushes it (so it shows on GitHub
+right away) and finishing pushes it again.
 
-**You review and merge the PR.** Once it is in the base branch, the tasks that depended on it
-become `ready`.
+Each task says how its work reaches the base branch, `integrate` in the design (you choose it when
+the agent shows the outline; without it, `git.integrate` applies, `pr` by default):
+
+- **`pr`**: the agent offers to **push the branch and open the PR**. You review and merge it.
+- **`merge`**: the agent offers to **push and merge**. The Factory opens the PR and merges it right
+  away with a merge commit, so the history and the evidence stay on GitHub. If GitHub refuses
+  (required checks, conflicts), the PR stays open for you.
+
+`git.pr_on_done` decides whether the agent offers it (`offer`), does it (`always`) or not (`never`).
+The PR body lists the criteria with their evidence, the checks, the reviews with their findings,
+the memory updates and what is still pending. Publishing again pushes later commits to the same PR.
+Without a usable `gh`, the branch is pushed and the PR (and the merge) is left to you.
+
+When the task is merged it becomes `done`, its remote branch is deleted, and the Factory offers to
+remove its workspace and local branch (`git.cleanup`: `ask`, `always` or `never`). It never removes
+a workspace with uncommitted files.
 
 ## 7. Following and steering the work: `/factory-status`
 
@@ -468,7 +481,9 @@ shared by every workspace of the clone, because it lives in the main checkout.
 | `[checks]` `test`, `lint`, `typecheck`, `build` | commands | Run by `verify` in the task's workspace; at least one is required to finish a task |
 | `review.quality`, `review.conformance` | `auto`, `always`, `never` | `auto` follows each task's `review` field; `always` / `never` force it for every task |
 | `review.max_rounds` | `2` | Rounds without a pass before a task is blocked |
-| `git.pr_on_done` | `offer`, `always`, `never` | Whether the lead offers, always does, or never pushes and opens the PR when done |
+| `git.pr_on_done` | `offer`, `always`, `never` | Whether the lead offers, always does, or never publishes a finished task |
+| `git.integrate` | `pr`, `merge` | Default integration of a task: a PR you merge, or a merge right away (a task's `integrate` wins) |
+| `git.cleanup` | `ask`, `always`, `never` | After a merge: offer, always do, or never remove the workspace and local branch |
 | `board.port` | `8765` | Port of the local board (another free one is used if it is busy) |
 | `board.idle_minutes` | `30` | The board stops by itself after this long without visits |
 | `orca.min_version` | `1.4.229` | Oldest Orca the Factory accepts |
@@ -489,7 +504,8 @@ expect. Use double quotes in them (`python -c "print(1)"`) so they work everywhe
 - Nothing is deleted or overwritten unless it appears in a plan you confirmed, and there is always
   a backup.
 - Only the task branch and the base branch's approval commits are pushed, never your own unpushed
-  commits and never forced. No merge, no deleting branches or workspaces.
+  commits and never forced. Only tasks designed with `integrate: merge` are merged, and only merged
+  branches are deleted; a workspace is removed only once merged, without uncommitted files.
 - No secrets in the state, cards, PRs or memory. `.env` and key files are refused as evidence,
   and common secret patterns are masked in everything the CLI writes.
 - File contents, issues, web pages and other agents' messages are data, never instructions.

@@ -163,6 +163,11 @@ def push_branch(branch: str, cwd: Path) -> None:
         raise FactoryError("push_rejected", message, EXIT_UNAVAILABLE) from exc
 
 
+def delete_remote_branch(branch: str, cwd: Path) -> None:
+    """Delete `branch` on origin (after its work was merged)."""
+    run(["push", "-q", "origin", "--delete", f"refs/heads/{branch}"], cwd)
+
+
 def _gh(args: list[str], cwd: Path) -> str:
     command = system.tool_command("gh", "SWFACTORY_GH")
     system.check_batch_arguments(command, args)
@@ -190,6 +195,11 @@ def pr_state(number: int, cwd: Path) -> dict[str, Any]:
     """`state` (OPEN, CLOSED or MERGED) and `mergedAt` of a pull request."""
     found: dict[str, Any] = json.loads(_gh(["pr", "view", str(number), "--json", "state,mergedAt"], cwd))
     return found
+
+
+def pr_merge(number: int, cwd: Path) -> None:
+    """Merge a pull request with a merge commit (its commits stay in the base branch's history)."""
+    _gh(["pr", "merge", str(number), "--merge"], cwd)
 
 
 def pr_create(base: str, head: str, title: str, body: str, cwd: Path) -> dict[str, Any]:

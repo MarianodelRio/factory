@@ -184,3 +184,10 @@ def test_no_acceptance_criteria_section():
 
 def test_crlf_design_parses():
     assert len(parse_design(VALID.replace("\n", "\r\n"), "CHG-0012", KNOWN)["tasks"]) == 2
+
+
+def test_a_task_may_choose_how_it_integrates():
+    merge = VALID.replace("  complexity: normal\n", "  complexity: normal\n  integrate: merge\n", 1)
+    assert parse_design(merge, "CHG-0012", KNOWN)["tasks"][0]["integrate"] == "merge"
+    errors = errors_of(merge.replace("integrate: merge", "integrate: squash"))
+    assert any("integrate 'squash' must be one of pr, merge" in e for e in errors)

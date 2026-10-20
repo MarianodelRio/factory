@@ -122,6 +122,10 @@ def task_publish(args: argparse.Namespace) -> Result:
     return tasks.publish(args.task, task_context())
 
 
+def task_cleanup(args: argparse.Namespace) -> Result:
+    return tasks.cleanup(args.task, task_context(), args.keep)
+
+
 def task_merged(args: argparse.Namespace) -> Result:
     return tasks.mark_merged(args.task, task_context())
 
@@ -209,6 +213,7 @@ HANDLERS: dict[str, Handler] = {
     "task finish": task_finish,
     "task publish": task_publish,
     "task merged": task_merged,
+    "task cleanup": task_cleanup,
     "task recover": task_recover,
     "status": status,
     "sync": sync_command,
@@ -309,6 +314,10 @@ def build_parser() -> Parser:
     finish = command(task_cmds, "finish", "task finish", "close a task when every gate passes")
     finish.add_argument("task")
     finish.add_argument("--memory", required=True, help='memory summary, or "none"')
+
+    cleanup = command(task_cmds, "cleanup", "task cleanup", "remove a merged task's workspace and local branch")
+    cleanup.add_argument("task")
+    cleanup.add_argument("--keep", action="store_true", help="keep them, and stop offering it")
 
     recover = command(task_cmds, "recover", "task recover", "inspect an interrupted task")
     recover.add_argument("task")

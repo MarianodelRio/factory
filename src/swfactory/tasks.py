@@ -16,6 +16,7 @@ Raises FactoryError with these codes:
 - review_invalid (EXIT_PRECONDITION): the reviewer JSON does not follow the reviewer JSON contract.
 - review_agent_missing (EXIT_USAGE): a conformance review without `--agent` or a recorded reviewer.
 - gates_not_met (EXIT_PRECONDITION): `finish` with closing criteria unmet; `details` lists them.
+- workspace_not_clean (EXIT_PRECONDITION): `task cleanup` of a workspace with uncommitted files.
 - not_merged (EXIT_PRECONDITION): `task merged` for a task that is not waiting to be merged.
 - session_alive (EXIT_PRECONDITION): `recover --confirm` while Orca says the agent is alive.
 - workspace_missing (EXIT_PRECONDITION): `recover --confirm` when the workspace no longer exists.
@@ -255,11 +256,12 @@ def record_merges(ctx: Context) -> list[str]:
         except FactoryError as exc:
             warnings.append(f"cannot tell whether {task_id} is merged: {exc.message}")
             continue
-        _apply_merge(task_id, record["state"], merged, when, closed, ctx)
+        warnings += _apply_merge(task_id, record["state"], merged, when, closed, ctx)
     return warnings
 
 
-def _apply_merge(task_id: str, state: str, merged: bool, when: str | None, closed: bool, ctx: Context) -> None:
+def _apply_merge(task_id: str, state: str, merged: bool, when: str | None, closed: bool,
+                 ctx: Context) -> list[str]:
     def apply(current: State) -> State:
         if current["state"] != state:
             return current  # something else changed it meanwhile
@@ -279,11 +281,68 @@ def _apply_merge(task_id: str, state: str, merged: bool, when: str | None, close
     elif state == "done" or (previous.get("pull_request") or {}).get("closed", False) != closed:
         record = ctx.store.update_task(task_id, apply, "awaiting_merge" if state == "done" else "pr_closed")
     else:
-        return
+        return []
     workspace = (record.get("workspace") or {}).get("orca_id")
     task = catalog(ctx, sync=False).get(task_id)
+    warnings = []
     if workspace and task:
-        orca.update_card(workspace, task_id, task["title"], record["state"], card_detail(record))
+        warnings += orca.update_card(workspace, task_id, task["title"], record["state"], card_detail(record))
+    if merged and state == "to_merge":
+        warnings += _after_merge(task_id, record, ctx)
+    return warnings
+
+
+def _after_merge(task_id: str, record: State, ctx: Context) -> list[str]:
+    """Tidy up after a merge: delete the remote branch, and remove the workspace and the local
+    branch when `git.cleanup` is `always` (with `ask`, the person is asked)."""
+    warnings: list[str] = []
+    branch = (record.get("workspace") or {}).get("branch")
+    if branch and git.ref_exists(f"origin/{branch}", ctx.main_checkout):
+        try:
+            git.delete_remote_branch(branch, ctx.main_checkout)
+        except FactoryError as exc:
+            warnings.append(f"the remote branch {branch} was not deleted: {exc.message}")
+    if _config(ctx)["git"]["cleanup"] == "always":
+        try:
+            warnings += cleanup(task_id, ctx)[1]
+        except FactoryError as exc:
+            warnings.append(f"the workspace of {task_id} was kept: {exc.message}")
+    return warnings
+
+
+def cleanup(task_id: str, ctx: Context, keep: bool = False) -> tuple[dict[str, Any], list[str]]:
+    """Remove a merged task's Orca workspace and its local branch (or, with `keep`, record that the
+    person keeps them). Refused while the workspace has uncommitted or untracked files."""
+    _, record = _started(task_id, ctx)
+    if record["state"] != "done":
+        _reject(record, "clean up", f"it is {record['state']}; only a merged (done) task is cleaned up")
+    if keep:
+        ctx.store.update_task(task_id, lambda s: {**s, "cleanup": "kept"}, "cleanup_kept")
+        return {"task": task_id, "kept": True}, []
+    workspace = record.get("workspace") or {}
+    path = workspace_path(record)
+    if path.is_dir():
+        leftovers = git.run(["status", "--porcelain"], path).splitlines()
+        if leftovers:
+            raise FactoryError("workspace_not_clean", f"the workspace of {task_id} has uncommitted files",
+                               EXIT_PRECONDITION, leftovers[:20])
+        orca.remove_workspace(workspace["orca_id"])
+    warnings: list[str] = []
+    branch = workspace.get("branch")
+    if branch and git.ref_exists(f"refs/heads/{branch}", ctx.main_checkout):
+        try:
+            git.run(["branch", "-q", "-D", branch], ctx.main_checkout)
+        except FactoryError as exc:
+            warnings.append(f"the local branch {branch} was kept: {exc.message}")
+
+    ctx.store.update_task(task_id, lambda s: {**s, "cleanup": "done"}, "cleanup")
+    return {"task": task_id, "workspace_removed": not path.is_dir(), "branch": branch}, warnings
+
+
+def cleanup_pending(record: State | None, cfg: dict[str, Any]) -> bool:
+    """A merged task whose workspace is still there and the person has not been asked about."""
+    return (record is not None and record["state"] == "done" and cfg["git"]["cleanup"] == "ask"
+            and not record.get("cleanup") and bool(record.get("workspace")) and workspace_path(record).is_dir())
 
 
 def mark_merged(task_id: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
@@ -292,8 +351,7 @@ def mark_merged(task_id: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
     if record["state"] != "to_merge":
         raise FactoryError("not_merged", f"{task_id} is {record['state']}, not waiting to be merged",
                            EXIT_PRECONDITION)
-    _apply_merge(task_id, "to_merge", True, now(), False, ctx)
-    return {"task": task_id, "state": "done"}, []
+    return {"task": task_id, "state": "done"}, _apply_merge(task_id, "to_merge", True, now(), False, ctx)
 
 
 def list_tasks(ctx: Context) -> dict[str, Any]:
@@ -359,6 +417,7 @@ def claim(task_id: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
     except Exception:
         ctx.store.release_claim(task_id)  # the task goes back to ready
         raise
+    synced += _push_quietly(workspace["branch"], ctx)
     next_action = f"launch the lead agent (swfactory task launch {task_id})"
     warnings = synced + orca.update_card(workspace["id"], task_id, task["title"], "in_progress", next_action)
     data = {"task": task_id, "state": "in_progress", "workspace": workspace["id"], "path": workspace["path"],
@@ -408,6 +467,18 @@ def launch(
             "operation_id": launched["operation_id"], "terminal": launched["terminal"],
             "message": f"{task_id} launched; open it from the Orca sidebar"}
     return data, warnings
+
+
+def _push_quietly(branch: str, ctx: Context) -> list[str]:
+    """Push the task branch so it is visible on the remote (at claim) and backed up (at finish);
+    a failure is only a warning."""
+    if not git.has_remote("origin", ctx.main_checkout):
+        return []
+    try:
+        git.push_branch(branch, ctx.main_checkout)
+    except FactoryError as exc:
+        return [f"the branch {branch} was not pushed: {exc.message}"]
+    return []
 
 
 def _set_attempt(ctx: Context, task_id: str, fields: dict[str, Any], event: str) -> None:
@@ -820,6 +891,7 @@ def finish(task_id: str, memory: str, ctx: Context) -> tuple[dict[str, Any], lis
     ctx.store.release_claim(task_id)
     warnings = [f"changed outside the task scope: {path}" for path in out_of_scope]
     warnings += _card(task, updated, ctx)
+    warnings += _push_quietly(updated["workspace"]["branch"], ctx)
     data = {"task": task_id, "state": "to_merge", "memory": memory, "scope_warnings": out_of_scope,
             "notes": delivered}
     return data, warnings
@@ -838,7 +910,8 @@ def _outside_scope(task: dict[str, Any], files: list[str]) -> list[str]:
 
 def publish(task_id: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
     """Push the task branch (only it, never forced) and open its PR against the base branch, or
-    reuse the open one. Without a usable `gh` the PR is left to the person."""
+    reuse the open one; a task that integrates by `merge` has its PR merged right away. Without a
+    usable `gh` the PR (and the merge) is left to the person."""
     task, record = _started(task_id, ctx)
     if record["state"] != "to_merge":
         _reject(record, "publish", f"it is {record['state']}; only a finished task waiting to be merged is published")
@@ -858,14 +931,44 @@ def publish(task_id: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
             raise
         warnings.append(f"{exc.message}: the branch {branch} is pushed; open the PR against {base} yourself")
 
-    if pull_request:
-        def apply(state: State) -> State:
-            state["pull_request"] = pull_request
-            return state
+    mode = integration(task, _config(ctx))
+    merged, merged_at = False, None
 
-        record = ctx.store.update_task(task_id, apply, "publish")
-        warnings += _card(task, record, ctx)
-    return {"task": task_id, "branch": branch, "pull_request": pull_request}, warnings
+    def apply(state: State) -> State:
+        state["pull_request"] = pull_request or state.get("pull_request")
+        state["published_at"] = now()
+        return state
+
+    record = ctx.store.update_task(task_id, apply, "publish")
+    warnings += _card(task, record, ctx)
+    if pull_request:
+        warnings += orca.link_pull_request(record["workspace"]["orca_id"], pull_request["number"])
+        if mode == "merge":
+            try:
+                git.pr_merge(pull_request["number"], ctx.main_checkout)
+                merged = True
+            except FactoryError as exc:
+                warnings.append(f"PR #{pull_request['number']} could not be merged ({exc.message}); "
+                                "it stays open for the person")
+        if merged:
+            try:
+                merged_at = git.pr_state(pull_request["number"], ctx.main_checkout).get("mergedAt")
+            except FactoryError:
+                merged_at = None
+    elif mode == "merge":
+        warnings.append(f"the task integrates by merge, but without gh it cannot be merged: merge {branch} "
+                        f"into {base} yourself")
+    if merged:
+        warnings += sync.refresh(ctx.main_checkout, ctx.store.root, base)
+        warnings += _apply_merge(task_id, "to_merge", True, merged_at or now(), False, ctx)
+    data = {"task": task_id, "branch": branch, "integrate": mode, "pull_request": pull_request,
+            "merged": merged, "state": "done" if merged else "to_merge"}
+    return data, warnings
+
+
+def integration(task: dict[str, Any], cfg: dict[str, Any]) -> str:
+    """How the task's work reaches the base branch: `pr` (the person merges) or `merge`."""
+    return str(task.get("integrate") or cfg["git"]["integrate"])
 
 
 def pr_body(task: dict[str, Any], record: State) -> str:
@@ -1014,6 +1117,8 @@ def awaiting_approval(ctx: Context) -> list[str]:
 def _attention(row: dict[str, Any]) -> list[str]:
     task, state, reason = row["id"], row["state"], row["reason"]
     notes = []
+    if state == "done" and row["next_step"].startswith("merged: remove its workspace"):
+        notes.append(f"{task} is merged: remove its workspace and branch? (swfactory task cleanup {task})")
     if state == "blocked":
         notes.append(f"{task} is blocked: {reason}")
     if state == "interrupted":
@@ -1048,6 +1153,8 @@ def _next_step(
     if state == "to_merge" and record:
         return _after_finish(record, task, ctx)
     if state == "done":
+        if cleanup_pending(record, cfg):
+            return f"merged: remove its workspace? (swfactory task cleanup {task['id']}, or --keep)"
         return f"nothing: merged into {ctx.base() or 'the base branch'}"
     return "nothing"
 
@@ -1062,7 +1169,7 @@ def _after_finish(record: State, task: dict[str, Any], ctx: Context) -> str:
                 f"it is merged (swfactory task merged {task['id']})")
     if pull_request:
         return f"merge PR #{pull_request['number']} when ready (the person decides)"
-    if git.ref_exists(f"origin/{branch}", ctx.main_checkout):
+    if record.get("published_at"):
         return f"{branch} is pushed: open its PR or merge it into {base or 'the base branch'} (the person decides)"
     return f"swfactory task publish {task['id']}"
 

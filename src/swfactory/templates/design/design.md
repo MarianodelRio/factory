@@ -29,6 +29,7 @@ interfaces between tasks, known pitfalls.
   complexity: normal
   review: [quality]
   scope: ["src/…/**"]          # optional
+  integrate: pr                # optional: pr (the person merges) or merge; default git.integrate
   acceptance:
     AC-01: "pytest …"
     AC-02: manual

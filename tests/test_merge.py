@@ -37,7 +37,8 @@ def test_a_merge_into_the_base_makes_it_done(finished, capsys):  # noqa: F811
     branch = store.read_task(TASK)["workspace"]["branch"]
     git("merge", "-q", "--no-ff", "-m", "merge", branch, cwd=repo.root)
     task, _ = row(capsys, TASK)
-    assert (task["state"], task["next_step"]) == ("done", "nothing: merged into main")
+    assert task["state"] == "done"
+    assert task["next_step"].startswith("merged: remove its workspace?")
     assert store.read_task(TASK)["merged_at"].endswith("Z")
     assert row(capsys, DEPENDENT)[0]["state"] == "ready"
 

@@ -41,6 +41,11 @@ branch (status and sync check it; a pull request merged on GitHub counts, also s
 person says it is merged but the Factory cannot see it ("CHG-0012-01 ya está mergeada"), run
 `swfactory task merged <task> --json`. A pull request closed without merging shows in `attention`.
 
+Once merged, the remote branch is deleted. With `git.cleanup = "ask"` (default) `attention` offers
+removing the task's workspace and local branch: ask the person, then
+`swfactory task cleanup <task> --json` (refused if the workspace has uncommitted files: tell them),
+or `--keep` to keep them and stop offering. With `always` it happens by itself.
+
 ## Notes and pauses
 
 - "Leave a note on <task>: …" → `swfactory task note <task> --text "<note in English>" --json`. The

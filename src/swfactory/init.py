@@ -429,7 +429,7 @@ def _config_text(root: Path, report: dict[str, Any], tracked: dict[str, str]) ->
             "[orca]", f"min_version = {json.dumps(d['orca']['min_version'])}", "",
             "[checks]", *[f"{k} = {json.dumps(v)}" for k, v in checks.items()], "",
             "[review]", *[f"{k} = {json.dumps(v)}" for k, v in d["review"].items()], "",
-            "[git]", f"pr_on_done = {json.dumps(d['git']['pr_on_done'])}", "",
+            "[git]", *[f"{k} = {json.dumps(v)}" for k, v in d["git"].items()], "",
             "[language]", f"artifacts = {json.dumps(d['language']['artifacts'])}", "",
             "[board]", *[f"{k} = {json.dumps(v)}" for k, v in d["board"].items()], "",
         ]

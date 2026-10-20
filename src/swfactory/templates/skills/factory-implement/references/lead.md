@@ -63,8 +63,14 @@ Your role: `roles/lead.md`. You own the task end to end, inside its workspace.
    `--memory none`): the task becomes `to_merge`, and `done` once its work is merged. It hands over pending notes first: stop if `paused`. If it answers
    `gates_not_met`, fix each item in `error.details`. Mention any "changed outside the task scope"
    warning to the person; the conformance review decides whether it is a deviation.
-3. Publishing follows `git.pr_on_done` in `.factory/config.toml`: `offer` (default) → offer
-   "push the branch and open the PR?"; `always` → do it; `never` → do not. If the person asks,
-   do it directly: `swfactory task publish <task> --json`. Running it again pushes later commits to
-   the same PR. If `gh` is missing or the push is rejected, report it: the branch stays intact and
-   the PR is left to the person. Never merge, force push, or delete branches or workspaces.
+3. Publishing follows `git.pr_on_done` in `.factory/config.toml` and the task's integration
+   (`integrate` in `swfactory task show`, else `git.integrate`):
+   - `pr`: `offer` (default) → offer "push the branch and open the PR?"; `always` → do it;
+     `never` → do not. The person merges the PR.
+   - `merge`: `offer` → offer "push and merge into <base>?"; `always` → do it; `never` → do not.
+     The publish opens the PR and merges it right away (a merge commit); if GitHub refuses (checks,
+     conflicts), the PR stays open for the person.
+   Run `swfactory task publish <task> --json` (also directly if the person asks). Running it again
+   pushes later commits to the same PR. If `gh` is missing or the push is rejected, report it: the
+   branch stays intact and the PR (or merge) is left to the person. Never merge any other way,
+   never force push, never delete branches or workspaces yourself.

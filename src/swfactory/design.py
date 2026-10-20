@@ -34,7 +34,8 @@ AC_LINE = re.compile(r"^\s*-\s*(AC-\d{2,})\s*:")
 FENCE = re.compile(r"^```yaml\s*\n(.*?)^```\s*$", re.MULTILINE | re.DOTALL)
 
 REQUIRED = ("id", "title", "depends_on", "complexity", "review", "acceptance")
-OPTIONAL = ("scope",)
+OPTIONAL = ("scope", "integrate")
+INTEGRATE_MODES = ("pr", "merge")
 COMPLEXITIES = ("trivial", "normal", "complex")
 REVIEW_TYPES = ("quality", "conformance")
 
@@ -153,6 +154,8 @@ def _validate_tasks(
             not isinstance(task["scope"], list) or not all(isinstance(g, str) and g for g in task["scope"])
         ):
             errors.append(f"{name}: scope must be a list of path globs")
+        if "integrate" in task and task["integrate"] not in INTEGRATE_MODES:
+            errors.append(f"{name}: integrate {task['integrate']!r} must be one of {', '.join(INTEGRATE_MODES)}")
 
         depends = task.get("depends_on")
         if "depends_on" in task:

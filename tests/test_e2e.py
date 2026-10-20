@@ -202,7 +202,7 @@ def test_next_step_after_done(initialized, capsys):
     assert next_step().startswith("merge PR #1")
     branch = json.loads((initialized.root / f".factory/state/{task}.json").read_text())["workspace"]["branch"]
     git("merge", "-q", "--no-ff", "-m", "merge", branch, cwd=initialized.root)
-    assert next_step() == "nothing: merged into main"
+    assert next_step().startswith("merged: remove its workspace?")
 
 
 def test_next_step_after_a_push_without_pr(initialized, fake_gh, capsys):
