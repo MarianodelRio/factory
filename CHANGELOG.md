@@ -50,7 +50,7 @@ output, the files under `.factory/` (`schema_version`), and the skills' names an
 
 ### Changed
 - `/factory-implement` is now `/factory-build`. `/factory-init` installs it and removes the old
-  skill's files.
+  skill's files; until then, leads are launched with the old skill's name.
 - The index of `docs/` is `docs/index.md`, and the decisions index `docs/decisions/index.md` (a
   README is for people). `/factory-init` renames an existing `docs/decisions/README.md` and fixes
   the links to it in `AGENTS.md` and `docs/`.

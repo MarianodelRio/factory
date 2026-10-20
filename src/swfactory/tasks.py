@@ -488,7 +488,7 @@ def launch(
         return state
 
     record = ctx.store.update_task(task_id, mark, "launch")
-    prompt = f"/factory-build {task_id}" + (f" --reviewer {reviewer}" if reviewer else "")
+    prompt = f"/{_build_skill(ctx)} {task_id}" + (f" --reviewer {reviewer}" if reviewer else "")
     workspace_id = record["workspace"]["orca_id"]
     try:
         launched = orca.launch_agent(workspace_id, agent, prompt, model, effort)
@@ -510,6 +510,16 @@ def launch(
             "operation_id": launched["operation_id"], "terminal": launched["terminal"],
             "message": f"{task_id} launched; open it from the Orca sidebar"}
     return data, warnings
+
+
+def _build_skill(ctx: Context) -> str:
+    """The skill the lead is launched with: `factory-build`, or `factory-implement` in a repository
+    whose skills were installed before the rename (until `/factory-init` updates them)."""
+    installed = [ctx.main_checkout / base for base in (".claude/skills", ".agents/skills")]
+    if not any((base / "factory-build").is_dir() for base in installed) and \
+            any((base / "factory-implement").is_dir() for base in installed):
+        return "factory-implement"
+    return "factory-build"
 
 
 def _push_quietly(branch: str, ctx: Context) -> list[str]:

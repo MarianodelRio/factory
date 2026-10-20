@@ -213,3 +213,11 @@ def test_concurrent_launches_start_one_agent(project, store, fake_orca, capsys):
     codes = sorted(results.get() for _ in procs)
     assert codes == [0, 4, 4, 4]
     assert len(orca_calls(fake_orca, "agent launch")) == 1
+
+
+def test_a_repo_with_the_skills_before_the_rename_gets_the_old_brief(project, fake_orca, capsys):
+    (project.root / ".claude/skills/factory-implement").mkdir(parents=True)
+    cli(capsys, "task", "claim", TASK)
+    assert cli(capsys, "task", "launch", TASK, "--agent", "claude")[0] == 0
+    launch = orca_calls(fake_orca, "agent launch")[-1]
+    assert launch[launch.index("--prompt") + 1] == f"/factory-implement {TASK}"
