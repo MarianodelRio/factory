@@ -65,11 +65,11 @@ def design_approve(args: argparse.Namespace) -> Result:
     else:
         message, method = args.message, "chat"
     store = TaskStore(paths.state_dir())
-    return design.approve(args.change, paths.changes_dir(), message, method, paths.main_checkout(), store), []
+    return design.approve(args.change, paths.changes_dir(), message, method, paths.main_checkout(), store)
 
 
 def design_reject(args: argparse.Namespace) -> Result:
-    return design.reject(args.change, paths.changes_dir(), args.reason, paths.main_checkout()), []
+    return design.reject(args.change, paths.changes_dir(), args.reason, paths.main_checkout(), paths.state_dir())
 
 
 def task_context() -> tasks.Context:
@@ -171,6 +171,10 @@ def status(args: argparse.Namespace) -> Result:
     return tasks.status(task_context())
 
 
+def sync_command(args: argparse.Namespace) -> Result:
+    return tasks.sync_command(task_context())
+
+
 def task_finish(args: argparse.Namespace) -> Result:
     return tasks.finish(args.task, args.memory, task_context())
 
@@ -202,6 +206,7 @@ HANDLERS: dict[str, Handler] = {
     "task publish": task_publish,
     "task recover": task_recover,
     "status": status,
+    "sync": sync_command,
     "memory check": memory_check,
     "doctor": doctor,
     "init": init_command,
@@ -308,6 +313,7 @@ def build_parser() -> Parser:
     command(memory_cmds, "check", "memory check", "check AGENTS.md, decisions and links")
 
     command(groups, "status", "status", "summary of changes and tasks")
+    command(groups, "sync", "sync", "fetch origin and bring the base branch up to date")
 
     board_group = groups.add_parser("board", help="local kanban board of the tasks (read-only)")
     board_cmds = board_group.add_subparsers(dest="action", required=True, metavar="<action>")

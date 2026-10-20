@@ -30,8 +30,9 @@ main checkout), and `swfactory task show <task> --json`.
    "revisa también conformidad" / "also review conformance").
 2. Check the task: `swfactory task show <task> --json`. If it is not `ready`, explain the `reason`
    (for example "waiting for CHG-0012-01 to be merged into main") and stop.
-3. Claim it: `swfactory task claim <task> --json`. Orca creates the workspace and its branch from the
-   base branch; if that fails the claim is undone.
+3. Claim it: `swfactory task claim <task> --json`. It fetches `origin` first and Orca creates the
+   workspace and its branch from the latest `origin/<base>` (`base` in the answer); if that fails
+   the claim is undone. Mention any sync warning.
 4. Launch the lead: `swfactory task launch <task> --agent <lead> --reviewer <reviewer> --json`, leaving
    out `--reviewer` when there is no conformance review and adding `--model`/`--effort` only if the
    person asked. If Orca refuses the agent, report it and ask for

@@ -9,8 +9,10 @@
    words.
 4. The client asks the person for permission for that command. If they refuse, nothing is
    approved.
-5. The CLI checks the base branch, writes `approval.json` and `tasks.yaml` and commits only the
-   change folder. Nothing is pushed. If it refuses, nothing was approved; explain the reason:
+5. The CLI checks the base branch, fetches `origin` and brings the base branch up to date, writes
+   `approval.json` and `tasks.yaml`, commits only the change folder and pushes the base branch so
+   task workspaces can start from it. It never pushes the person's own unpushed commits: then it
+   only warns (mention it). If it refuses, nothing was approved; explain the reason:
    `not_on_base_branch` (the message says how to switch), `commit_failed` (for example a hook),
    `approval_not_explicit` (the message did not name the change: ask again),
    `git_identity_missing` (`git config user.email` must be set), `design_invalid` (fix the design).

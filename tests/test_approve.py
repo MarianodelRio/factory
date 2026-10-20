@@ -62,9 +62,20 @@ def test_approve_on_base_branch_commits_only_the_change(project, capsys):
     assert out["data"]["commit"] == git("rev-parse", "HEAD", cwd=project.root)
 
 
-def test_approve_does_not_push(project, capsys):
-    cli(capsys, "design", "approve", CHANGE, "--message", "approve CHG-0012")
-    assert git("rev-parse", "origin/main", cwd=project.root) != git("rev-parse", "HEAD", cwd=project.root)
+def test_approve_pushes_the_approval_commit(project, capsys):
+    code, out = cli(capsys, "design", "approve", CHANGE, "--message", "approve CHG-0012")
+    assert code == 0, out
+    assert out["warnings"] == []
+    assert git("rev-parse", "origin/main", cwd=project.root) == git("rev-parse", "HEAD", cwd=project.root)
+
+
+def test_approve_never_pushes_the_persons_own_commits(project, capsys):
+    project.commit("src/app.py", "x = 1\n", "unpushed work")
+    origin = git("rev-parse", "origin/main", cwd=project.root)
+    code, out = cli(capsys, "design", "approve", CHANGE, "--message", "approve CHG-0012")
+    assert code == 0, out
+    assert git("rev-parse", "origin/main", cwd=project.root) == origin
+    assert any("other unpushed commits" in w for w in out["warnings"])
 
 
 def test_approve_on_another_branch_is_refused(project, capsys):

@@ -37,7 +37,7 @@ from typing import Any, NoReturn
 
 import yaml
 
-from swfactory import config, design, git, orca, system
+from swfactory import config, design, git, orca, sync, system
 from swfactory.output import (
     EXIT_CONFLICT,
     EXIT_PRECONDITION,
@@ -252,20 +252,22 @@ def new_attempt(number: int) -> dict[str, Any]:
 
 
 def claim(task_id: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
-    """Claim a ready task and create its Orca workspace from the base branch."""
+    """Claim a ready task and create its Orca workspace from the latest base branch (fetched first,
+    so the work starts from what is on the remote)."""
     task = _task(task_id, ctx)
     if ctx.store.read_claim(task_id) is not None:
         raise FactoryError("task_claimed", f"{task_id} is already claimed", EXIT_CONFLICT)
+    orca.check(_min_version(ctx))
+    base = orca.base_branch(ctx.main_checkout)
+    synced = sync.refresh(ctx.main_checkout, ctx.store.root, base)
     shown = view(task, ctx)
     if shown["state"] != "ready":
         raise FactoryError("task_not_ready", f"{task_id} is {shown['state']}: {shown['reason']}", EXIT_PRECONDITION)
-    orca.check(_min_version(ctx))
-    base = orca.base_branch(ctx.main_checkout)
-    _require_approval_on_base(task["change"], base, ctx)
+    start_ref = _approved_start(task["change"], base, ctx)
 
     ctx.store.create_claim(task_id, 1)
     try:
-        workspace = orca.create_workspace(task_id, base, ctx.main_checkout)
+        workspace = orca.create_workspace(task_id, start_ref, ctx.main_checkout)
 
         def start(state: State) -> State:
             state = transition(state, "claim", current="ready")
@@ -278,9 +280,9 @@ def claim(task_id: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
         ctx.store.release_claim(task_id)  # the task goes back to ready
         raise
     next_action = f"launch the lead agent (swfactory task launch {task_id})"
-    warnings = orca.update_card(workspace["id"], task_id, task["title"], "in_progress", next_action)
+    warnings = synced + orca.update_card(workspace["id"], task_id, task["title"], "in_progress", next_action)
     data = {"task": task_id, "state": "in_progress", "workspace": workspace["id"], "path": workspace["path"],
-            "branch": workspace["branch"], "attempt": 1}
+            "branch": workspace["branch"], "base": start_ref, "attempt": 1}
     return data, warnings
 
 
@@ -340,13 +342,17 @@ def _min_version(ctx: Context) -> str:
     return str(_config(ctx)["orca"]["min_version"])
 
 
-def _require_approval_on_base(change_id: str, base: str, ctx: Context) -> None:
+def _approved_start(change_id: str, base: str, ctx: Context) -> str:
+    """The ref a task workspace starts from: `origin/<base>` when the approval is already there,
+    else the local base branch (an approval that could not be pushed yet)."""
     folder = ctx.changes_dir / change_id
     approval = design.approval_of(folder) or {}
-    on_base = git.show_file(base, f".factory/changes/{change_id}/approval.json", ctx.main_checkout)
-    if on_base is None or json.loads(on_base).get("design_digest") != approval.get("design_digest"):
-        message = f"the approval of {change_id} is not committed on {base}"
-        raise FactoryError("approval_not_on_base", message, EXIT_PRECONDITION)
+    for ref in (f"origin/{base}", base):
+        on_ref = git.show_file(ref, f".factory/changes/{change_id}/approval.json", ctx.main_checkout)
+        if on_ref is not None and json.loads(on_ref).get("design_digest") == approval.get("design_digest"):
+            return ref
+    message = f"the approval of {change_id} is not committed on {base}"
+    raise FactoryError("approval_not_on_base", message, EXIT_PRECONDITION)
 
 
 def _started(task_id: str, ctx: Context) -> tuple[dict[str, Any], State]:
@@ -846,8 +852,25 @@ def _minutes_since(timestamp: str | None) -> int | None:
     return int((datetime.datetime.now(datetime.UTC) - then).total_seconds() // 60)
 
 
+def sync_repo(ctx: Context, force: bool = True) -> list[str]:
+    """Fetch origin and bring the local base branch up to date (see swfactory.sync)."""
+    return sync.refresh(ctx.main_checkout, ctx.store.root, ctx.base(), force)
+
+
+def sync_command(ctx: Context) -> tuple[dict[str, Any], list[str]]:
+    """`swfactory sync`: fetch, update the base branch and report where it stands."""
+    warnings = sync_repo(ctx)
+    base = ctx.base()
+    data: dict[str, Any] = {"base": base, "head": None}
+    if base and git.ref_exists(base, ctx.main_checkout):
+        data["head"] = git.run(["rev-parse", base], ctx.main_checkout)
+    return data, warnings
+
+
 def status(ctx: Context) -> tuple[dict[str, Any], list[str]]:
-    """Summary, every task and what needs attention, with liveness from Orca."""
+    """Summary, every task and what needs attention, with liveness from Orca. Fetches first (at
+    most once a minute) so merges done on the remote are seen."""
+    synced = sync_repo(ctx, force=False)
     all_tasks = catalog(ctx)
     cfg = _config(ctx)
     rows: list[dict[str, Any]] = []
@@ -865,7 +888,7 @@ def status(ctx: Context) -> tuple[dict[str, Any], list[str]]:
     for row in rows:
         counts[row["state"]] = counts.get(row["state"], 0) + 1
     summary = {"awaiting_approval": awaiting, "tasks": counts}
-    return {"summary": summary, "tasks": rows, "attention": attention}, []
+    return {"summary": summary, "tasks": rows, "attention": attention}, synced
 
 
 def task_row(task: dict[str, Any], record: State | None, liveness: str | None, broken: bool | None,

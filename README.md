@@ -108,7 +108,9 @@ In a Claude Code (or Codex) terminal in Orca, at the root of your repository:
   Codex reads project rules only if you trust the project in Codex).
 - A task is `done` only when every acceptance criterion has evidence, the checks pass and the
   required reviews passed on the final commit.
-- The Factory only pushes the task branch: no force push, merge or branch deletion.
+- The Factory pushes the task branch and the approval commits of the base branch, never your own
+  unpushed commits and never forced. It fetches `origin` before starting work, so merges done on
+  GitHub are seen.
 - Orca may launch Claude with `--dangerously-skip-permissions` (its `agentDefaultArgs` setting).
   The approval rule still asks in that mode. `swfactory doctor` warns when Claude's own settings
   skip permission prompts (`bypassPermissions`); it cannot read Orca's setting.

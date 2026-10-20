@@ -47,7 +47,8 @@ def test_claim_creates_workspace_state_claim_and_card(project, store, fake_orca,
     assert record["attempts"][0]["agent"] is None
     assert store.read_claim(TASK)["attempt"] == 1
     create = orca_calls(fake_orca, "worktree create")[0]
-    assert create[create.index("--base-branch") + 1] == "main"
+    assert create[create.index("--base-branch") + 1] == "origin/main"
+    assert out["data"]["base"] == "origin/main"
     card = orca_calls(fake_orca, "worktree set")[-1]
     assert card[card.index("--workspace-status") + 1] == "in-progress"
     assert Path(out["data"]["path"]).resolve() in worktree_paths(project.root)
@@ -69,6 +70,7 @@ def test_pending_task_cannot_be_claimed(project, capsys):
 
 def test_approval_must_be_on_the_base_branch(project, capsys):
     git("reset", "-q", "--soft", "HEAD~1", cwd=project.root)  # approval no longer committed
+    git("push", "-q", "-f", "origin", "HEAD:main", cwd=project.root)
     code, out = cli(capsys, "task", "claim", TASK)
     assert code == 3
     assert out["error"]["code"] == "approval_not_on_base"

@@ -23,7 +23,7 @@ from typing import Any
 
 import yaml
 
-from swfactory import git, orca, tasks
+from swfactory import git, orca, sync, tasks
 from swfactory.output import EXIT_PRECONDITION, FactoryError
 from swfactory.state import TaskStore, now
 
@@ -334,10 +334,11 @@ def _read_json(path: Path) -> dict[str, Any] | None:
 
 def approve(
     change_id: str, changes_dir: Path, message: str, method: str, main_checkout: Path, store: TaskStore
-) -> dict[str, Any]:
+) -> tuple[dict[str, Any], list[str]]:
     """Approve the current design: on the base branch, with an explicit message
-    (`chat`) or the typed id (`terminal`); commit only the change folder. On re-approval the task
-    ids are kept and tasks blocked by the design change return to their state."""
+    (`chat`) or the typed id (`terminal`); commit only the change folder, on top of the latest
+    remote base, and push it. On re-approval the task ids are kept and tasks blocked by the design
+    change return to their state."""
     folder = _folder(change_id, changes_dir)
     _refuse_rejected(change_id, folder)
     text = _design_text(folder)
@@ -360,7 +361,8 @@ def approve(
     if method == "chat" and not re.search(rf"\b{re.escape(change_id)}\b", message, re.IGNORECASE):
         message = f"the approval message must name {change_id} explicitly (e.g. 'approve {change_id}')"
         raise FactoryError("approval_not_explicit", message, EXIT_PRECONDITION)
-    email = _ready_to_commit(folder, main_checkout)
+    email, base = _ready_to_commit(folder, main_checkout)
+    warnings = sync.refresh(main_checkout, store.root, base)
 
     approval = {
         "change": change_id,
@@ -377,15 +379,18 @@ def approve(
     }
     commit = _write_and_commit(folder, files, f"Approve {change_id}")
     tasks.sync_with_design(approved_task_ids(folder), True, store)
-    return {"change": change_id, "digest": current, "commit": commit, "tasks": parsed["tasks"]}
+    warnings += sync.push_approvals(main_checkout, base)
+    return {"change": change_id, "digest": current, "commit": commit, "tasks": parsed["tasks"]}, warnings
 
 
-def reject(change_id: str, changes_dir: Path, reason: str, main_checkout: Path) -> dict[str, Any]:
-    """Reject a change (final): write `rejection.json` on the base branch and commit it."""
+def reject(change_id: str, changes_dir: Path, reason: str, main_checkout: Path,
+           state_dir: Path) -> tuple[dict[str, Any], list[str]]:
+    """Reject a change (final): write `rejection.json` on the base branch, commit and push it."""
     folder = _folder(change_id, changes_dir)
     _refuse_rejected(change_id, folder)
     text = _design_text(folder)
-    email = _ready_to_commit(folder, main_checkout)
+    email, base = _ready_to_commit(folder, main_checkout)
+    warnings = sync.refresh(main_checkout, state_dir, base)
     rejection = {
         "change": change_id,
         "design_digest": digest(text),
@@ -396,7 +401,8 @@ def reject(change_id: str, changes_dir: Path, reason: str, main_checkout: Path) 
     }
     files = {"rejection.json": json.dumps(rejection, indent=2, ensure_ascii=False) + "\n"}
     commit = _write_and_commit(folder, files, f"Reject {change_id}")
-    return {"change": change_id, "commit": commit}
+    warnings += sync.push_approvals(main_checkout, base)
+    return {"change": change_id, "commit": commit}, warnings
 
 
 def _removed_tasks(text: str, folder: Path) -> list[str]:
@@ -413,8 +419,8 @@ def _refuse_rejected(change_id: str, folder: Path) -> None:
         raise FactoryError("change_rejected", message, EXIT_PRECONDITION)
 
 
-def _ready_to_commit(folder: Path, main_checkout: Path) -> str:
-    """The session is on the base branch and has a Git identity; return its email."""
+def _ready_to_commit(folder: Path, main_checkout: Path) -> tuple[str, str]:
+    """The session is on the base branch and has a Git identity; return its email and the base."""
     base = orca.base_branch(main_checkout)
     branch = git.current_branch(folder)
     if branch != base:
@@ -424,7 +430,7 @@ def _ready_to_commit(folder: Path, main_checkout: Path) -> str:
     email = git.config_value("user.email", folder)
     if not email:
         raise FactoryError("git_identity_missing", "set `git config user.email` first", EXIT_PRECONDITION)
-    return email
+    return email, base
 
 
 def _write_and_commit(folder: Path, files: dict[str, str], message: str) -> str:

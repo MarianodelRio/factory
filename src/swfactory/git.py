@@ -106,6 +106,30 @@ def ref_exists(ref: str, cwd: Path | None = None) -> bool:
     return _try(["rev-parse", "--verify", "-q", f"{ref}^{{commit}}"], cwd) is not None
 
 
+def has_remote(name: str, cwd: Path) -> bool:
+    return _try(["remote", "get-url", name], cwd) is not None
+
+
+def fetch(cwd: Path) -> None:
+    """Update the `origin/*` refs (and drop those deleted on the remote); the branches are not touched."""
+    run(["fetch", "-q", "--prune", "origin"], cwd)
+
+
+def commits_in(revision_range: str, cwd: Path) -> list[str]:
+    """Commits of `old..new`, newest first."""
+    return run(["rev-list", revision_range], cwd).splitlines()
+
+
+def paths_in(revision_range: str, cwd: Path) -> set[str]:
+    """Every file changed by the commits of `old..new`."""
+    return {line for line in run(["log", "--format=", "--name-only", revision_range], cwd).splitlines() if line}
+
+
+def is_clean(cwd: Path) -> bool:
+    """No changes to tracked files (untracked files do not count)."""
+    return not run(["status", "--porcelain", "--untracked-files=no"], cwd)
+
+
 def show_file(ref: str, path: str, cwd: Path | None = None) -> str | None:
     """Content of `path` in `ref`, or None if it is not there."""
     return _try(["show", f"{ref}:{path}"], cwd)

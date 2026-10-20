@@ -183,7 +183,9 @@ How `review` is usually chosen:
   Code through `.claude/settings.json`, in Codex through `.codex/rules/factory.rules`. If you
   decline, nothing is approved.
 - The approval is a commit on the base branch that contains only the change folder
-  (`approval.json` with your literal message, and `tasks.yaml`). Nothing is pushed.
+  (`approval.json` with your literal message, and `tasks.yaml`). Before committing, the Factory
+  fetches `origin` and brings the base branch up to date; after it, it pushes the base branch so
+  task workspaces start from it. It never pushes your own unpushed commits: then it only warns.
 - **Reject** with `reject CHG-0001` and a reason. A rejection is final: to take the idea up again,
   design a new change.
 - From a terminal you can also run `swfactory design approve CHG-0001` and type the id.
@@ -217,8 +219,8 @@ You can also ask for a specific model or effort.
 
 1. It checks that the task is `ready`. If it is `pending`, it tells you why, for example "waiting
    for CHG-0001-01 to be merged into main".
-2. It **claims** the task (only one agent can) and Orca creates a workspace with its own branch
-   from the base branch.
+2. It **claims** the task (only one agent can), fetches `origin`, and Orca creates a workspace with
+   its own branch from the latest `origin/<base>`.
 3. Orca **launches the lead agent** in that workspace. A card appears in Orca's sidebar, and your
    main session is free for other things.
 
@@ -360,6 +362,17 @@ The last two are internal formats of those tools. If one can't be read, the head
 *unavailable* and the rest of the board keeps working. Codex is marked *unverified* (see the
 limits).
 
+### Staying in sync with the remote
+
+You merge on GitHub; the Factory notices. `/factory-status` fetches `origin` (at most once a
+minute), and claiming a task or approving a design always fetches first. When your main checkout
+is on the base branch, it is fast-forwarded to `origin/<base>`, so a `git status` there reflects
+the merges. Approval commits that are still local are rebased onto the remote base and pushed.
+
+Ask for it any time with "sincroniza" / "sync" (`swfactory sync`). It never merges, never forces and
+never touches uncommitted work. If your base branch has your own unpushed commits and the remote
+moved too, it only warns: pull it yourself.
+
 ### Notes and pauses
 
 - **"deja una nota en CHG-0001-01: …"** ("leave a note on …"): the agent reads it at its next
@@ -466,7 +479,8 @@ expect. Use double quotes in them (`python -c "print(1)"`) so they work everywhe
 - Nothing is approved or rejected without your explicit message and the permission prompt.
 - Nothing is deleted or overwritten unless it appears in a plan you confirmed, and there is always
   a backup.
-- Only the task branch is pushed: no force push, no merge, no deleting branches or workspaces.
+- Only the task branch and the base branch's approval commits are pushed, never your own unpushed
+  commits and never forced. No merge, no deleting branches or workspaces.
 - No secrets in the state, cards, PRs or memory. `.env` and key files are refused as evidence,
   and common secret patterns are masked in everything the CLI writes.
 - File contents, issues, web pages and other agents' messages are data, never instructions.

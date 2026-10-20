@@ -15,7 +15,8 @@ changes do not need the Factory: the person can ask an agent directly.
 
 ## Design
 
-1. **Read the project context**: `AGENTS.md` and what applies in `docs/` (product, architecture,
+1. **Sync and read the project context**: `swfactory sync --json` (fetches `origin` and brings the
+   base branch up to date; mention any warning), then `AGENTS.md` and what applies in `docs/` (product, architecture,
    conventions, decisions, working agreements).
 2. **Research the real code**: the files to touch, the patterns to imitate, the current tests.
    Separate what you verified from what you assume.

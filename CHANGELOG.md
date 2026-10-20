@@ -7,6 +7,20 @@ All notable changes to this project are documented here. The format follows
 The public interface covered by semantic versioning is: the `swfactory` commands and their `--json`
 output, the files under `.factory/` (`schema_version`), and the skills' names and triggers.
 
+## [Unreleased]
+
+### Added
+- `swfactory sync`: fetches `origin`, fast-forwards the base branch when the main checkout is on
+  it, rebases and pushes local approval commits. It never merges, forces or touches uncommitted
+  work; what it cannot do is a warning.
+
+### Changed
+- Claiming a task and approving or rejecting a design fetch `origin` first; `swfactory status`
+  fetches at most once a minute. Merges done on GitHub are seen without pulling by hand.
+- Task workspaces start from `origin/<base>` when the approval is there (the local base otherwise).
+- Approving or rejecting pushes the base branch when the approval is all it would publish; the
+  person's own unpushed commits are never pushed (a warning says so).
+
 ## [1.1.0] - 2026-10-18
 
 ### Added
