@@ -186,6 +186,12 @@ def pr_for_branch(branch: str, cwd: Path) -> dict[str, Any] | None:
     return {"number": int(found[0]["number"]), "url": found[0]["url"]} if found else None
 
 
+def pr_state(number: int, cwd: Path) -> dict[str, Any]:
+    """`state` (OPEN, CLOSED or MERGED) and `mergedAt` of a pull request."""
+    found: dict[str, Any] = json.loads(_gh(["pr", "view", str(number), "--json", "state,mergedAt"], cwd))
+    return found
+
+
 def pr_create(base: str, head: str, title: str, body: str, cwd: Path) -> dict[str, Any]:
     with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False, encoding="utf-8") as file:
         file.write(body)

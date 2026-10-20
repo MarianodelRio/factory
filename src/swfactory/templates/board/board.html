@@ -20,6 +20,7 @@
     --backlog: #7b8794;
     --progress: #5aa9f0;
     --review: #a98bf5;
+    --merge: #5fb3d9;
     --done: #4cc38a;
     --bad: #f0645c;
     --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
@@ -64,7 +65,7 @@
   .banner.show { display: block; }
 
   main { padding: 16px 20px 28px; }
-  .board { display: grid; grid-template-columns: repeat(5, minmax(230px, 1fr)); gap: 14px; overflow-x: auto;
+  .board { display: grid; grid-template-columns: repeat(6, minmax(220px, 1fr)); gap: 14px; overflow-x: auto;
            padding-bottom: 6px; }
   .column { min-width: 230px; }
   .column h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; padding: 0 2px;
@@ -172,10 +173,11 @@ const EMBEDDED = __BOARD_DATA__;
 const POLL_MS = 5000;
 const COLUMNS = [
   ["needs_you", "Needs you", "--needs"], ["backlog", "Backlog", "--backlog"],
-  ["in_progress", "In progress", "--progress"], ["in_review", "In review", "--review"], ["done", "Done", "--done"],
+  ["in_progress", "In progress", "--progress"], ["in_review", "In review", "--review"],
+  ["to_merge", "To merge", "--merge"], ["done", "Done", "--done"],
 ];
 const STATE_LABEL = { pending: "pending", ready: "ready", in_progress: "in progress", in_review: "in review",
-  blocked: "blocked", interrupted: "interrupted", done: "done" };
+  blocked: "blocked", interrupted: "interrupted", to_merge: "to merge", done: "done" };
 let data = null, lastJson = "", fetchedAt = 0, selected = null, showAllDone = false, failing = false;
 
 const $ = (id) => document.getElementById(id);

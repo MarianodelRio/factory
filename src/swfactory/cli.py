@@ -122,6 +122,10 @@ def task_publish(args: argparse.Namespace) -> Result:
     return tasks.publish(args.task, task_context())
 
 
+def task_merged(args: argparse.Namespace) -> Result:
+    return tasks.mark_merged(args.task, task_context())
+
+
 def task_recover(args: argparse.Namespace) -> Result:
     return tasks.recover(args.task, args.confirm, task_context())
 
@@ -204,6 +208,7 @@ HANDLERS: dict[str, Handler] = {
     "task review": task_review,
     "task finish": task_finish,
     "task publish": task_publish,
+    "task merged": task_merged,
     "task recover": task_recover,
     "status": status,
     "sync": sync_command,
@@ -264,6 +269,7 @@ def build_parser() -> Parser:
         ("unblock", "return a blocked task to its previous state"),
         ("submit", "move a task to in_review"),
         ("publish", "push the task branch and open a PR"),
+        ("merged", "mark a finished task as merged (when the Factory cannot see it)"),
     ):
         command(task_cmds, name, f"task {name}", help_text).add_argument("task")
 

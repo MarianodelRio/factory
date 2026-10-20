@@ -45,7 +45,7 @@ def test_publish_pushes_only_the_branch_and_opens_a_pr(done, fake_gh, fake_orca,
     assert prs[0]["title"] == f"{TASK}: Add recurrence model and validation"
     assert store.read_task(TASK)["pull_request"] == {"number": 1, "url": prs[0]["url"]}
     card = orca_calls(fake_orca, "worktree set")[-1]
-    assert card[card.index("--comment") + 1] == "2/2 AC verified · PR #1"
+    assert card[card.index("--comment") + 1] == "2/2 AC verified · PR #1 · to merge"
 
 
 def test_pr_body_has_every_section(done, fake_gh, capsys):

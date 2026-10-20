@@ -96,17 +96,17 @@ In a Claude Code (or Codex) terminal in Orca, at the root of your repository:
    You see each task's state, acceptance criteria verified, reviews and the next step. The board
    is a live kanban in an Orca tab (and in your browser, at the address `swfactory board status`
    prints) with every agent and subagent running in each task. When the
-   task is `done`, the lead offers to push the branch and open the PR.
+   task is finished it waits in `to_merge`, and the lead offers to push the branch and open the PR.
 
-5. **Integrate.** Review the PR and merge it yourself; the Factory never merges. Tasks that depend
-   on it move from `pending` to `ready` once it is on the base branch.
+5. **Integrate.** Review the PR and merge it yourself. The Factory sees the merge (also a squash
+   merge on GitHub) and moves the task to `done`; tasks that depend on it become `ready`.
 
 ## Good to know
 
 - Approving or rejecting a design always needs your explicit message. Claude Code and Codex also
   ask for permission before running it (`.claude/settings.json` and `.codex/rules/factory.rules`;
   Codex reads project rules only if you trust the project in Codex).
-- A task is `done` only when every acceptance criterion has evidence, the checks pass and the
+- A task is finished (`to_merge`) only when every acceptance criterion has evidence, the checks pass and the
   required reviews passed on the final commit.
 - The Factory pushes the task branch and the approval commits of the base branch, never your own
   unpushed commits and never forced. It fetches `origin` before starting work, so merges done on

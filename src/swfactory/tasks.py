@@ -16,6 +16,7 @@ Raises FactoryError with these codes:
 - review_invalid (EXIT_PRECONDITION): the reviewer JSON does not follow the reviewer JSON contract.
 - review_agent_missing (EXIT_USAGE): a conformance review without `--agent` or a recorded reviewer.
 - gates_not_met (EXIT_PRECONDITION): `finish` with closing criteria unmet; `details` lists them.
+- not_merged (EXIT_PRECONDITION): `task merged` for a task that is not waiting to be merged.
 - session_alive (EXIT_PRECONDITION): `recover --confirm` while Orca says the agent is alive.
 - workspace_missing (EXIT_PRECONDITION): `recover --confirm` when the workspace no longer exists.
 Plus the codes of factory.orca (Orca unavailable, not local, ...).
@@ -63,8 +64,10 @@ TRANSITIONS: dict[tuple[str, str], str] = {
     ("in_progress", "recover"): "in_progress",  # only when liveness is unknown
     ("in_review", "recover"): "in_progress",  # also only when unknown; the new lead submits again
     ("in_progress", "submit"): "in_review",  # swfactory task submit
-    ("in_progress", "finish"): "done",  # swfactory task finish (closing gates)
-    ("in_review", "finish"): "done",
+    ("in_progress", "finish"): "to_merge",  # swfactory task finish (closing gates)
+    ("in_review", "finish"): "to_merge",
+    ("to_merge", "merged"): "done",  # sync saw it in the base branch, or the person said so
+    ("done", "unmerged"): "to_merge",  # a task finished before `to_merge` existed, not merged yet
     ("in_progress", "block"): "blocked",  # task block, a read pause note, a design change
     ("in_review", "block"): "blocked",  # also a review that does not converge
     ("interrupted", "block"): "blocked",  # a design change
@@ -194,31 +197,107 @@ def view(task: dict[str, Any], ctx: Context) -> dict[str, Any]:
 
 def _computed(task: dict[str, Any], ctx: Context) -> tuple[str, str | None]:
     """`pending` or `ready` for a task without a state file: approval valid and every dependency
-    `done` and merged into the base branch."""
+    `done` (merged into the base branch)."""
     if not task["approved"]:
         return "pending", f"{task['change']} is awaiting approval"
     for dep in task.get("depends_on", []):
         record = ctx.store.read_task(dep)
+        if record is not None and record["state"] == "to_merge":
+            return "pending", f"waiting for {dep} to be merged into {ctx.base() or 'the base branch'}"
         if record is None or record["state"] != "done":
             return "pending", f"waiting for {dep} to be done"
-        base = ctx.base()
-        if base is None:
-            return "pending", f"cannot check that {dep} is merged: {ctx.base_error()}"
-        if not _merged(record, base, ctx.main_checkout):
-            return "pending", f"waiting for {dep} to be merged into {base}"
     return "ready", None
 
 
 def _merged(record: State, base: str, cwd: Path) -> bool:
+    """The task's last commit is in the base branch (local or remote). A squashed or rebased merge
+    is not: the pull request's state tells those."""
     branch = (record.get("workspace") or {}).get("branch")
     tip = branch if branch and git.ref_exists(branch, cwd) else (record.get("commits") or [None])[-1]
     if not tip:
         return False
-    targets = [ref for ref in (base, f"origin/{base}") if git.ref_exists(ref, cwd)]
+    targets = [ref for ref in (f"origin/{base}", base) if git.ref_exists(ref, cwd)]
     return any(git.is_ancestor(tip, ref, cwd) for ref in targets)
 
 
+def _merge_status(record: State, base: str | None, ctx: Context) -> tuple[bool, str | None, bool]:
+    """(merged, when, pull request closed without merging) for a finished task: merged if its pull
+    request is (GitHub knows about squash and rebase merges) or if its commits are in the base."""
+    pull_request = record.get("pull_request")
+    state = None
+    if pull_request:
+        try:
+            state = git.pr_state(int(pull_request["number"]), ctx.main_checkout)
+        except FactoryError:
+            state = None  # no usable gh: the commits tell
+    if state and state.get("state") == "MERGED":
+        return True, state.get("mergedAt") or now(), False
+    if base and _merged(record, base, ctx.main_checkout):
+        return True, now(), False
+    return False, None, bool(state and state.get("state") == "CLOSED")
+
+
+def record_merges(ctx: Context) -> list[str]:
+    """Move each `to_merge` task whose work reached the base branch to `done`. A task finished
+    before `to_merge` existed (`done` without `merged_at`) gets its merge date, or goes back to
+    `to_merge` if it is not merged yet. Returns warnings (never raises for one task)."""
+    warnings: list[str] = []
+    if ctx.base() is None:
+        return [f"cannot check which tasks are merged: {ctx.base_error()}"]
+    for path in sorted(ctx.store.root.glob("*.events.jsonl")) if ctx.store.root.is_dir() else []:
+        task_id = path.name.removesuffix(".events.jsonl")
+        record = ctx.store.read_task(task_id)
+        if record is None or not (record["state"] == "to_merge"
+                                  or (record["state"] == "done" and not record.get("merged_at"))):
+            continue
+        try:
+            merged, when, closed = _merge_status(record, ctx.base(), ctx)
+        except FactoryError as exc:
+            warnings.append(f"cannot tell whether {task_id} is merged: {exc.message}")
+            continue
+        _apply_merge(task_id, record["state"], merged, when, closed, ctx)
+    return warnings
+
+
+def _apply_merge(task_id: str, state: str, merged: bool, when: str | None, closed: bool, ctx: Context) -> None:
+    def apply(current: State) -> State:
+        if current["state"] != state:
+            return current  # something else changed it meanwhile
+        if merged:
+            if current["state"] == "to_merge":
+                current = transition(current, "merged")
+            current["merged_at"] = when
+        elif current["state"] == "done":
+            current = transition(current, "unmerged")
+        if current.get("pull_request"):
+            current["pull_request"]["closed"] = closed
+        return current
+
+    previous = ctx.store.read_task(task_id) or {}
+    if merged:
+        record = ctx.store.update_task(task_id, apply, "merged")
+    elif state == "done" or (previous.get("pull_request") or {}).get("closed", False) != closed:
+        record = ctx.store.update_task(task_id, apply, "awaiting_merge" if state == "done" else "pr_closed")
+    else:
+        return
+    workspace = (record.get("workspace") or {}).get("orca_id")
+    task = catalog(ctx, sync=False).get(task_id)
+    if workspace and task:
+        orca.update_card(workspace, task_id, task["title"], record["state"], card_detail(record))
+
+
+def mark_merged(task_id: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
+    """The person says a `to_merge` task is merged (for example squashed without `gh`)."""
+    task, record = _started(task_id, ctx)
+    if record["state"] != "to_merge":
+        raise FactoryError("not_merged", f"{task_id} is {record['state']}, not waiting to be merged",
+                           EXIT_PRECONDITION)
+    _apply_merge(task_id, "to_merge", True, now(), False, ctx)
+    return {"task": task_id, "state": "done"}, []
+
+
 def list_tasks(ctx: Context) -> dict[str, Any]:
+    record_merges(ctx)
     all_tasks = catalog(ctx)
     return {"tasks": [view(task, ctx) for task in all_tasks.values()]}
 
@@ -231,6 +310,7 @@ def _task(task_id: str, ctx: Context) -> dict[str, Any]:
 
 
 def show_task(task_id: str, ctx: Context) -> dict[str, Any]:
+    record_merges(ctx)
     task = _task(task_id, ctx)
     shown = view(task, ctx)
     definition = {k: v for k, v in task.items() if k not in ("change", "approved")}
@@ -259,7 +339,7 @@ def claim(task_id: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
         raise FactoryError("task_claimed", f"{task_id} is already claimed", EXIT_CONFLICT)
     orca.check(_min_version(ctx))
     base = orca.base_branch(ctx.main_checkout)
-    synced = sync.refresh(ctx.main_checkout, ctx.store.root, base)
+    synced = sync_repo(ctx)
     shown = view(task, ctx)
     if shown["state"] != "ready":
         raise FactoryError("task_not_ready", f"{task_id} is {shown['state']}: {shown['reason']}", EXIT_PRECONDITION)
@@ -383,11 +463,11 @@ def card_detail(record: State, pending: list[str] | None = None) -> str | None:
         return ("pending reviews: " + ", ".join(pending)) if pending else "reviews passed: finish"
     if state == "blocked":
         return str(record["blocked_reason"])
-    if state == "done":
+    if state in ("to_merge", "done"):
         acceptance = record.get("acceptance") or {}
         verified = sum(1 for ac in acceptance.values() if ac.get("status") == "verified")
         pr = (record.get("pull_request") or {}).get("number")
-        return orca.done_comment(verified, len(acceptance), pr)
+        return orca.done_comment(verified, len(acceptance), pr, merged=state == "done")
     return None
 
 
@@ -683,7 +763,8 @@ def _review_report(path: Path) -> dict[str, Any]:
 
 
 def finish(task_id: str, memory: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
-    """Move the task to `done` only if every closing criterion holds."""
+    """Move the task to `to_merge` only if every closing criterion holds; it becomes `done` once
+    its work is merged into the base branch."""
     task, _ = _started(task_id, ctx)
     delivered: list[dict[str, Any]] = []
 
@@ -739,7 +820,8 @@ def finish(task_id: str, memory: str, ctx: Context) -> tuple[dict[str, Any], lis
     ctx.store.release_claim(task_id)
     warnings = [f"changed outside the task scope: {path}" for path in out_of_scope]
     warnings += _card(task, updated, ctx)
-    data = {"task": task_id, "state": "done", "memory": memory, "scope_warnings": out_of_scope, "notes": delivered}
+    data = {"task": task_id, "state": "to_merge", "memory": memory, "scope_warnings": out_of_scope,
+            "notes": delivered}
     return data, warnings
 
 
@@ -758,8 +840,8 @@ def publish(task_id: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
     """Push the task branch (only it, never forced) and open its PR against the base branch, or
     reuse the open one. Without a usable `gh` the PR is left to the person."""
     task, record = _started(task_id, ctx)
-    if record["state"] != "done":
-        _reject(record, "publish", f"it is {record['state']}; finish it first")
+    if record["state"] != "to_merge":
+        _reject(record, "publish", f"it is {record['state']}; only a finished task waiting to be merged is published")
     base = orca.base_branch(ctx.main_checkout)
     branch = record["workspace"]["branch"]
     git.push_branch(branch, ctx.main_checkout)
@@ -853,8 +935,10 @@ def _minutes_since(timestamp: str | None) -> int | None:
 
 
 def sync_repo(ctx: Context, force: bool = True) -> list[str]:
-    """Fetch origin and bring the local base branch up to date (see swfactory.sync)."""
-    return sync.refresh(ctx.main_checkout, ctx.store.root, ctx.base(), force)
+    """Fetch origin, bring the local base branch up to date (see swfactory.sync) and record the
+    tasks whose work is now merged."""
+    warnings = sync.refresh(ctx.main_checkout, ctx.store.root, ctx.base(), force)
+    return warnings + record_merges(ctx)
 
 
 def sync_command(ctx: Context) -> tuple[dict[str, Any], list[str]]:
@@ -934,8 +1018,10 @@ def _attention(row: dict[str, Any]) -> list[str]:
         notes.append(f"{task} is blocked: {reason}")
     if state == "interrupted":
         notes.append(f"{task} is interrupted: recover it with /factory-status")
-    if state == "pending" and reason and "merged" in reason:
+    if state == "pending" and reason and "merged into" in reason:
         notes.append(f"{task} is pending: {reason}")
+    if state == "to_merge" and (row.get("pull_request") or {}).get("closed"):
+        notes.append(f"{task}: its PR was closed without merging")
     if state == "in_progress" and (row["minutes_since_checkpoint"] or 0) > STALE_MINUTES:
         notes.append(f"{task}: no checkpoint for {row['minutes_since_checkpoint']} minutes (only a warning)")
     if row["broken_link"]:
@@ -959,19 +1045,23 @@ def _next_step(
         return f"resolve '{row['reason']}', then swfactory task unblock {task['id']}"
     if state == "interrupted":
         return f"swfactory task recover {task['id']}"
-    if state == "done" and record:
-        return _after_done(record, task, ctx)
+    if state == "to_merge" and record:
+        return _after_finish(record, task, ctx)
+    if state == "done":
+        return f"nothing: merged into {ctx.base() or 'the base branch'}"
     return "nothing"
 
 
-def _after_done(record: State, task: dict[str, Any], ctx: Context) -> str:
-    """Next step of a done task: publish it, then the person merges it (or its PR)."""
+def _after_finish(record: State, task: dict[str, Any], ctx: Context) -> str:
+    """Next step of a finished task: publish it, then the person merges it (or its PR)."""
     base = ctx.base()
     branch = record["workspace"]["branch"]
-    if base and _merged(record, base, ctx.main_checkout):
-        return f"nothing: merged into {base}"
-    if record.get("pull_request"):
-        return f"merge PR #{record['pull_request']['number']} when ready (the person decides)"
+    pull_request = record.get("pull_request")
+    if pull_request and pull_request.get("closed"):
+        return (f"PR #{pull_request['number']} was closed without merging: reopen it, or tell the Factory "
+                f"it is merged (swfactory task merged {task['id']})")
+    if pull_request:
+        return f"merge PR #{pull_request['number']} when ready (the person decides)"
     if git.ref_exists(f"origin/{branch}", ctx.main_checkout):
         return f"{branch} is pushed: open its PR or merge it into {base or 'the base branch'} (the person decides)"
     return f"swfactory task publish {task['id']}"

@@ -252,15 +252,16 @@ def session_liveness(terminal: str | None) -> str:
 CARDS: dict[str, tuple[str, str | None, bool]] = {
     "in_progress": ("in-progress", None, False),  # detail: next action
     "in_review": ("in-review", None, False),  # detail: pending reviews
+    "to_merge": ("in-review", None, False),  # detail: done_comment()
     "done": ("completed", None, False),  # detail: done_comment()
     "blocked": ("in-progress", None, True),  # detail: reason for the block
     "interrupted": ("in-progress", "Interrupted: use /factory-status", True),
 }
 
 
-def done_comment(verified: int, total: int, pr_number: int | None) -> str:
-    text = f"{verified}/{total} AC verified"
-    return f"{text} · PR #{pr_number}" if pr_number else text
+def done_comment(verified: int, total: int, pr_number: int | None, merged: bool = False) -> str:
+    text = f"{verified}/{total} AC verified" + (f" · PR #{pr_number}" if pr_number else "")
+    return f"{text} · merged" if merged else f"{text} · to merge"
 
 
 def update_card(workspace_id: str, task_id: str, title: str, state: str, detail: str | None) -> list[str]:

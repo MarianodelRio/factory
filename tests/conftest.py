@@ -135,6 +135,12 @@ class FakeGh(FakeTool):
         file = self.state / "prs.json"
         return json.loads(file.read_text()) if file.exists() else []
 
+    def set_pr(self, number: int, **fields: Any) -> None:
+        """Change a pull request as GitHub would (e.g. state="MERGED")."""
+        prs = self.prs()
+        next(p for p in prs if p["number"] == number).update(fields)
+        (self.state / "prs.json").write_text(json.dumps(prs, indent=2))
+
     def fail(self, message: str = "gh: authentication required") -> None:
         self.state.mkdir(parents=True, exist_ok=True)
         (self.state / "fail").write_text(message)

@@ -34,6 +34,13 @@ own commits: they pull it themselves).
 
 For the live kanban ("open the board", "abre el tablero"), use `/factory-board`.
 
+## Merged tasks
+
+A finished task waits in `to_merge` and becomes `done` by itself once its work is in the base
+branch (status and sync check it; a pull request merged on GitHub counts, also squashed). If the
+person says it is merged but the Factory cannot see it ("CHG-0012-01 ya está mergeada"), run
+`swfactory task merged <task> --json`. A pull request closed without merging shows in `attention`.
+
 ## Notes and pauses
 
 - "Leave a note on <task>: …" → `swfactory task note <task> --text "<note in English>" --json`. The

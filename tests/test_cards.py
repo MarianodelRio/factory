@@ -18,7 +18,8 @@ def value(call, flag):
 ROWS = [
     ("in_progress", "Write the migration", "in-progress", "Write the migration", False),
     ("in_review", "Pending reviews: conformance", "in-review", "Pending reviews: conformance", False),
-    ("done", orca.done_comment(3, 3, 123), "completed", "3/3 AC verified · PR #123", False),
+    ("to_merge", orca.done_comment(3, 3, 123), "in-review", "3/3 AC verified · PR #123 · to merge", False),
+    ("done", orca.done_comment(3, 3, 123, merged=True), "completed", "3/3 AC verified · PR #123 · merged", False),
     ("blocked", "paused", "in-progress", "paused", True),
     ("interrupted", None, "in-progress", "Interrupted: use /factory-status", True),
 ]
@@ -38,7 +39,7 @@ def test_card_follows_the_table(repo, fake_orca, state, detail, status, comment,
 
 
 def test_done_comment_without_pr():
-    assert orca.done_comment(2, 3, None) == "2/3 AC verified"
+    assert orca.done_comment(2, 3, None) == "2/3 AC verified · to merge"
 
 
 def test_orca_failure_is_only_a_warning(repo, fake_orca):

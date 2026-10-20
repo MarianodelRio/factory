@@ -14,7 +14,16 @@ output, the files under `.factory/` (`schema_version`), and the skills' names an
   it, rebases and pushes local approval commits. It never merges, forces or touches uncommitted
   work; what it cannot do is a warning.
 
+- A new task state, `to_merge`: `task finish` moves a task there, and it becomes `done` once its
+  work is merged into the base branch. A pull request merged on GitHub counts, also squashed or
+  rebased (`gh pr view`); without one, the branch's commits must be in the base. A pull request
+  closed without merging needs the person. `swfactory task merged <task>` records a merge the
+  Factory cannot see. The board has a *To merge* column and records merges once a minute.
+
 ### Changed
+- `done` now means merged: dependencies only wait for their tasks to be `done`, without git checks.
+  Tasks finished with an earlier version are checked once and go back to `to_merge` if they are
+  not merged.
 - Claiming a task and approving or rejecting a design fetch `origin` first; `swfactory status`
   fetches at most once a minute. Merges done on GitHub are seen without pulling by hand.
 - Task workspaces start from `origin/<base>` when the approval is there (the local base otherwise).

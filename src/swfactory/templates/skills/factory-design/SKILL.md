@@ -42,7 +42,7 @@ changes do not need the Factory: the person can ask an agent directly.
 10. If the person asks for changes, edit and validate again: the digest changes with every edit.
    Before editing an **approved** design, warn the person: the change goes back to awaiting
    approval, its tasks in progress (or interrupted) become `blocked` (`design_changed`) until it is
-   approved again, `done` tasks are not touched, and re-approval keeps the task ids (new tasks get
+   approved again, `to_merge` and `done` tasks are not touched, and re-approval keeps the task ids (new tasks get
    new numbers; approved tasks cannot be removed).
 
 ## Approve or reject

@@ -60,7 +60,7 @@ Your role: `roles/lead.md`. You own the task end to end, inside its workspace.
 1. Ask the questions of `memory.md`, write what applies on this branch and commit it (it goes in
    the same PR).
 2. `swfactory task finish <task> --memory "<summary of what you proposed>" --json` (or
-   `--memory none`). It hands over pending notes first: stop if `paused`. If it answers
+   `--memory none`): the task becomes `to_merge`, and `done` once its work is merged. It hands over pending notes first: stop if `paused`. If it answers
    `gates_not_met`, fix each item in `error.details`. Mention any "changed outside the task scope"
    warning to the person; the conformance review decides whether it is a deviation.
 3. Publishing follows `git.pr_on_done` in `.factory/config.toml`: `offer` (default) → offer

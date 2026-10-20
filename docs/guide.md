@@ -79,10 +79,10 @@ you first and keeping a backup.
  submit ── in_review
       │  quality and/or conformance reviews; fix and repeat if needed
       ▼
- memory updated on the task branch, finish ── done
+ memory updated on the task branch, finish ── to_merge
       │  push the branch, open the PR (if gh is available)
       ▼
- you review and merge the PR → tasks that depended on it become ready
+ you review and merge the PR ── done → tasks that depended on it become ready
 ```
 
 ## 4. Preparing a repository: `/factory-init`
@@ -158,7 +158,7 @@ The **Tasks** section is a YAML block. Each task has:
 |---|---|
 | `id` | `CHG-0001-01`, `-02`, … |
 | `title` | What the task delivers |
-| `depends_on` | Tasks that must be **done and merged into the base branch** before this one can start |
+| `depends_on` | Tasks that must be **done** (merged into the base branch) before this one can start |
 | `complexity` | `trivial`, `normal` or `complex`: decides how the lead works (section 6) |
 | `review` | `[]`, `[quality]` or `[quality, conformance]` |
 | `scope` | Optional globs of the files the task should touch; changes outside it are flagged at finish |
@@ -200,7 +200,7 @@ You can ask for changes at any time. The agent warns you first, because the chan
 
 - Tasks in progress, in review or interrupted become `blocked` (`design_changed`) until you
   approve again. Then they return to where they were.
-- `done` tasks are not touched.
+- `to_merge` and `done` tasks are not touched.
 - Re-approval keeps the task ids. New tasks get new numbers, and approved tasks cannot be removed.
 
 ## 6. Implementing a task: `/factory-implement`
@@ -284,9 +284,9 @@ These updates are committed **on the task branch**, so they reach you in the sam
 An accepted ADR is never rewritten. A changed decision gets a new ADR, and the old one only changes
 its `Status` line to "superseded by NNNN".
 
-### When a task is done
+### When a task is finished
 
-`swfactory task finish` moves the task to `done` only if all of these hold. Otherwise it lists what
+`swfactory task finish` moves the task to `to_merge` only if all of these hold. Otherwise it lists what
 is missing:
 
 - every acceptance criterion is verified with evidence;
@@ -414,13 +414,22 @@ to commit.
 
 | State | Meaning | What to do |
 |---|---|---|
-| `pending` | Approved, but a dependency is not done **and merged** yet | Merge the dependency |
+| `pending` | Approved, but a dependency is not `done` yet | Finish and merge the dependency |
 | `ready` | Can start | `/factory-implement <task>` |
 | `in_progress` | The lead agent is working | Watch, leave notes, or wait |
 | `in_review` | Implemented; reviews running | Wait for the reviews and `finish` |
 | `blocked` | Paused, design changed, review not converging, or a decision is needed | Resolve the reason, then unblock |
 | `interrupted` | The lead stopped before finishing | `recupera <task>` |
-| `done` | All closing criteria met | Publish, then review and merge the PR |
+| `to_merge` | All closing criteria met; its work is not in the base branch yet | Publish, then review and merge the PR |
+| `done` | Merged into the base branch (seen by the Factory, or you said so) | Nothing |
+
+A task moves from `to_merge` to `done` by itself: `/factory-status`, `swfactory sync`, claiming a
+task and the board (once a minute) fetch `origin` and look. A pull request merged on GitHub counts,
+also when it was squashed or rebased; without a pull request, the branch's commits must be in the
+base branch. If the Factory cannot see it (a squash without `gh`, for example), say "CHG-…-01 ya
+está mergeada" (`swfactory task merged <task>`). A pull request closed without merging puts the
+task in *Needs you*. Tasks finished with an older version (`done` before it was merged) are checked
+once: merged ones stay `done`, the others go back to `to_merge`.
 
 A change is **awaiting approval** while its design has no valid approval (also after editing an
 approved design), **approved** once you approve it, **rejected** if you reject it, and **done** when
@@ -493,7 +502,7 @@ expect. Use double quotes in them (`python -c "print(1)"`) so they work everywhe
 | The approval is refused with `not_on_base_branch` | Approvals are committed on the base branch | Switch your main checkout to the base branch (usually `main`) |
 | The approval is refused with `commit_failed` | A Git hook or similar rejected the commit | Fix what the hook reports; nothing was approved |
 | `git_identity_missing` | Git has no `user.email` | `git config user.email you@example.com` |
-| A task stays `pending` although its dependency is done | The dependency is not merged into the base branch | Merge its PR (or branch) |
+| A task stays `pending` although its dependency is finished | The dependency is `to_merge`: not merged yet | Merge its PR (or branch); if it is merged and the Factory can't see it, `swfactory task merged <task>` |
 | `gates_not_met` at finish | Some closing criterion is missing | The agent fixes each listed item |
 | `launch_unconfirmed` | Orca didn't confirm that the agent started | Check the workspace in Orca; if no agent is there, `recupera <task>` |
 | Orca is closed, missing or too old | Tasks can't be claimed or launched | Open or update Orca; state and designs can still be viewed |

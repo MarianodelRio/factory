@@ -5,7 +5,8 @@
 - prs.json: pull requests created with `gh pr create` ({number, url, head, base, title, body}).
 - fail: if this file exists, every call except `--version` fails with its content on stderr
   and exit 1 (gh installed but not usable).
-Supports `gh --version`, `gh auth status`, `gh pr create`, `gh pr list --head <branch>`.
+Supports `gh --version`, `gh auth status`, `gh pr create`, `gh pr list --head <branch>` and
+`gh pr view <number>` (its `state`, OPEN unless a test sets it in prs.json, and `mergedAt`).
 """
 
 import json
@@ -60,6 +61,12 @@ def main():
         prs.append(pr)
         prs_file.write_text(json.dumps(prs, indent=2))
         print(pr["url"])
+    elif argv[:2] == ["pr", "view"]:
+        found = [p for p in prs if str(p["number"]) == argv[2]]
+        if not found:
+            print(f"no pull requests found for {argv[2]}", file=sys.stderr)
+            sys.exit(1)
+        print(json.dumps({"state": found[0].get("state", "OPEN"), "mergedAt": found[0].get("mergedAt")}))
     elif argv[:2] == ["pr", "list"]:
         head = flag(argv, "--head")
         print(json.dumps([{"number": p["number"], "url": p["url"]} for p in prs if p["head"] == head]))

@@ -51,6 +51,7 @@ def empty_state(task_id: str) -> State:
         "memory": None,
         "commits": [],
         "pull_request": None,
+        "merged_at": None,
     }
 
 

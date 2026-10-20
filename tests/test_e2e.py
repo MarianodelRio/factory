@@ -126,7 +126,13 @@ def test_full_flow_from_init_to_published_pr(initialized, fake_gh, capsys, tmp_p
 
     status = ok(capsys, "status")
     row = next(t for t in status["tasks"] if t["id"] == task)
-    assert (row["state"], row["pull_request"]["number"], row["acceptance"]) == ("done", 1, {"verified": 2, "total": 2})
+    assert (row["state"], row["pull_request"]["number"], row["acceptance"]) == ("to_merge", 1,
+                                                                                {"verified": 2, "total": 2})
+    fake_gh.set_pr(1, state="MERGED", mergedAt="2026-10-20T10:00:00Z")  # squash-merged on GitHub
+    row = next(t for t in ok(capsys, "sync") and ok(capsys, "status")["tasks"] if t["id"] == task)
+    assert row["state"] == "done"
+    record = json.loads((repo.root / f".factory/state/{task}.json").read_text())
+    assert record["merged_at"] == "2026-10-20T10:00:00Z"
 
 
 def test_design_change_after_approval(initialized, capsys):

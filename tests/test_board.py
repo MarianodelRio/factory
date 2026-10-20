@@ -251,3 +251,11 @@ def test_stop_never_signals_a_process_that_is_not_this_board(working, home, monk
 
     monkeypatch.setattr(os, "kill", kill)
     assert cli(capsys, "board", "stop")[1]["data"]["stopped"] is False
+
+
+def test_finished_tasks_wait_in_to_merge_and_a_closed_pr_needs_you(working, home):
+    store = TaskStore(working.root / ".factory" / "state")
+    store.update_task(TASK, lambda s: {**s, "state": "to_merge", "pull_request": {"number": 7, "url": "u"}}, "x")
+    assert task_in(collect(working, home))["column"] == "to_merge"
+    store.update_task(TASK, lambda s: {**s, "pull_request": {**s["pull_request"], "closed": True}}, "x")
+    assert task_in(collect(working, home))["column"] == "needs_you"

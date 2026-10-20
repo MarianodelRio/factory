@@ -1,6 +1,7 @@
-"""`swfactory board`: a local, read-only kanban of the repository's changes and tasks, with what
-runs in each task. A small HTTP server (standard library only, 127.0.0.1) serves one page that
-polls `/api/board`; it runs in the background and stops by itself when nobody looks at it."""
+"""`swfactory board`: a local kanban of the repository's changes and tasks, with what runs in each
+task. It only looks, except that it records tasks whose work was merged (a fact, never a decision).
+A small HTTP server (standard library only, 127.0.0.1) serves one page that polls `/api/board`; it
+runs in the background and stops by itself when nobody looks at it."""
 
 from __future__ import annotations
 
@@ -22,7 +23,7 @@ from importlib import resources
 from pathlib import Path
 from typing import Any
 
-from swfactory import activity, config, design, orca, system, tasks
+from swfactory import activity, config, design, orca, sync, system, tasks
 from swfactory.output import EXIT_CONFLICT, EXIT_ERROR, EXIT_UNAVAILABLE, FactoryError, mask_secrets
 from swfactory.state import TaskStore, now
 
@@ -30,7 +31,8 @@ CACHE_SECONDS = 2.0
 ACTIVITY_LIMIT = 40
 START_TIMEOUT = 10.0
 IDLE_CHECK_SECONDS = 15.0
-DONE_STEP_SECONDS = 60.0  # a done task's next step (merged? PR?) costs git calls: reuse it this long
+DONE_STEP_SECONDS = 60.0  # a finished task's next step (pushed? PR?) costs git calls: reuse it this long
+MERGES_SECONDS = 60.0  # how often the server fetches origin and records merged tasks
 INFO_FILE = "board.json"
 LOCK_FILE = "board.lock"
 TOKEN_HEADER = "X-Swfactory-Token"
@@ -38,7 +40,7 @@ TOKEN_HEADER = "X-Swfactory-Token"
 # launcher, so the server's pid is not the pid `start` sees).
 LAUNCH_VARIABLE = "SWFACTORY_BOARD_LAUNCH"
 LOG_FILE = "board.log"
-COLUMNS = ("needs_you", "backlog", "in_progress", "in_review", "done")
+COLUMNS = ("needs_you", "backlog", "in_progress", "in_review", "to_merge", "done")
 
 
 # --- What the page shows --------------------------------------------------------------------------
@@ -46,7 +48,7 @@ COLUMNS = ("needs_you", "backlog", "in_progress", "in_review", "done")
 
 def collect(ctx: tasks.Context, home: Path) -> dict[str, Any]:
     """The whole board as JSON. Reads only: it never changes a task's state, not even to mark it
-    interrupted (`/factory-status` does that)."""
+    interrupted (`/factory-status` does that). The server records merges separately."""
     cfg = config.load_config(ctx.main_checkout / ".factory" / "config.toml")
     view = activity.orca_view()
     hooks = activity.orca_hooks(home)
@@ -57,9 +59,10 @@ def collect(ctx: tasks.Context, home: Path) -> dict[str, Any]:
         active = record is not None and record["state"] in tasks.ACTIVE
         live = activity.liveness(record, view) if working and record else None
         missing = activity.workspace_missing(record, view) if active and record else False
-        done_step = _cached_done_step(ctx, task["id"]) if record and record["state"] == "done" else None
+        finished = record is not None and record["state"] == "to_merge"
+        done_step = _cached_done_step(ctx, task["id"]) if finished else None
         row = tasks.task_row(task, record, live, missing, cfg, ctx, next_step=done_step)
-        if record and record["state"] == "done" and done_step is None:
+        if finished and done_step is None:
             _remember_done_step(ctx, task["id"], row["next_step"])
         row.update(_details(task, record))
         row["design_changed"] = active and not task["approved"]
@@ -110,7 +113,7 @@ def _remember_done_step(ctx: tasks.Context, task_id: str, step: str) -> None:
 def _column(row: dict[str, Any]) -> str:
     state = row["state"]
     if (state in ("blocked", "interrupted") or row["broken_link"] or row["liveness"] == "finished"
-            or row["design_changed"]):
+            or row["design_changed"] or (row.get("pull_request") or {}).get("closed")):
         return "needs_you"
     if state in ("pending", "ready"):
         return "backlog"
@@ -184,7 +187,8 @@ def _event_text(name: str, state: dict[str, Any]) -> str | None:
         "submit": "submitted for review",
         "review": (f"{reviews[-1]['type']} review round {reviews[-1]['round']}: {reviews[-1]['verdict']}"
                    if reviews else None),
-        "finish": "done",
+        "finish": "finished: to merge",
+        "merged": "merged",
         "publish": "branch pushed" + (f", PR #{state['pull_request']['number']}" if state.get("pull_request") else ""),
         "interrupted": "interrupted: the lead's terminal is closed",
         "recover": f"recovered: attempt {attempt.get('id')}",
@@ -272,7 +276,7 @@ def serve(main_checkout: Path, state_dir: Path, port: int, idle_minutes: float, 
     if other:
         raise FactoryError("board_running", f"a board is already running at {other['url']}", EXIT_CONFLICT)
     lock = threading.Lock()
-    cache: dict[str, Any] = {"at": 0.0, "body": b""}
+    cache: dict[str, Any] = {"at": 0.0, "body": b"", "merges_at": 0.0}
     last_seen = [time.monotonic()]
     token = secrets.token_urlsafe(24)
     stopping = threading.Event()
@@ -281,6 +285,11 @@ def serve(main_checkout: Path, state_dir: Path, port: int, idle_minutes: float, 
         with lock:
             if time.monotonic() - cache["at"] > CACHE_SECONDS:
                 ctx = tasks.Context(main_checkout, TaskStore(state_dir))  # fresh: Orca may have recovered
+                if time.monotonic() - cache["merges_at"] > MERGES_SECONDS:
+                    # Recording a merge is a fact, not a decision: the one change the board makes.
+                    sync.fetch(main_checkout, state_dir, force=False)
+                    tasks.record_merges(ctx)
+                    cache["merges_at"] = time.monotonic()
                 cache["body"] = json.dumps(collect(ctx, home)).encode("utf-8")
                 cache["at"] = time.monotonic()
             return bytes(cache["body"])

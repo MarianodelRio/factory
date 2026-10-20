@@ -56,13 +56,13 @@ def test_finish_happy_path(ready_to_finish, fake_orca, capsys):
     code, out = finish(capsys)
     assert code == 0, out
     record = store.read_task(TASK)
-    assert record["state"] == "done"
+    assert record["state"] == "to_merge"
     assert record["memory"] == "Added ADR 0003 on recurrence rules"
     assert record["scope_warnings"] == []
     assert store.read_claim(TASK) is None
     card = orca_calls(fake_orca, "worktree set")[-1]
-    assert card[card.index("--workspace-status") + 1] == "completed"
-    assert card[card.index("--comment") + 1] == "2/2 AC verified"
+    assert card[card.index("--workspace-status") + 1] == "in-review"
+    assert card[card.index("--comment") + 1] == "2/2 AC verified · to merge"
 
 
 def test_memory_none_is_accepted(ready_to_finish, capsys):

@@ -18,8 +18,10 @@ ALLOWED = [
     ("interrupted", "recover", "in_progress"),
     ("in_progress", "recover", "in_progress"),
     ("in_progress", "submit", "in_review"),
-    ("in_progress", "finish", "done"),
-    ("in_review", "finish", "done"),
+    ("in_progress", "finish", "to_merge"),
+    ("in_review", "finish", "to_merge"),
+    ("to_merge", "merged", "done"),
+    ("done", "unmerged", "to_merge"),
     ("in_progress", "block", "blocked"),
     ("in_review", "block", "blocked"),
     ("interrupted", "block", "blocked"),
@@ -36,8 +38,8 @@ def test_allowed_transitions(current, action, expected):
     assert result["state"] == expected
 
 
-@pytest.mark.parametrize("current", ["pending", "ready", "in_progress", "in_review", "done", "blocked",
-                                     "interrupted"])
+@pytest.mark.parametrize("current", ["pending", "ready", "in_progress", "in_review", "to_merge", "done",
+                                     "blocked", "interrupted"])
 @pytest.mark.parametrize("action", ["claim", "recover", "submit", "finish", "block", "unblock",
                                     "reapprove", "interrupt"])
 def test_illegal_transitions_are_rejected(current, action):

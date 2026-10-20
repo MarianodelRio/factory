@@ -103,8 +103,7 @@ def test_list_without_orca_is_still_viewable(project, store, capsys, fake_orca):
     finish_on_branch(project, store, "CHG-0012-01", merge=True)
     tasks = tasks_by_id(capsys)
     assert tasks["CHG-0012-01"]["state"] == "done"
-    assert tasks["CHG-0012-02"]["state"] == "pending"
-    assert "Orca is closed" in tasks["CHG-0012-02"]["reason"]
+    assert tasks["CHG-0012-02"]["state"] == "ready"
 
 
 def test_show(project, store, capsys):
