@@ -72,11 +72,25 @@ def test_digest_ignores_line_endings():
 
 
 def test_next_change_id(tmp_path):
-    assert next_change_id(tmp_path / "missing") == "CHG-0001"
-    for name in ("CHG-0003", "CHG-0012", "notes", "CHG-12"):
+    assert next_change_id(tmp_path / "missing") == "CHG-1"
+    for name in ("CHG-0003", "CHG-0012", "notes", "CHG-12x"):
         (tmp_path / name).mkdir()
     (tmp_path / "CHG-0020").write_text("a file, not a change")
-    assert next_change_id(tmp_path) == "CHG-0013"
+    assert next_change_id(tmp_path) == "CHG-13"  # numbering goes on after the old four-digit ids
+    (tmp_path / "CHG-13-weekly-recurrence").mkdir()
+    assert next_change_id(tmp_path) == "CHG-14"
+    (tmp_path / ".CHG-14.reserved").mkdir()  # reserved by another session, folder not created yet
+    assert next_change_id(tmp_path) == "CHG-15"
+
+
+def test_new_task_ids_and_what_the_person_types():
+    from swfactory.design import full_id, slugify
+    design = VALID.replace("CHG-0012-01", "CHG-12.1").replace("CHG-0012-02", "CHG-12.2").replace("CHG-0012", "CHG-12")
+    assert [t["id"] for t in parse_design(design, "CHG-12", KNOWN)["tasks"]] == ["CHG-12.1", "CHG-12.2"]
+    assert any("id must be CHG-12.N" in e for e in errors_of(design.replace("CHG-12.1", "CHG-12.01"), "CHG-12"))
+    assert [full_id(t) for t in ("12", "12.1", "chg-12.1", "CHG-0012-01", "x")] == \
+        ["CHG-12", "CHG-12.1", "CHG-12.1", "CHG-0012-01", "x"]
+    assert slugify("Add the recurrence model and validation") == "add-recurrence-model-validation"
 
 
 def replace(old, new, text=VALID):

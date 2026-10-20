@@ -1,6 +1,6 @@
 ---
 name: factory-status
-description: Track the Software Factory — how changes and tasks are going, what is blocked or interrupted, notes and pauses for a running agent, recovering an interrupted task, and memory maintenance. Use for "/factory-status", "¿cómo va todo?" / "how is everything going?", "¿qué está bloqueado?", "how is CHG-0012-01 going?", "leave a note on CHG-0012-01", "pause CHG-0012-01", "recover CHG-0012-01", or "how is the memory?".
+description: Track the Software Factory — how changes and tasks are going, what is blocked or interrupted, notes and pauses for a running agent, recovering an interrupted task, and memory maintenance. Use for "/factory-status", "¿cómo va todo?" / "how is everything going?", "¿qué está bloqueado?", "how is CHG-12.1 going?", "leave a note on CHG-12.1", "pause CHG-12.1", "recover CHG-12.1", or "how is the memory?".
 ---
 <!-- factory-template: skills/factory-status@1 -->
 
@@ -38,7 +38,7 @@ For the live kanban ("open the board", "abre el tablero"), use `/factory-board`.
 
 A finished task waits in `to_merge` and becomes `done` by itself once its work is in the base
 branch (status and sync check it; a pull request merged on GitHub counts, also squashed). If the
-person says it is merged but the Factory cannot see it ("CHG-0012-01 ya está mergeada"), run
+person says it is merged but the Factory cannot see it ("CHG-12.1 ya está mergeada"), run
 `swfactory task merged <task> --json`. A pull request closed without merging shows in `attention`.
 
 Once merged, the remote branch is deleted. With `git.cleanup = "ask"` (default) `attention` offers

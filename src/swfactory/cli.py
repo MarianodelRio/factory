@@ -35,14 +35,19 @@ class Parser(argparse.ArgumentParser):
 
 
 def change_id(value: str) -> str:
+    value = design.full_id(value)
     if not design.CHANGE_ID.match(value):
-        raise argparse.ArgumentTypeError(f"'{value}' is not a change id (CHG-NNNN)")
+        raise argparse.ArgumentTypeError(f"'{value}' is not a change id (CHG-N)")
     return value
+
+
+def task_id(value: str) -> str:
+    return design.full_id(value)
 
 
 def design_register(args: argparse.Namespace) -> Result:
     if args.change is None:
-        return design.reserve_change(paths.changes_dir()), []
+        return design.reserve_change(paths.changes_dir(), args.slug), []
     return design.register(args.change, paths.changes_dir())
 
 
@@ -265,6 +270,7 @@ def build_parser() -> Parser:
     design_cmds = design.add_subparsers(dest="action", required=True, metavar="<action>")
     register = command(design_cmds, "register", "design register", "reserve an id, or validate a design")
     register.add_argument("change", nargs="?", type=change_id, help="omit to reserve the next id")
+    register.add_argument("--slug", help="when reserving: 2-4 kebab-case words for the folder name")
     command(design_cmds, "show", "design show", "show a change").add_argument("change", type=change_id)
     approve = command(design_cmds, "approve", "design approve", "approve a change (base branch only)")
     approve.add_argument("change", type=change_id)
@@ -284,10 +290,10 @@ def build_parser() -> Parser:
         ("publish", "push the task branch and open a PR"),
         ("merged", "mark a finished task as merged (when the Factory cannot see it)"),
     ):
-        command(task_cmds, name, f"task {name}", help_text).add_argument("task")
+        command(task_cmds, name, f"task {name}", help_text).add_argument("task", type=task_id)
 
     launch = command(task_cmds, "launch", "task launch", "launch the lead agent in the task workspace")
-    launch.add_argument("task")
+    launch.add_argument("task", type=task_id)
     launch.add_argument("--agent", choices=["claude", "codex"], help="default: agents.lead in the config")
     launch.add_argument("--reviewer", choices=["claude", "codex"], help="agent for the conformance review")
     launch.add_argument("--model", help='model id or name as said ("opus 5.5")')
@@ -296,26 +302,26 @@ def build_parser() -> Parser:
     launch.add_argument("--reviewer-effort")
 
     checkpoint = command(task_cmds, "checkpoint", "task checkpoint", "record progress, read pending notes")
-    checkpoint.add_argument("task")
+    checkpoint.add_argument("task", type=task_id)
     checkpoint.add_argument("--done", required=True)
     checkpoint.add_argument("--next", required=True)
 
     note = command(task_cmds, "note", "task note", "leave a note for the agent")
-    note.add_argument("task")
+    note.add_argument("task", type=task_id)
     note.add_argument("--text", required=True)
     note.add_argument("--pause", action="store_true", help="ask the agent to pause")
 
     block = command(task_cmds, "block", "task block", "move a task to blocked")
-    block.add_argument("task")
+    block.add_argument("task", type=task_id)
     block.add_argument("--reason", required=True)
 
     verify = command(task_cmds, "verify", "task verify", "run checks and acceptance criteria")
-    verify.add_argument("task")
+    verify.add_argument("task", type=task_id)
     verify.add_argument("--manual", metavar="AC", help="acceptance criterion verified by hand")
     verify.add_argument("--evidence", metavar="FILE", help="evidence file for --manual")
 
     review = command(task_cmds, "review", "task review", "launch or record a review")
-    review.add_argument("task")
+    review.add_argument("task", type=task_id)
     review_mode = review.add_mutually_exclusive_group(required=True)
     review_mode.add_argument("--type", choices=["quality", "conformance"])
     review_mode.add_argument("--record", metavar="FILE", help="reviewer JSON to record")
@@ -324,15 +330,15 @@ def build_parser() -> Parser:
     review.add_argument("--effort")
 
     finish = command(task_cmds, "finish", "task finish", "close a task when every gate passes")
-    finish.add_argument("task")
+    finish.add_argument("task", type=task_id)
     finish.add_argument("--memory", required=True, help='memory summary, or "none"')
 
     cleanup = command(task_cmds, "cleanup", "task cleanup", "remove a merged task's workspace and local branch")
-    cleanup.add_argument("task")
+    cleanup.add_argument("task", type=task_id)
     cleanup.add_argument("--keep", action="store_true", help="keep them, and stop offering it")
 
     recover = command(task_cmds, "recover", "task recover", "inspect an interrupted or blocked task")
-    recover.add_argument("task")
+    recover.add_argument("task", type=task_id)
     recover.add_argument("--confirm", action="store_true", help="start a new attempt")
     recover.add_argument("--replace", action="store_true",
                          help="the previous session is abandoned even if its terminal is open")

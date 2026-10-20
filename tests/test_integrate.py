@@ -7,7 +7,7 @@ import pytest
 import yaml
 from conftest import git
 from test_approve import FOLDER
-from test_claim_launch import TASK, orca_calls
+from test_claim_launch import BRANCH, TASK, orca_calls
 from test_finish import ready_to_finish as ready_to_finish  # noqa: F401
 from test_publish import done as finished  # noqa: F401
 from test_publish import remote_branches
@@ -33,12 +33,12 @@ def set_task_field(repo, **fields):
 
 
 def test_the_branch_is_on_the_remote_from_the_claim(ready_to_finish, capsys):  # noqa: F811
-    assert f"user/{TASK}" in remote_branches(ready_to_finish["repo"])
+    assert BRANCH in remote_branches(ready_to_finish["repo"])
 
 
 def test_finish_backs_up_the_branch(finished):  # noqa: F811
     repo = finished["repo"]
-    pushed = git("ls-remote", "origin", f"refs/heads/user/{TASK}", cwd=repo.root).split()[0]
+    pushed = git("ls-remote", "origin", f"refs/heads/{BRANCH}", cwd=repo.root).split()[0]
     assert pushed == git("rev-parse", "HEAD", cwd=finished["workspace"])
 
 
@@ -103,7 +103,7 @@ def test_cleanup_is_offered_then_done(finished, capsys):  # noqa: F811
     assert code == 0, out
     assert out["data"]["workspace_removed"] is True
     assert not finished["workspace"].exists()
-    assert git("branch", "--list", f"user/{TASK}", cwd=finished["repo"].root) == ""
+    assert git("branch", "--list", BRANCH, cwd=finished["repo"].root) == ""
     assert merge_status(capsys)["next_step"] == "nothing: merged into main"
 
 

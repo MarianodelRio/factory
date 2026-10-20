@@ -40,11 +40,13 @@ def known_dependency(root):
 def test_register_without_id_reserves_the_next_one(project, capsys):
     code, out = cli(capsys, "design", "register")
     assert code == 0
-    assert out["data"]["change"] == "CHG-0001"
-    assert (project.root / ".factory/changes/CHG-0001").is_dir()
-    _, out = cli(capsys, "design", "register")
-    assert out["data"]["change"] == "CHG-0002"
-    assert Path(out["data"]["design"]).as_posix().endswith(".factory/changes/CHG-0002/design.md")
+    assert out["data"]["change"] == "CHG-1"
+    assert (project.root / ".factory/changes/CHG-1").is_dir()
+    _, out = cli(capsys, "design", "register", "--slug", "weekly-recurrence")
+    assert (out["data"]["change"], out["data"]["folder"]) == ("CHG-2", "CHG-2-weekly-recurrence")
+    assert Path(out["data"]["design"]).as_posix().endswith(".factory/changes/CHG-2-weekly-recurrence/design.md")
+    code, out = cli(capsys, "design", "register", "--slug", "Not A Slug")
+    assert (code, out["error"]["code"]) == (3, "slug_invalid")
 
 
 def test_register_validates_a_design(project, capsys):
@@ -74,7 +76,7 @@ def test_register_unknown_change(project, capsys):
 
 
 def test_register_bad_id_is_a_usage_error(project, capsys):
-    code, out = cli(capsys, "design", "register", "chg-1")
+    code, out = cli(capsys, "design", "register", "change-1")
     assert code == 2
     assert out["error"]["code"] == "usage_error"
 

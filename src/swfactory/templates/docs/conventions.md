@@ -13,4 +13,4 @@
 ## Known pitfalls
 
 <!-- Repo quirks that have caused errors, one line each with its origin, e.g.:
-     - Test X is flaky under load; rerun once before investigating. (2026-10-17, CHG-0012-02) -->
+     - Test X is flaky under load; rerun once before investigating. (2026-10-17, CHG-12.2) -->

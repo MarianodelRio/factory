@@ -1,7 +1,7 @@
 # Recovering an interrupted task, or handing a task to another agent
 
 Also for a `blocked` task whose agent cannot go on (out of quota, stuck) when the person wants
-another agent or provider to take over ("relanza CHG-0012-01 con claude opus"). A
+another agent or provider to take over ("relanza CHG-12.1 con claude opus"). A
 `design_changed` block cannot be recovered: the design is approved again first.
 
 1. `swfactory task recover <task> --json` (no changes): task, workspace, branch, `git_status`,

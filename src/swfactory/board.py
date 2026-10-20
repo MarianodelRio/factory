@@ -151,21 +151,21 @@ def _details(task: dict[str, Any], record: dict[str, Any] | None) -> dict[str, A
 def _changes(ctx: tasks.Context, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     awaiting = set(tasks.awaiting_approval(ctx))
     found = []
-    for folder in sorted(ctx.changes_dir.glob("CHG-*")):
+    for change_id, folder in design.change_folders(ctx.changes_dir):
         path = folder / "design.md"
         if not path.exists():
             continue
         match = design.TITLE.search(design.normalize(path.read_text(encoding="utf-8")))
-        own = [r for r in rows if r["change"] == folder.name]
+        own = [r for r in rows if r["change"] == change_id]
         if (folder / "rejection.json").exists():
             state = "rejected"
-        elif folder.name in awaiting:
+        elif change_id in awaiting:
             state = "awaiting_approval"
         elif own and all(r["state"] == "done" for r in own):
             state = "done"
         else:
             state = "approved"
-        found.append({"id": folder.name, "title": match.group(1).strip() if match else folder.name,
+        found.append({"id": change_id, "title": match.group(1).strip() if match else change_id,
                       "state": state, "tasks": len(own)})
     return found
 

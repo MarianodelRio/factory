@@ -2,7 +2,7 @@ import json
 
 import pytest
 from conftest import git
-from test_claim_launch import TASK, orca_calls
+from test_claim_launch import BRANCH, TASK, orca_calls
 from test_finish import ready_to_finish as ready_to_finish  # noqa: F401
 
 from swfactory.cli import main
@@ -35,13 +35,13 @@ def test_publish_pushes_only_the_branch_and_opens_a_pr(done, fake_gh, fake_orca,
     main_before = git("rev-parse", "origin/main", cwd=repo.root)
     code, out = publish(capsys)
     assert code == 0, out
-    assert remote_branches(repo) == ["main", f"user/{TASK}"]
-    assert git("ls-remote", "origin", f"refs/heads/user/{TASK}", cwd=repo.root).split()[0] == \
+    assert remote_branches(repo) == ["main", BRANCH]
+    assert git("ls-remote", "origin", f"refs/heads/{BRANCH}", cwd=repo.root).split()[0] == \
         git("rev-parse", "HEAD", cwd=done["workspace"])
     assert git("rev-parse", "origin/main", cwd=repo.root) == main_before
     prs = fake_gh.prs()
     assert len(prs) == 1
-    assert (prs[0]["head"], prs[0]["base"]) == (f"user/{TASK}", "main")
+    assert (prs[0]["head"], prs[0]["base"]) == (BRANCH, "main")
     assert prs[0]["title"] == f"{TASK}: Add recurrence model and validation"
     assert store.read_task(TASK)["pull_request"] == {"number": 1, "url": prs[0]["url"]}
     card = [c for c in orca_calls(fake_orca, "worktree set") if "--comment" in c][-1]
@@ -63,7 +63,7 @@ def test_republish_pushes_again_to_the_same_pr(done, fake_gh, capsys):
     code, out = publish(capsys)
     assert code == 0, out
     assert len(fake_gh.prs()) == 1
-    assert git("ls-remote", "origin", f"refs/heads/user/{TASK}", cwd=done["repo"].root).split()[0] == \
+    assert git("ls-remote", "origin", f"refs/heads/{BRANCH}", cwd=done["repo"].root).split()[0] == \
         git("rev-parse", "HEAD", cwd=done["workspace"])
     assert out["data"]["pull_request"]["number"] == 1
 
@@ -74,14 +74,14 @@ def test_push_never_forces(done, fake_gh, capsys):
     # someone rewrites the remote branch: a normal push is rejected and nothing is forced
     other = repo.root.parent / "other-clone"
     git("clone", "-q", str(repo.remote), str(other), cwd=repo.root)
-    git("checkout", "-q", f"user/{TASK}", cwd=other)
+    git("checkout", "-q", BRANCH, cwd=other)
     repo.commit("x.txt", "x\n", "remote change", cwd=other)
-    git("push", "-q", "origin", f"user/{TASK}", cwd=other)
+    git("push", "-q", "origin", BRANCH, cwd=other)
     repo.commit("src/bookings/y.py", "y = 1\n", "local change", cwd=done["workspace"])
     code, out = publish(capsys)
     assert code == 5
     assert out["error"]["code"] == "push_rejected"
-    assert git("log", "-1", "--format=%s", f"user/{TASK}", cwd=repo.root) == "local change"
+    assert git("log", "-1", "--format=%s", BRANCH, cwd=repo.root) == "local change"
 
 
 def test_without_gh_the_branch_is_pushed_and_the_pr_left_to_the_person(done, capsys, tmp_path,
@@ -89,7 +89,7 @@ def test_without_gh_the_branch_is_pushed_and_the_pr_left_to_the_person(done, cap
     monkeypatch.setenv("SWFACTORY_GH", str(tmp_path / "no-such-gh"))
     code, out = publish(capsys)
     assert code == 0, out
-    assert remote_branches(done["repo"]) == ["main", f"user/{TASK}"]
+    assert remote_branches(done["repo"]) == ["main", BRANCH]
     assert out["data"]["pull_request"] is None
     assert any("gh" in w for w in out["warnings"])
 

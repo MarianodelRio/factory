@@ -5,7 +5,7 @@
 
 Status: accepted            # accepted | superseded by NNNN
 Date: YYYY-MM-DD
-Change: CHG-NNNN
+Change: CHG-N
 
 ## Context
 

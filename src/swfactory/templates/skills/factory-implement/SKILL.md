@@ -1,6 +1,6 @@
 ---
 name: factory-implement
-description: Implement an approved Software Factory task (CHG-NNNN-NN). From the main checkout it claims the task, creates its Orca workspace and launches the lead agent there; inside the task's workspace it acts as the lead agent (plan, tests, code, checkpoints, verify, reviews, memory, finish, publish). Use for "/factory-implement CHG-0012-01 con codex, revisa claude" ("with codex, review claude") or when launched with the brief "/factory-implement <task> [--reviewer <agent>]".
+description: Implement an approved Software Factory task (CHG-N.M). From the main checkout it claims the task, creates its Orca workspace and launches the lead agent there; inside the task's workspace it acts as the lead agent (plan, tests, code, checkpoints, verify, reviews, memory, finish, publish). Use for "/factory-implement CHG-12.1 con codex, revisa claude" ("with codex, review claude") or when launched with the brief "/factory-implement <task> [--reviewer <agent>]".
 ---
 <!-- factory-template: skills/factory-implement@1 -->
 
@@ -32,7 +32,7 @@ main checkout), and `swfactory task show <task> --json`.
    person asks for more: "revisa también conformidad" / "also review conformance").
    `swfactory models --json` lists the models Orca knows.
 2. Check the task: `swfactory task show <task> --json`. If it is not `ready`, explain the `reason`
-   (for example "waiting for CHG-0012-01 to be merged into main") and stop.
+   (for example "waiting for CHG-12.1 to be merged into main") and stop.
 3. Claim it: `swfactory task claim <task> --json`. It fetches `origin` first and Orca creates the
    workspace and its branch from the latest `origin/<base>` (`base` in the answer); if that fails
    the claim is undone. Mention any sync warning.

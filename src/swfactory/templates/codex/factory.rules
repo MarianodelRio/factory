@@ -6,11 +6,11 @@ prefix_rule(
     decision = "prompt",
     justification = "Approving or rejecting a design needs the person's explicit permission.",
     match = [
-        "swfactory design approve CHG-0001 --message 'apruebo CHG-0001' --json",
-        "swfactory design reject CHG-0001 --reason 'not now' --json",
+        "swfactory design approve CHG-1 --message 'apruebo CHG-1' --json",
+        "swfactory design reject CHG-1 --reason 'not now' --json",
     ],
     not_match = [
-        "swfactory design show CHG-0001 --json",
+        "swfactory design show CHG-1 --json",
         "swfactory design register --json",
     ],
 )

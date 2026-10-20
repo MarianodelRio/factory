@@ -173,18 +173,19 @@ def catalog(ctx: Context, sync: bool = True) -> dict[str, dict[str, Any]]:
     and whether the change's approval is still valid. Syncs each change with its design first,
     unless `sync` is False (read-only views)."""
     tasks: dict[str, dict[str, Any]] = {}
-    for tasks_file in sorted(ctx.changes_dir.glob("CHG-*/tasks.yaml")):
-        folder = tasks_file.parent
-        if (folder / "rejection.json").exists():
+    for change_id, folder in design.change_folders(ctx.changes_dir):
+        tasks_file = folder / "tasks.yaml"
+        if not tasks_file.exists() or (folder / "rejection.json").exists():
             continue
         if sync:
-            design.sync_with_main(folder.name, ctx.changes_dir, ctx.store)
+            design.sync_with_main(change_id, ctx.changes_dir, ctx.store)
         approval = design.approval_of(folder)
         current = design.digest((folder / "design.md").read_text(encoding="utf-8"))
         approved = approval is not None and approval.get("design_digest") == current
         data = yaml.safe_load(tasks_file.read_text(encoding="utf-8")) or {}
         for task in data.get("tasks", []):
-            tasks[str(task["id"])] = {**task, "change": folder.name, "approved": approved}
+            tasks[str(task["id"])] = {**task, "change": change_id, "approved": approved,
+                                      "design": f".factory/changes/{folder.name}/design.md"}
     return tasks
 
 
@@ -417,7 +418,8 @@ def claim(task_id: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
 
     ctx.store.create_claim(task_id, 1)
     try:
-        workspace = orca.create_workspace(task_id, start_ref, ctx.main_checkout)
+        name = f"{task_id.lower()}-{design.slugify(task['title'])}"  # Orca's workspace and branch name
+        workspace = orca.create_workspace(name, start_ref, ctx.main_checkout)
 
         def start(state: State) -> State:
             state = transition(state, "claim", current="ready")
@@ -536,10 +538,11 @@ def _min_version(ctx: Context) -> str:
 def _approved_start(change_id: str, base: str, ctx: Context) -> str:
     """The ref a task workspace starts from: `origin/<base>` when the approval is already there,
     else the local base branch (an approval that could not be pushed yet)."""
-    folder = ctx.changes_dir / change_id
-    approval = design.approval_of(folder) or {}
+    folder = design.change_folder(ctx.changes_dir, change_id)
+    approval = (design.approval_of(folder) if folder else None) or {}
     for ref in (f"origin/{base}", base):
-        on_ref = git.show_file(ref, f".factory/changes/{change_id}/approval.json", ctx.main_checkout)
+        on_ref = git.show_file(ref, f".factory/changes/{folder.name if folder else change_id}/approval.json",
+                               ctx.main_checkout)
         if on_ref is not None and json.loads(on_ref).get("design_digest") == approval.get("design_digest"):
             return ref
     message = f"the approval of {change_id} is not committed on {base}"
@@ -806,7 +809,7 @@ def review(task_id: str, kind: str, agent: str | None, ctx: Context, model: str 
     prompt = (
         f"{role}\n"
         f"Review task {task_id} ({task['title']}) of change {task['change']} in this workspace.\n"
-        f"- Approved design and acceptance criteria: .factory/changes/{task['change']}/design.md\n"
+        f"- Approved design and acceptance criteria: {task['design']}\n"
         f"- Task, evidence and checks: swfactory task show {task_id} --json\n"
         f"- The change to review: git diff {base}...HEAD\n"
         "Do not edit files. End with the JSON; the lead agent records it."
@@ -1021,7 +1024,7 @@ def pr_body(task: dict[str, Any], record: State) -> str:
     """PR description from the task: change, AC with evidence, reviews with every finding, memory
     and what remains pending."""
     lines = [f"Task {task['id']} of change {task['change']} "
-             f"(design: `.factory/changes/{task['change']}/design.md`).", "", "## Acceptance criteria", ""]
+             f"(design: `{task['design']}`).", "", "## Acceptance criteria", ""]
     for ac, how in task["acceptance"].items():
         entry = record["acceptance"].get(ac) or {}
         evidence = Path(entry["evidence"]).name if entry.get("evidence") else "no evidence"
@@ -1152,13 +1155,13 @@ def task_row(task: dict[str, Any], record: State | None, liveness: str | None, b
 
 def awaiting_approval(ctx: Context) -> list[str]:
     waiting = []
-    for folder in sorted(ctx.changes_dir.glob("CHG-*")):
+    for change_id, folder in design.change_folders(ctx.changes_dir):
         if not (folder / "design.md").exists() or (folder / "rejection.json").exists():
             continue
         approval = design.approval_of(folder)
         current = design.digest((folder / "design.md").read_text(encoding="utf-8"))
         if approval is None or approval.get("design_digest") != current:
-            waiting.append(folder.name)
+            waiting.append(change_id)
     return waiting
 
 

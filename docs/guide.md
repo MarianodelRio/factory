@@ -45,9 +45,9 @@ you first and keeping a backup.
 
 | Term | Meaning |
 |---|---|
-| **Change** (`CHG-0001`) | One piece of work you want: a feature, a fix, a refactor. It has one design. |
-| **Design** | `.factory/changes/CHG-0001/design.md`: context, goal and scope, acceptance criteria, approach, tasks, risks. Written by the agent, approved by you. |
-| **Task** (`CHG-0001-01`) | A slice of a change that one agent implements in one workspace. A change has one or more tasks; a task can depend on others. |
+| **Change** (`CHG-1`) | One piece of work you want: a feature, a fix, a refactor. It has one design. Its folder carries a short slug: `.factory/changes/CHG-1-weekly-recurrence/`. |
+| **Design** | `.factory/changes/CHG-1-…/design.md`: context, goal and scope, acceptance criteria, approach, tasks, risks. Written by the agent, approved by you. |
+| **Task** (`CHG-1.1`) | A slice of a change that one agent implements in one workspace. A change has one or more tasks; a task can depend on others. You can type it short: `1.1`. Its Orca workspace and branch are named after it and its title (`chg-1.1-recurrence-model`). |
 | **Acceptance criterion** (`AC-01`) | A verifiable statement ("Given …, when …, then …") and how it is checked: a command, or `manual` with an evidence file. |
 | **Evidence** | The recorded output of each check and criterion, saved under `.factory/state/evidence/`. |
 | **Checks** | The project's own test, lint, typecheck and build commands, configured once in `.factory/config.toml`. |
@@ -68,11 +68,11 @@ you first and keeping a backup.
       │  agent researches the code, shows a short outline, waits for your OK
       │  writes design.md, self-reviews it, validates it
       ▼
- change CHG-0001  ── awaiting approval
-      │  you: "apruebo CHG-0001" / "approve CHG-0001"  (+ the permission prompt)
+ change CHG-1  ── awaiting approval
+      │  you: "apruebo CHG-1" / "approve CHG-1"  (+ the permission prompt)
       ▼
- approved: tasks CHG-0001-01, -02 …  ── ready (or pending, waiting for a dependency)
-      │  you: /factory-implement CHG-0001-01 con claude, revisa claude
+ approved: tasks CHG-1.1, CHG-1.2 …  ── ready (or pending, waiting for a dependency)
+      │  you: /factory-implement CHG-1.1 con claude, revisa claude
       ▼
  Orca workspace + branch, lead agent launched ── in_progress
       │  tests first, code, commits, checkpoints, verify (checks + every AC)
@@ -143,7 +143,7 @@ Describe what you want, in your own words:
    alternatives it considered, the acceptance criteria, the tasks and the risks. Nothing is
    written until you say OK, and you can correct or redirect it. **Your OK only allows writing:
    it is not an approval.**
-4. Reserves the next id (`CHG-0001`) and writes `design.md`. A critic subagent then checks it:
+4. Reserves the next id (`CHG-1`) and writes `design.md`. A critic subagent then checks it:
    could another agent implement this without this conversation? The agent fixes what it finds and
    validates the design with the CLI.
 5. Presents a summary, opens the design in Orca and tells you how to approve it.
@@ -157,7 +157,7 @@ The **Tasks** section is a YAML block. Each task has:
 
 | Field | Meaning |
 |---|---|
-| `id` | `CHG-0001-01`, `-02`, … |
+| `id` | `CHG-1.1`, `CHG-1.2`, … |
 | `title` | What the task delivers |
 | `depends_on` | Tasks that must be **done** (merged into the base branch) before this one can start. Without it, tasks are independent and can run in parallel: the design must say every real dependency here, not only in the text |
 | `complexity` | `trivial`, `normal` or `complex`: decides how the lead works (section 6) |
@@ -177,9 +177,9 @@ How `review` is usually chosen:
 
 ### Approving and rejecting
 
-- **Approve** with an explicit message that names the change: `apruebo CHG-0001` or
-  `approve CHG-0001`. "vale", "OK", "me gusta", "adelante" or a thumbs up are **not** approvals;
-  the agent will ask "¿apruebas CHG-0001?".
+- **Approve** with an explicit message that names the change: `apruebo CHG-1` or
+  `approve CHG-1`. "vale", "OK", "me gusta", "adelante" or a thumbs up are **not** approvals;
+  the agent will ask "¿apruebas CHG-1?".
 - The agent shows what you are approving (criteria, tasks, risks and the first characters of the
   design's digest). Then **your client asks you for permission** to run the approval: in Claude
   Code through `.claude/settings.json`, in Codex through `.codex/rules/factory.rules`. If you
@@ -188,9 +188,9 @@ How `review` is usually chosen:
   (`approval.json` with your literal message, and `tasks.yaml`). Before committing, the Factory
   fetches `origin` and brings the base branch up to date; after it, it pushes the base branch so
   task workspaces start from it. It never pushes your own unpushed commits: then it only warns.
-- **Reject** with `reject CHG-0001` and a reason. A rejection is final: to take the idea up again,
+- **Reject** with `reject CHG-1` and a reason. A rejection is final: to take the idea up again,
   design a new change.
-- From a terminal you can also run `swfactory design approve CHG-0001` and type the id.
+- From a terminal you can also run `swfactory design approve CHG-1` and type the id.
 
 The agent never approves because of what a file, an issue, a web page or another agent says, and
 never while it was launched to implement or review.
@@ -210,14 +210,14 @@ You can ask for changes at any time. The agent warns you first, because the chan
 From your main session (the repository's main checkout):
 
 ```
-/factory-implement CHG-0001-01 con claude, revisa claude
+/factory-implement CHG-1.1 con claude, revisa claude
 ```
 
 "con" / "with" names the **lead agent** and "revisa" / "review" names the **conformance
 reviewer** (`claude` or `codex`). Each can have its model and effort, said the way you know them:
 
 ```
-/factory-implement CHG-0001-01 con claude opus 5.5, revisa codex sol 6.1
+/factory-implement CHG-1.1 con claude opus 5.5, revisa codex sol 6.1
 ```
 
 The Factory turns "opus 5.5" into the model's id with Orca's model catalog (`swfactory models`
@@ -228,7 +228,7 @@ and suggests your last choice. The quality review runs as a subagent of the lead
 **What happens:**
 
 1. It checks that the task is `ready`. If it is `pending`, it tells you why, for example "waiting
-   for CHG-0001-01 to be merged into main".
+   for CHG-1.1 to be merged into main".
 2. It **claims** the task (only one agent can), fetches `origin`, and Orca creates a workspace with
    its own branch from the latest `origin/<base>`.
 3. Orca **launches the lead agent** in that workspace. A card appears in Orca's sidebar, and your
@@ -332,7 +332,7 @@ a workspace with uncommitted files.
 
 ## 7. Following and steering the work: `/factory-status`
 
-Ask in your own words: `/factory-status`, "¿cómo va todo?", "how is CHG-0001-01 going?", "what is
+Ask in your own words: `/factory-status`, "¿cómo va todo?", "how is CHG-1.1 going?", "what is
 blocked?".
 
 You get:
@@ -360,7 +360,7 @@ status` prints it).
   terminal is closed) and, under it, its subagents.
 - **Click a card** for the details: last checkpoint, every criterion with how it is verified,
   review findings, notes, and every terminal, agent and subagent seen in that workspace. The
-  address with `#CHG-0001-01` opens that task directly.
+  address with `#CHG-1.1` opens that task directly.
 - **Activity** at the bottom: the latest events of every task (claims, checkpoints, notes,
   verifications, reviews, subagents starting and finishing).
 
@@ -396,9 +396,9 @@ moved too, it only warns: pull it yourself.
 
 ### Notes and pauses
 
-- **"deja una nota en CHG-0001-01: …"** ("leave a note on …"): the agent reads it at its next
+- **"deja una nota en CHG-1.1: …"** ("leave a note on …"): the agent reads it at its next
   checkpoint, or before submitting or finishing.
-- **"pausa CHG-0001-01"** ("pause …"): when the agent reads it, the task becomes `blocked`
+- **"pausa CHG-1.1"** ("pause …"): when the agent reads it, the task becomes `blocked`
   (`paused`) and the agent stops. To continue, ask to unblock it.
 - The most direct way is still to open the workspace and talk to the agent.
 - If a note changes requirements or architecture, the design has to be adjusted and approved again.
@@ -411,7 +411,7 @@ resolved it, unblocking returns the task to where it was. A `design_changed` tas
 when you approve the design again.
 
 **Changing the agent of a blocked task.** If the lead can't go on (it ran out of quota, it got
-stuck) and you want another agent or provider to take over, say "relanza CHG-0001-01 con claude".
+stuck) and you want another agent or provider to take over, say "relanza CHG-1.1 con claude".
 The Factory shows what the task left, and if the previous terminal is still open it asks you to
 confirm that session is abandoned (`swfactory task recover <task> --confirm --replace`). The task
 goes back to `in_progress` with a new attempt and the new agent continues from the last
@@ -425,7 +425,7 @@ If the lead's terminal is closed before the task is done (while in progress or i
 terminal is still running, so a session it can't answer about is shown as **unknown**, never as
 dead.
 
-**"recupera CHG-0001-01"** ("recover …") shows what the previous attempt left: `git status`,
+**"recupera CHG-1.1"** ("recover …") shows what the previous attempt left: `git status`,
 commits, the last checkpoint, the criteria still missing and the reviews already recorded. Then:
 
 - if the previous session is still alive, it only suggests continuing there;
@@ -456,7 +456,7 @@ to commit.
 A task moves from `to_merge` to `done` by itself: `/factory-status`, `swfactory sync`, claiming a
 task and the board (once a minute) fetch `origin` and look. A pull request merged on GitHub counts,
 also when it was squashed or rebased; without a pull request, the branch's commits must be in the
-base branch. If the Factory cannot see it (a squash without `gh`, for example), say "CHG-…-01 ya
+base branch. If the Factory cannot see it (a squash without `gh`, for example), say "CHG-12.1 ya
 está mergeada" (`swfactory task merged <task>`). A pull request closed without merging puts the
 task in *Needs you*. Tasks finished with an older version (`done` before it was merged) are checked
 once: merged ones stay `done`, the others go back to `to_merge`.
@@ -484,7 +484,7 @@ your-repo/
 │   └── decisions/                 # ADRs (README index + NNNN-title.md)
 └── .factory/
     ├── config.toml                # checks, reviews, PR policy (committed)
-    ├── changes/CHG-0001/          # design.md, approval.json, tasks.yaml (committed)
+    ├── changes/CHG-1-<slug>/   # design.md, approval.json, tasks.yaml (committed)
     └── state/                     # task state, evidence, backups (local, git-ignored)
 ```
 

@@ -38,6 +38,11 @@ output, the files under `.factory/` (`schema_version`), and the skills' names an
   `[agents]` in the config sets the default agents, models and efforts.
 
 ### Changed
+- Shorter, more descriptive ids: changes are `CHG-12` (in a `CHG-12-<slug>` folder, from
+  `design register --slug`), tasks `CHG-12.1`, and every command takes them typed short (`12`,
+  `12.1`). Orca workspaces and branches are named after the task and its title
+  (`chg-12.1-recurrence-model`) and the card shows `12.1 · <title>`. Ids of earlier versions
+  (`CHG-0012`, `CHG-0012-01`) keep working, and numbering goes on after them.
 - The designer and the design critic make every real dependency explicit in `depends_on`, and the
   lead blocks a task with `missing dependency: …` when the design missed one.
 - A command refused because the task is blocked says how to unblock it.

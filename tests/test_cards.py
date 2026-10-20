@@ -31,7 +31,7 @@ def test_card_follows_the_table(repo, fake_orca, state, detail, status, comment,
     assert warnings == []
     call = set_call(fake_orca)
     assert value(call, "--worktree") == f"id:{WS}"
-    assert value(call, "--display-name") == "CHG-0012-01 Add recurrence model"
+    assert value(call, "--display-name") == "CHG-0012-01 · Add recurrence model"
     assert value(call, "--workspace-status") == status
     assert value(call, "--comment") == comment
     assert ("--unread" in call) is unread

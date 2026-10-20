@@ -48,7 +48,7 @@ once. To try it without installing: `uvx swfactory --version`.
 | Skill | What for |
 |---|---|
 | `/factory-init` | Prepare or update a repository: it analyzes it, proposes one plan (create, modify, delete with reason, respect, Orca actions) and applies it after a single confirmation, with backups. "solo el análisis" shows the plan only. |
-| `/factory-design` | Design a change: it shows a short outline first, writes the design with its acceptance criteria and tasks, and has it critiqued. You approve it by saying "apruebo CHG-NNNN" (Claude asks for permission before the approval commit). |
+| `/factory-design` | Design a change: it shows a short outline first, writes the design with its acceptance criteria and tasks, and has it critiqued. You approve it by saying "apruebo CHG-N" (Claude asks for permission before the approval commit). |
 | `/factory-implement` | Implement an approved task: from the main checkout it claims the task, creates its Orca workspace and launches the lead agent there. The lead writes tests and code, checkpoints, verifies every criterion with evidence, runs the reviews, updates the memory and finishes. |
 | `/factory-board` | The live kanban board: opens it in an Orca tab (or your browser), closes it, gives its URL or saves a snapshot. |
 | `/factory-status` | How everything is going, what needs you, notes and pauses for a running agent ("deja una nota en CHG-…", "pausa CHG-…"), recovering an interrupted task and memory maintenance. |
@@ -73,16 +73,16 @@ In a Claude Code (or Codex) terminal in Orca, at the root of your repository:
    ```
    /factory-design add weekly recurrence to bookings
    ```
-   Say OK to the outline; it writes `.factory/changes/CHG-0001/design.md` and `tasks.yaml`.
+   Say OK to the outline; it writes `.factory/changes/CHG-1/design.md` and `tasks.yaml`.
    Read it and approve it:
    ```
-   apruebo CHG-0001
+   apruebo CHG-1
    ```
    Accept the permission prompt. "vale" or "ok" is not an approval.
 
 3. **Implement a task.**
    ```
-   /factory-implement CHG-0001-01 con claude opus 5.5, revisa claude
+   /factory-implement CHG-1.1 con claude opus 5.5, revisa claude
    ```
    ("with claude opus 5.5, review claude": the lead agent with its model, and the conformance
    reviewer. Defaults can go in `[agents]` of `.factory/config.toml`.) A new workspace

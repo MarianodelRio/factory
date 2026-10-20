@@ -9,6 +9,7 @@ from swfactory.cli import main
 from swfactory.state import TaskStore
 
 TASK = "CHG-0012-01"
+BRANCH = "user/chg-0012-01-add-recurrence-model-validation"  # Orca names it after the task and its title
 
 
 @pytest.fixture
@@ -41,7 +42,7 @@ def test_claim_creates_workspace_state_claim_and_card(project, store, fake_orca,
     assert code == 0, out
     record = store.read_task(TASK)
     assert record["state"] == "in_progress"
-    assert record["workspace"]["branch"] == f"user/{TASK}"
+    assert record["workspace"]["branch"] == BRANCH
     assert record["workspace"]["orca_id"] == out["data"]["workspace"]
     assert [a["id"] for a in record["attempts"]] == [1]
     assert record["attempts"][0]["agent"] is None

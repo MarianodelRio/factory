@@ -27,8 +27,12 @@ from swfactory import git, orca, sync, tasks
 from swfactory.output import EXIT_PRECONDITION, FactoryError
 from swfactory.state import TaskStore, now
 
-CHANGE_ID = re.compile(r"^CHG-(\d{4})$")
-TITLE = re.compile(r"^# (?:CHG-\d{4}\s*[—-]\s*)?(.+)$", re.MULTILINE)
+# A change is `CHG-12` (`CHG-0012` before 1.2, still accepted). Its folder is the id, or the id and a
+# slug (`CHG-12-weekly-recurrence`). Its tasks are `CHG-12.1`, `CHG-12.2` (`CHG-0012-01` before).
+CHANGE_ID = re.compile(r"^CHG-(\d+)$")
+CHANGE_FOLDER = re.compile(r"^(CHG-(\d+))(?:-([a-z][a-z0-9-]*))?$")
+SLUG = re.compile(r"^[a-z][a-z0-9]*(?:-[a-z0-9]+){0,5}$")
+TITLE = re.compile(r"^# (?:CHG-\d+\s*[—-]\s*)?(.+)$", re.MULTILINE)
 AC_ID = re.compile(r"^AC-\d{2,}$")
 AC_LINE = re.compile(r"^\s*-\s*(AC-\d{2,})\s*:")
 FENCE = re.compile(r"^```yaml\s*\n(.*?)^```\s*$", re.MULTILINE | re.DOTALL)
@@ -49,15 +53,57 @@ def digest(design_md: str) -> str:
     return "sha256:" + hashlib.sha256(normalize(design_md).encode("utf-8")).hexdigest()
 
 
-def next_change_id(changes_dir: Path) -> str:
-    """The next free `CHG-NNNN` after the highest change folder."""
-    numbers = [0]
+def change_folders(changes_dir: Path) -> list[tuple[str, Path]]:
+    """(change id, folder) of every change, in number order."""
+    found = []
     if changes_dir.is_dir():
         for entry in changes_dir.iterdir():
-            match = CHANGE_ID.match(entry.name)
+            match = CHANGE_FOLDER.match(entry.name)
             if match and entry.is_dir():
-                numbers.append(int(match.group(1)))
-    return f"CHG-{max(numbers) + 1:04d}"
+                found.append((int(match.group(2)), match.group(1), entry))
+    return [(change_id, folder) for _, change_id, folder in sorted(found, key=lambda f: (f[0], f[1]))]
+
+
+def change_folder(changes_dir: Path, change_id: str) -> Path | None:
+    """The folder of `change_id` (with or without its slug), or None."""
+    return next((folder for found, folder in change_folders(changes_dir) if found == change_id), None)
+
+
+def short_id(task_or_change_id: str) -> str:
+    """`CHG-12.1` -> `12.1`: how ids are shown where space is short."""
+    return task_or_change_id.removeprefix("CHG-")
+
+
+def full_id(text: str) -> str:
+    """What the person types (`12`, `12.1`, `chg-12.1`, `CHG-12.1`) as the canonical id."""
+    text = text.strip()
+    if re.fullmatch(r"\d+(?:\.\d+|-\d{2,})?", text):
+        return f"CHG-{text}"
+    if re.fullmatch(r"chg-\d+(?:\.\d+|-\d{2,})?", text, re.IGNORECASE):
+        return "CHG-" + text[4:]
+    return text
+
+
+FILLER = {"a", "an", "the", "and", "or", "of", "to", "for", "with", "in", "on", "by"}
+
+
+def slugify(text: str, words: int = 4, length: int = 32) -> str:
+    """A short kebab-case slug of `text` for folder and branch names."""
+    parts = [w for w in re.sub(r"[^a-z0-9]+", " ", text.lower()).split() if w not in FILLER][:words]
+    while len(parts) > 1 and len("-".join(parts)) > length:  # whole words only
+        parts.pop()
+    slug = "-".join(parts)[:length]
+    return slug if slug and slug[0].isalpha() else f"x-{slug}".strip("-")
+
+
+def next_change_id(changes_dir: Path) -> str:
+    """The next free `CHG-N` after the highest change number (also counting reserved numbers, the
+    empty `.CHG-N.reserved` folders, which Git does not track)."""
+    numbers = [int(change_id.removeprefix("CHG-")) for change_id, _ in change_folders(changes_dir)]
+    if changes_dir.is_dir():
+        numbers += [int(m.group(1)) for entry in changes_dir.iterdir()
+                    if (m := re.fullmatch(r"\.CHG-(\d+)\.reserved", entry.name))]
+    return f"CHG-{max(numbers, default=0) + 1}"
 
 
 def section(text: str, title: str) -> str | None:
@@ -119,7 +165,7 @@ def _validate_tasks(
     criteria: list[str],
     errors: list[str],
 ) -> None:
-    id_pattern = re.compile(rf"^{re.escape(change_id)}-\d{{2,}}$")
+    id_pattern = re.compile(rf"^{re.escape(change_id)}(?:\.[1-9]\d*|-\d{{2,}})$")
     ids = [str(t.get("id")) for t in tasks]
     own = set(ids)
     covered: set[str] = set()
@@ -134,7 +180,7 @@ def _validate_tasks(
                 errors.append(f"{name}: unknown field '{field}'")
 
         if "id" in task and not id_pattern.match(str(task["id"])):
-            errors.append(f"{name}: id must be {change_id}-NN")
+            errors.append(f"{name}: id must be {change_id}.N (for example {change_id}.1)")
         if "id" in task and ids.count(str(task["id"])) > 1:
             errors.append(f"{name}: duplicated task id")
         if "title" in task and (not isinstance(task["title"], str) or not task["title"].strip()):
@@ -253,16 +299,22 @@ def scope_overlaps(tasks: list[dict[str, Any]]) -> list[str]:
     return warnings
 
 
-def reserve_change(changes_dir: Path) -> dict[str, Any]:
-    """Create the folder of the next free change id; two sessions never get the same one."""
+def reserve_change(changes_dir: Path, slug: str | None = None) -> dict[str, Any]:
+    """Create the folder of the next free change id (`CHG-N-<slug>`); two sessions never get the
+    same number: a number is taken when its plain `CHG-N` lock folder is created."""
+    if slug is not None and not SLUG.match(slug):
+        raise FactoryError("slug_invalid", f"'{slug}' is not a short kebab-case slug (e.g. weekly-recurrence)",
+                           EXIT_PRECONDITION)
     changes_dir.mkdir(parents=True, exist_ok=True)
     while True:
         change_id = next_change_id(changes_dir)
+        folder = changes_dir / (f"{change_id}-{slug}" if slug else change_id)
         try:
-            (changes_dir / change_id).mkdir()
+            (changes_dir / f".{change_id}.reserved").mkdir()
         except FileExistsError:
             continue
-        return {"change": change_id, "design": str(changes_dir / change_id / "design.md")}
+        folder.mkdir()
+        return {"change": change_id, "folder": folder.name, "design": str(folder / "design.md")}
 
 
 def register(change_id: str, changes_dir: Path) -> tuple[dict[str, Any], list[str]]:
@@ -320,9 +372,9 @@ def show(change_id: str, changes_dir: Path, store: TaskStore, main_changes_dir: 
 
 def sync_with_main(change_id: str, main_changes_dir: Path, store: TaskStore) -> None:
     """Block or restore the change's tasks from the main checkout's design and approval."""
-    folder = main_changes_dir / change_id
-    approval = _read_json(folder / "approval.json")
-    if approval is None or not (folder / "design.md").exists():
+    folder = change_folder(main_changes_dir, change_id)
+    approval = _read_json(folder / "approval.json") if folder else None
+    if folder is None or approval is None or not (folder / "design.md").exists():
         return
     approved = approval.get("design_digest") == digest((folder / "design.md").read_text(encoding="utf-8"))
     tasks.sync_with_design(approved_task_ids(folder), approved, store)
@@ -343,13 +395,13 @@ def approved_task_ids(folder: Path) -> list[str]:
 
 def known_tasks(changes_dir: Path, exclude: str) -> set[str]:
     """Ids of approved tasks of other changes (their `tasks.yaml`)."""
-    return {task_id for folder in changes_dir.glob("CHG-*") if folder.name != exclude
+    return {task_id for change_id, folder in change_folders(changes_dir) if change_id != exclude
             for task_id in approved_task_ids(folder)}
 
 
 def _folder(change_id: str, changes_dir: Path) -> Path:
-    folder = changes_dir / change_id
-    if not folder.is_dir():
+    folder = change_folder(changes_dir, change_id)
+    if folder is None:
         message = f"{change_id} does not exist in {changes_dir}"
         raise FactoryError("change_not_found", message, EXIT_PRECONDITION)
     return folder

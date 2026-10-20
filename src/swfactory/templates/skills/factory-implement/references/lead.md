@@ -10,7 +10,7 @@ Your role: `roles/lead.md`. You own the task end to end, inside its workspace.
   `swfactory task unblock <task> --json` (a `design_changed` block waits for the design's approval).
 - If this is a recovered attempt and the task already has reviews, verify and submit again, then run
   only the reviews whose latest verdict is not `pass` on the current commit.
-- Read the approved design `.factory/changes/<change>/design.md`, `docs/conventions.md` and
+- Read the approved design (`design` in `swfactory task show`), `docs/conventions.md` and
   `docs/working-agreements.md`, and the decisions it cites.
 
 ## Work by complexity

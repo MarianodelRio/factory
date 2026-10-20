@@ -21,7 +21,7 @@ Rules:
    technologies, architecture patterns, public contracts, data models and security or performance
    trade-offs, not local details.
 5. Working agreements are one line with date and origin, e.g.
-   `- Ask before adding a new dependency. (2026-10-17, correction in CHG-0012-02)`; propose them
+   `- Ask before adding a new dependency. (2026-10-17, correction in CHG-12.2)`; propose them
    and save them only if the person accepts.
 6. No contradictions: if a new entry clashes with an old one, propose replacing the old one.
 7. Contain the size: propose summarizing instead of adding when a document grows too much

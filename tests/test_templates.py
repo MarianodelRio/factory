@@ -52,7 +52,7 @@ def test_conventions_has_known_pitfalls():
 def test_design_template_parses():
     from swfactory.design import parse_design
 
-    text = template("design/design.md").replace("CHG-0000", "CHG-0042")
-    parsed = parse_design(text, "CHG-0042", set())
+    text = template("design/design.md").replace("CHG-N", "CHG-42")
+    parsed = parse_design(text, "CHG-42", set())
     assert parsed["acceptance_criteria"] == ["AC-01", "AC-02"]
-    assert parsed["tasks"][0]["id"] == "CHG-0042-01"
+    assert parsed["tasks"][0]["id"] == "CHG-42.1"
