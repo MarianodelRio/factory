@@ -82,9 +82,9 @@ you first and keeping a backup.
       │  quality and/or conformance reviews; fix and repeat if needed
       ▼
  memory updated on the task branch, finish ── to_merge
-      │  push the branch, open the PR (if gh is available)
+      │  publish: push the branch and open the PR, or merge it right away (the task's integrate)
       ▼
- you review and merge the PR ── done → tasks that depended on it become ready
+ merged ── done → tasks that depended on it become ready; the workspace can be removed
 ```
 
 ## 4. Preparing a repository: `/factory-init`
@@ -515,7 +515,7 @@ your-repo/
 │   └── decisions/                 # ADRs (index.md + NNNN-title.md)
 └── .factory/
     ├── config.toml                # checks, reviews, PR policy (committed)
-    ├── changes/CHG-1-<slug>/   # design.md, approval.json, tasks.yaml (committed)
+    ├── changes/CHG-1-<slug>/      # design.md, approval.json, tasks.yaml (committed)
     └── state/                     # task state, evidence, backups (local, git-ignored)
 ```
 
@@ -575,6 +575,11 @@ expect. Use double quotes in them (`python -c "print(1)"`) so they work everywhe
 | Orca is closed, missing or too old | Tasks can't be claimed or launched | Open or update Orca; state and designs can still be viewed |
 | The PR wasn't opened | `gh` is missing, not logged in, or the remote isn't GitHub | The branch is pushed; open the PR yourself |
 | A workspace was deleted outside the Factory | The task shows a broken link | Tell the agent what you want to do with the task |
+| `model_unknown`, `model_ambiguous` or `effort_unknown` at launch | Orca's catalog doesn't know that model or effort | Pick one of the listed ones (`swfactory models`) |
+| `agent_missing` at launch | No lead agent was given and `[agents]` sets none | Say it: "con claude" / "con codex" |
+| A command is refused because the task is `blocked` | Its commands wait until it is unblocked | Resolve the reason, then unblock it (the message says how), or hand it to another agent |
+| `workspace_not_clean` at cleanup | The task's workspace has uncommitted files | Commit or discard them in the workspace, or keep it (`--keep`) |
+| A task is in *Needs you* with its PR closed | The PR was closed without merging | Reopen and merge it, or tell the agent what to do with the task |
 
 ## 13. Current limits
 
@@ -597,3 +602,32 @@ expect. Use double quotes in them (`python -c "print(1)"`) so they work everywhe
   but nothing chains them: a task that depends on another starts when you launch it, once the
   other is merged.
 - **Local Orca only**, and Orca is the only supported environment.
+- **Merging and cleanup against real services**: merging a task's PR right away
+  (`integrate: merge`, through `gh pr merge`) and removing a workspace (`orca worktree rm`) are
+  covered by tests with stand-ins for `gh` and Orca, but have not been run against GitHub and Orca
+  yet.
+
+## 14. Upgrading
+
+Once per machine:
+
+```bash
+uv tool upgrade swfactory      # or: pipx upgrade swfactory
+swfactory install-skill        # updates /factory-init in ~/.claude/skills and ~/.agents/skills
+swfactory --version
+```
+
+Then, in each repository, run `/factory-init` and commit what it writes. It updates the skills, the
+roles and the permission rules; files you customized are shown as a diff and never overwritten
+without asking. If the agent session does not show the new skills, restart it.
+
+**From 1.x to 2.0:**
+
+- `/factory-implement` is now `/factory-build`. `/factory-init` removes the old skill; until you
+  run it, leads keep being launched with the old name, so tasks keep working.
+- `done` now means merged. Tasks finished with 1.x are checked once: merged ones stay `done`, the
+  others go to `to_merge` until their PR is merged (or you say "12.1 ya está mergeada").
+- New ids are `CHG-12` and `CHG-12.1`; existing `CHG-0012` and `CHG-0012-01` keep working and
+  numbering goes on after them.
+- `/factory-init` renames `docs/decisions/README.md` to `index.md`, offers to migrate leftovers of
+  other workflows and creates a root `README.md` if there is none.

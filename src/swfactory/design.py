@@ -27,7 +27,7 @@ from swfactory import git, orca, sync, tasks
 from swfactory.output import EXIT_PRECONDITION, FactoryError
 from swfactory.state import TaskStore, now
 
-# A change is `CHG-12` (`CHG-0012` before 1.2, still accepted). Its folder is the id, or the id and a
+# A change is `CHG-12` (`CHG-0012` before 2.0, still accepted). Its folder is the id, or the id and a
 # slug (`CHG-12-weekly-recurrence`). Its tasks are `CHG-12.1`, `CHG-12.2` (`CHG-0012-01` before).
 CHANGE_ID = re.compile(r"^CHG-(\d+)$")
 CHANGE_FOLDER = re.compile(r"^(CHG-(\d+))(?:-([a-z][a-z0-9-]*))?$")

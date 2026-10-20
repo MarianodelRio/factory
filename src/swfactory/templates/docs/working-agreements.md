@@ -1,4 +1,4 @@
-<!-- factory-template: docs/working-agreements.md@1 -->
+<!-- factory-template: docs/working-agreements.md@2 -->
 # Working agreements
 
 <!-- How we want agents to work. One line per agreement, with date and origin, grouped by topic.

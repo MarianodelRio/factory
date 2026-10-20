@@ -219,7 +219,7 @@ SMALL_REPO_FILES = 30
 DOCS_SMALL = ("conventions.md",)
 DOCS_NORMAL = ("index.md", "product.md", "architecture.md", "conventions.md", "working-agreements.md",
                "decisions/index.md")
-# Renamed in 1.2: the index of decisions is docs/decisions/index.md (a README is for people).
+# Renamed in 2.0: the index of decisions is docs/decisions/index.md (a README is for people).
 OLD_DECISIONS_INDEX = "docs/decisions/README.md"
 # Other workflows a repository may have, offered for migration: instruction files, skills, agents
 # and commands of other setups, and task or progress trackers.
@@ -369,13 +369,14 @@ def _docs(root: Path, plan: Plan) -> None:
         path = f"docs/{doc}"
         if _read(root, path) is None:
             plan.write(root, path, _template(path), "")
+    old_index = _read(root, OLD_DECISIONS_INDEX)
+    renaming = old_index is not None and _read(root, "docs/decisions/index.md") is None
     for path in _existing_docs(root):
-        if path not in plan.writes:
+        if path not in plan.writes and not (renaming and path == OLD_DECISIONS_INDEX):
             plan.respect.append({"path": path, "reason": "existing documentation is kept and linked"})
     if _read(root, "README.md") is None and not (root / "README.rst").exists() and not (root / "README").exists():
         plan.write(root, "README.md", _template("docs/README.md"), "")
-    old_index = _read(root, OLD_DECISIONS_INDEX)
-    if old_index is not None and _read(root, "docs/decisions/index.md") is None:
+    if renaming and old_index is not None:
         plan.write(root, "docs/decisions/index.md", old_index.replace("docs/decisions/README.md@1",
                                                                      "docs/decisions/index.md@1"), "")
         for path in ["AGENTS.md", *(p for p in _doc_files(root) if "/" not in p.removeprefix("docs/"))]:

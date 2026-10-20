@@ -2,12 +2,13 @@
 name: factory-board
 description: Open, close or check the Software Factory board — a live kanban of the repository's changes and tasks with every agent, terminal and subagent running in each task. Use for "/factory-board", "abre el tablero" / "open the board", "cierra el tablero" / "close the board", "¿está el tablero abierto?", "dame la URL del tablero", or "haz una foto del tablero" / "save a snapshot of the board".
 ---
-<!-- factory-template: skills/factory-board@1 -->
+<!-- factory-template: skills/factory-board@2 -->
 
 # /factory-board
 
 Reply in the person's language. Use only the `swfactory board` commands below, with `--json`, and
-read each answer. The board never changes Factory state; nothing here needs confirmation.
+read each answer. The board does not change Factory state (it only records merges it sees);
+nothing here needs confirmation.
 
 - **Open** (the default for `/factory-board` with nothing else): `swfactory board open --json`. It
   starts the board in the background if needed and opens it in an Orca browser tab, or else in

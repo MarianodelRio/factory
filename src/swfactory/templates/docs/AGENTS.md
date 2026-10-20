@@ -1,4 +1,4 @@
-<!-- factory-template: docs/AGENTS.md@1 -->
+<!-- factory-template: docs/AGENTS.md@2 -->
 # AGENTS.md
 
 <!-- The short index every agent reads first. Keep it between 60 and 120 lines: link to docs/ instead

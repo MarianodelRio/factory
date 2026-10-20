@@ -1,4 +1,4 @@
-<!-- factory-template: docs/conventions.md@1 -->
+<!-- factory-template: docs/conventions.md@2 -->
 # Conventions
 
 <!-- How we write code and tests in this repository. Read when implementing and reviewing. Only what a

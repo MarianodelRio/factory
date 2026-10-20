@@ -1,8 +1,8 @@
 ---
 name: factory-status
-description: Track the Software Factory — how changes and tasks are going, what is blocked or interrupted, notes and pauses for a running agent, recovering an interrupted task, and memory maintenance. Use for "/factory-status", "¿cómo va todo?" / "how is everything going?", "¿qué está bloqueado?", "how is CHG-12.1 going?", "leave a note on CHG-12.1", "pause CHG-12.1", "recover CHG-12.1", or "how is the memory?".
+description: Track the Software Factory — how changes and tasks are going, what is blocked or interrupted, notes and pauses for a running agent, recovering a task or handing it to another agent, syncing with the remote, merged tasks and their cleanup, and memory maintenance. Use for "/factory-status", "¿cómo va todo?" / "how is everything going?", "¿qué está bloqueado?", "how is CHG-12.1 going?", "leave a note on 12.1", "pause 12.1", "recover 12.1", "relanza 12.1 con claude", "sincroniza" / "sync", "12.1 ya está mergeada", "limpia 12.1", or "how is the memory?".
 ---
-<!-- factory-template: skills/factory-status@1 -->
+<!-- factory-template: skills/factory-status@2 -->
 
 # /factory-status
 

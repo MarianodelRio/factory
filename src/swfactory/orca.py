@@ -284,7 +284,7 @@ def update_card(workspace_id: str, task_id: str, title: str, state: str, detail:
     status, fixed, unread = CARDS[state]
     comment = mask_secrets(fixed or detail or "")
     selector = ["worktree", "set", "--worktree", f"id:{workspace_id}"]
-    shown = task_id.removeprefix("CHG-") if "." in task_id else task_id  # `12.1`; ids before 1.2 in full
+    shown = task_id.removeprefix("CHG-") if "." in task_id else task_id  # `12.1`; ids before 2.0 in full
     full = [*selector, "--display-name", f"{shown} · {title}", "--workspace-status", status,
             "--comment", comment, *(["--unread"] if unread else [])]
     try:

@@ -179,6 +179,7 @@ def test_the_old_decisions_index_is_renamed(project, capsys):
     data = plan(capsys)
     assert "docs/decisions/index.md" in paths(data["create"])
     assert {"path": "docs/decisions/README.md", "reason": "renamed to docs/decisions/index.md"} in data["delete"]
+    assert "docs/decisions/README.md" not in [item["path"] for item in data["respect"]]
     assert "decisions/index.md" in next(m["diff"] for m in data["modify"] if m["path"] == "AGENTS.md")
 
 

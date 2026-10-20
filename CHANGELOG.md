@@ -9,6 +9,11 @@ output, the files under `.factory/` (`schema_version`), and the skills' names an
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-10-20
+
+A major version: `/factory-implement` is renamed `/factory-build` and `done` now means merged.
+Upgrade notes are in the user guide (section 14, *Upgrading*).
+
 ### Added
 - `swfactory sync`: fetches `origin`, fast-forwards the base branch when the main checkout is on
   it, rebases and pushes local approval commits. It never merges, forces or touches uncommitted
@@ -47,6 +52,7 @@ output, the files under `.factory/` (`schema_version`), and the skills' names an
 - `/factory-help`: how the Factory works and the next step in this repository.
 - `/factory-build` launches several tasks at once: a list of ids, a change (its ready tasks) or
   every ready task, after one confirmation.
+- The user guide has an *Upgrading* section, with the notes for moving from 1.x.
 
 ### Changed
 - `/factory-implement` is now `/factory-build`. `/factory-init` installs it and removes the old
@@ -128,6 +134,8 @@ First stable release, published as `swfactory` on PyPI.
 
 Initial development version (not published to a package registry).
 
+[Unreleased]: https://github.com/MarianodelRio/swfactory/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/MarianodelRio/swfactory/compare/v1.1.0...v2.0.0
 [1.1.0]: https://github.com/MarianodelRio/swfactory/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/MarianodelRio/swfactory/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/MarianodelRio/swfactory/releases/tag/v0.1.0

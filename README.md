@@ -41,7 +41,8 @@ virtual environment) work too. The skills call `swfactory`, so it has to be inst
 once. To try it without installing: `uvx swfactory --version`.
 
 **Upgrade:** `uv tool upgrade swfactory` (or `pipx upgrade swfactory`), then
-`swfactory install-skill`, then `/factory-init` in each project to update its skills.
+`swfactory install-skill`, then `/factory-init` in each project to update its skills. Notes for
+upgrading from 1.x are in the [guide](https://github.com/MarianodelRio/swfactory/blob/main/docs/guide.md#14-upgrading).
 
 ## The skills
 
@@ -82,7 +83,7 @@ In a Claude Code (or Codex) terminal in Orca, at the root of your repository:
    ```
    Accept the permission prompt. "vale" or "ok" is not an approval.
 
-3. **Implement a task.**
+3. **Build a task.**
    ```
    /factory-build CHG-1.1 con claude opus 5.5, revisa claude
    ```
@@ -99,10 +100,15 @@ In a Claude Code (or Codex) terminal in Orca, at the root of your repository:
    You see each task's state, acceptance criteria verified, reviews and the next step. The board
    is a live kanban in an Orca tab (and in your browser, at the address `swfactory board status`
    prints) with every agent and subagent running in each task. When the
-   task is finished it waits in `to_merge`, and the lead offers to push the branch and open the PR.
+   task is finished it waits in `to_merge`, and the lead offers to push the branch and open the PR
+   (or to merge it right away, if the design chose `integrate: merge`).
 
 5. **Integrate.** Review the PR and merge it yourself. The Factory sees the merge (also a squash
-   merge on GitHub) and moves the task to `done`; tasks that depend on it become `ready`.
+   merge on GitHub) and moves the task to `done`; tasks that depend on it become `ready`, and it
+   offers to remove the task's workspace.
+
+For a small change that needs no design, `/factory-quick fix the typo in the login page` does it in
+your session: change, checks, commit, PR or merge. `/factory-help` explains the rest.
 
 ## Good to know
 
@@ -113,8 +119,8 @@ In a Claude Code (or Codex) terminal in Orca, at the root of your repository:
   required reviews passed on the final commit.
 - The Factory pushes the task branch (from the claim on) and the approval commits of the base
   branch, never your own unpushed commits and never forced. Each task integrates by PR (you merge)
-  or by direct merge, as chosen in its design; merged branches are deleted. It fetches `origin` before starting work, so merges done on
-  GitHub are seen.
+  or by direct merge, as chosen in its design; merged branches are deleted. It fetches `origin`
+  before starting work, so merges done on GitHub are seen.
 - Orca may launch Claude with `--dangerously-skip-permissions` (its `agentDefaultArgs` setting).
   The approval rule still asks in that mode. `swfactory doctor` warns when Claude's own settings
   skip permission prompts (`bypassPermissions`); it cannot read Orca's setting.

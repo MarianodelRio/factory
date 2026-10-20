@@ -1,4 +1,4 @@
-<!-- factory-template: design/design.md@1 -->
+<!-- factory-template: design/design.md@2 -->
 <!-- Replace CHG-N with the id reserved by `swfactory design register` (e.g. CHG-12; tasks CHG-12.1, CHG-12.2). Keep the design proportional
      to the change; delete these comments. Everything here is in English. -->
 # CHG-N — Title

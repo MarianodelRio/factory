@@ -2,7 +2,7 @@
 name: factory-init
 description: Prepare or update a repository for the Software Factory on local Orca. Analyzes the repo, proposes one plan (files to create, modify, delete with reason, respect and migrate from another workflow, plus Orca actions) and applies it after a single confirmation, with backups. Use when the person says /factory-init, asks to prepare, install or update the Factory in a repo, or asks for "only the analysis" ("solo el análisis").
 ---
-<!-- factory-template: skills/factory-init@1 -->
+<!-- factory-template: skills/factory-init@2 -->
 
 # /factory-init
 

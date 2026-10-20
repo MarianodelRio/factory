@@ -2,7 +2,7 @@
 name: factory-design
 description: Research, design and register a change (CHG-N) for the Software Factory, with acceptance criteria and a task block, and approve or reject it only on the person's explicit message. Use when the person wants to design, plan or specify a change or feature with /factory-design, asks to change an existing design, or says "approve CHG-N" / "apruebo CHG-N" or "reject CHG-N".
 ---
-<!-- factory-template: skills/factory-design@1 -->
+<!-- factory-template: skills/factory-design@2 -->
 
 # /factory-design
 

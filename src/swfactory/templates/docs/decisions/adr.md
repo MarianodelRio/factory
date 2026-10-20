@@ -1,4 +1,4 @@
-<!-- factory-template: docs/decisions/adr.md@1 -->
+<!-- factory-template: docs/decisions/adr.md@2 -->
 <!-- Copy to docs/decisions/NNNN-short-title.md with the next free number and add it to
      docs/decisions/index.md. Once accepted, only the Status line may change; a new decision supersedes an old one. -->
 # NNNN — Title

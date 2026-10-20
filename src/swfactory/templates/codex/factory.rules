@@ -1,4 +1,4 @@
-# factory-template: codex/factory.rules@1
+# factory-template: codex/factory.rules@2
 # Software Factory: Codex asks the person before approving or rejecting a design.
 # Codex loads project rules only when this project's .codex/ layer is trusted.
 prefix_rule(

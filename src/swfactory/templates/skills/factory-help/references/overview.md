@@ -57,4 +57,6 @@ their models and efforts · `[board]` port, idle minutes.
 ## Updating the Factory
 
 `uv tool upgrade swfactory`, then `swfactory install-skill`, then `/factory-init` in each project:
-it updates the skills (files you customized are shown as a diff, never overwritten).
+it updates the skills (files you customized are shown as a diff, never overwritten). From 1.x:
+`/factory-implement` became `/factory-build`, `done` now means merged (tasks finished before are
+checked once and may go back to `to_merge`), and older ids keep working.
