@@ -29,9 +29,9 @@ first: `orca skills get orca-cli`.
      later. For `docs/README.md`, its content becomes `docs/index.md`;
    - Orca: register the repo, set its base branch, install or update the Orca skills (global).
    The CLI proposes only safe deletions by itself (Factory leftovers, empty docs, the old
-   `docs/decisions/README.md`, now `docs/decisions/index.md`). For each deletion the person accepts, plan again
-   adding `--delete <path> --reason "<why>"` (a skill, agents or tracker folder can be given
-   whole). Never code, tests, CI, secrets, decisions, working agreements or anything whose purpose
+   `docs/decisions/README.md`, now `docs/decisions/index.md`). For each deletion the person
+   accepts, plan again adding `--delete <path> --reason "<why>"` (a skill, agents or tracker folder
+   can be given whole). Never code, tests, CI, secrets, decisions, working agreements or anything whose purpose
    is unclear (the CLI refuses them). If the person asked for only the analysis, stop here.
 4. **Confirm once**: ask for one confirmation. The person may exclude items ("everything except
    deleting X", "todo menos borrar X").
