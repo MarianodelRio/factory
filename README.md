@@ -82,9 +82,10 @@ In a Claude Code (or Codex) terminal in Orca, at the root of your repository:
 
 3. **Implement a task.**
    ```
-   /factory-implement CHG-0001-01 con claude, revisa claude
+   /factory-implement CHG-0001-01 con claude opus 5.5, revisa claude
    ```
-   ("with claude, review claude": the lead agent and the conformance reviewer.) A new workspace
+   ("with claude opus 5.5, review claude": the lead agent with its model, and the conformance
+   reviewer. Defaults can go in `[agents]` of `.factory/config.toml`.) A new workspace
    appears in Orca's sidebar with its agent; your main session is free. Open the workspace to watch
    it or talk to the agent.
 

@@ -76,7 +76,7 @@ def test_json_flag_before_subcommand(capsys, outside_git):
 
 
 def test_usage_error_with_json_is_an_envelope(capsys):
-    code, out, _ = run(capsys, ["task", "launch", "CHG-0001-01", "--json"])
+    code, out, _ = run(capsys, ["task", "launch", "CHG-0001-01", "--agent", "gemini", "--json"])
     envelope = json.loads(out)
     assert envelope["ok"] is False
     assert envelope["error"]["code"] == "usage_error"

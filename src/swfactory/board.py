@@ -139,6 +139,7 @@ def _details(task: dict[str, Any], record: dict[str, Any] | None) -> dict[str, A
         "required_reviews": task.get("review", []),
         "complexity": task.get("complexity"),
         "model": attempt.get("model"),
+        "reviewer_model": attempt.get("reviewer_model"),
         "attempts": len(record.get("attempts") or []),
         "started_at": attempt.get("started_at"),
         "notes": [{"at": n["at"], "text": n["text"], "pause": n.get("pause", False), "read": n["read"]}

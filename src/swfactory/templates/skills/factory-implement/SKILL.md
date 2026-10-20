@@ -24,19 +24,24 @@ main checkout), and `swfactory task show <task> --json`.
 ## From main
 
 1. Read the agents from the request: "con"/"with" names the lead, "revisa"/"review" the conformance
-   reviewer (`claude` or `codex`). If one is missing, ask once and suggest the last choice (the
-   `agent`/`reviewer` of the most recent tasks in `swfactory status --json`). The reviewer is only
-   needed if the task has a conformance review (its `review` field, or the person asks for more:
-   "revisa también conformidad" / "also review conformance").
+   reviewer (`claude` or `codex`), each optionally with a model and effort as the person says them
+   ("con claude opus 5.5, revisa codex sol 6.1", "con claude sonnet esfuerzo alto"). What is not
+   said comes from `[agents]` in `.factory/config.toml`; if the lead is still missing, ask once and
+   suggest the last choice (the `agent`/`model` of the most recent tasks in `swfactory status --json`).
+   The reviewer is only needed if the task has a conformance review (its `review` field, or the
+   person asks for more: "revisa también conformidad" / "also review conformance").
+   `swfactory models --json` lists the models Orca knows.
 2. Check the task: `swfactory task show <task> --json`. If it is not `ready`, explain the `reason`
    (for example "waiting for CHG-0012-01 to be merged into main") and stop.
 3. Claim it: `swfactory task claim <task> --json`. It fetches `origin` first and Orca creates the
    workspace and its branch from the latest `origin/<base>` (`base` in the answer); if that fails
    the claim is undone. Mention any sync warning.
-4. Launch the lead: `swfactory task launch <task> --agent <lead> --reviewer <reviewer> --json`, leaving
-   out `--reviewer` when there is no conformance review and adding `--model`/`--effort` only if the
-   person asked. If Orca refuses the agent, report it and ask for
-   another: never replace it silently. If the answer is `launch_unconfirmed`, do not launch again:
+4. Launch the lead: `swfactory task launch <task> --agent <lead> --model "<as said>" --effort <e>
+   --reviewer <reviewer> --reviewer-model "<as said>" --reviewer-effort <e> --json`, leaving out
+   what the person did not say (the config fills it) and `--reviewer` when there is no conformance
+   review. The CLI turns "opus 5.5" into the model id; on `model_unknown` or `effort_unknown` show
+   the `details` and ask. If Orca refuses the agent, report it and ask for another: never replace
+   it silently. If the answer is `launch_unconfirmed`, do not launch again:
    tell the person to check the workspace in Orca and use `/factory-status` to recover.
 5. Report "<task> launched; open it from the Orca sidebar" and stop: the main session is free.
    Uncommitted changes in the main checkout do not reach the workspace.

@@ -49,7 +49,7 @@ Your role: `roles/lead.md`. You own the task end to end, inside its workspace.
   with the conformance reviewer's provider (or your own if there is none).
 - **Conformance** (if required): `swfactory task review <task> --type conformance --json` (add
   `--agent <claude|codex>` if no reviewer was chosen at launch). Orca opens the reviewer in this
-  workspace.
+  workspace, with the model chosen for it at launch.
 - For a reviewer launched in Orca, read its terminal (the `terminal` in the answer) with
   `orca terminal read --terminal <terminal>` until its final JSON appears; `orca terminal wait`
   can return before the agent has finished, so never take its output as the answer by itself.

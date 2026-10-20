@@ -345,7 +345,7 @@ function openDrawer(id, refresh) {
     section("Overview", h("div", { class: "kv" },
       h("div", {}, "next step"), h("div", {}, task.next_step || "—"),
       h("div", {}, "lead"), h("div", {}, [task.agent, task.model].filter(Boolean).join(" · ") || "—"),
-      h("div", {}, "reviewer"), h("div", {}, task.reviewer || "—"),
+      h("div", {}, "reviewer"), h("div", {}, [task.reviewer, task.reviewer_model].filter(Boolean).join(" · ") || "—"),
       h("div", {}, "attempts"), h("div", {}, task.attempts || "—"),
       h("div", {}, "complexity"), h("div", {}, task.complexity || "—"),
       h("div", {}, "branch"), h("div", { class: "mono" }, task.branch || "—"),

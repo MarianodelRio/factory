@@ -14,13 +14,14 @@ Raises FactoryError with these codes:
 - evidence_not_found / ac_not_in_task / ac_not_manual / secret_file_refused (EXIT_PRECONDITION): bad
   `verify --manual`.
 - review_invalid (EXIT_PRECONDITION): the reviewer JSON does not follow the reviewer JSON contract.
+- agent_missing (EXIT_USAGE): `task launch` without `--agent` and without `agents.lead` in the config.
 - review_agent_missing (EXIT_USAGE): a conformance review without `--agent` or a recorded reviewer.
 - gates_not_met (EXIT_PRECONDITION): `finish` with closing criteria unmet; `details` lists them.
 - workspace_not_clean (EXIT_PRECONDITION): `task cleanup` of a workspace with uncommitted files.
 - not_merged (EXIT_PRECONDITION): `task merged` for a task that is not waiting to be merged.
 - session_alive (EXIT_PRECONDITION): `recover --confirm` while Orca says the agent is alive.
 - workspace_missing (EXIT_PRECONDITION): `recover --confirm` when the workspace no longer exists.
-Plus the codes of factory.orca (Orca unavailable, not local, ...).
+Plus the codes of factory.orca (Orca unavailable, not local, ...) and factory.models (model_unknown, ...).
 """
 
 from __future__ import annotations
@@ -39,7 +40,7 @@ from typing import Any, NoReturn
 
 import yaml
 
-from swfactory import config, design, git, orca, sync, system
+from swfactory import config, design, git, models, orca, sync, system
 from swfactory.output import (
     EXIT_CONFLICT,
     EXIT_PRECONDITION,
@@ -389,6 +390,9 @@ def new_attempt(number: int) -> dict[str, Any]:
         "agent": None,
         "reviewer": None,
         "model": None,
+        "effort": None,
+        "reviewer_model": None,
+        "reviewer_effort": None,
         "operation_id": None,
         "terminal": None,
         "started_at": now(),
@@ -433,13 +437,38 @@ def claim(task_id: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
     return data, warnings
 
 
+def agent_choice(role: str, agent: str | None, model: str | None, effort: str | None,
+                 cfg: dict[str, Any]) -> tuple[str | None, str | None, str | None]:
+    """The agent, model and effort of the lead or the reviewer: what the person asked, else
+    `[agents]` in the config. A configured model only applies to its configured agent."""
+    defaults = cfg["agents"]
+    chosen = agent or defaults[role] or None
+    if chosen and chosen == defaults[role]:
+        model = model or defaults[f"{role}_model"] or None
+        effort = effort or defaults[f"{role}_effort"] or None
+    return chosen, model, effort
+
+
 def launch(
-    task_id: str, agent: str, reviewer: str | None, model: str | None, effort: str | None, ctx: Context
+    task_id: str, agent: str | None, reviewer: str | None, model: str | None, effort: str | None, ctx: Context,
+    reviewer_model: str | None = None, reviewer_effort: str | None = None,
 ) -> tuple[dict[str, Any], list[str]]:
-    """Open the lead agent in the task's workspace with the brief `/factory-implement <id>`."""
+    """Open the lead agent in the task's workspace with the brief `/factory-implement <id>`. Agents,
+    models and efforts not given come from `[agents]` in the config; a model may be named as the
+    person says it ("opus 5.5"): Orca's model catalog gives its id."""
     task = _task(task_id, ctx)
     if ctx.store.read_task(task_id) is None:
         _reject({"task": task_id}, "launch", f"it is {view(task, ctx)['state']}; claim it first")
+    cfg = _config(ctx)
+    agent, model, effort = agent_choice("lead", agent, model, effort, cfg)
+    if not agent:
+        raise FactoryError("agent_missing", "name the lead agent (--agent claude|codex) or set agents.lead",
+                           EXIT_USAGE)
+    reviewer, reviewer_model, reviewer_effort = agent_choice("reviewer", reviewer, reviewer_model, reviewer_effort, cfg)
+    model, warnings = models.resolve(agent, model, effort, Path.home())
+    if reviewer:
+        reviewer_model, more = models.resolve(reviewer, reviewer_model, reviewer_effort, Path.home())
+        warnings += more
     orca.check(_min_version(ctx))
 
     def mark(state: State) -> State:
@@ -450,7 +479,9 @@ def launch(
         if attempt["agent"] is not None:
             message = f"attempt {attempt['id']} of {task_id} already has a lead agent"
             raise FactoryError("already_launched", message, EXIT_CONFLICT)
-        attempt.update(agent=agent, reviewer=reviewer, model=model)
+        attempt.update(agent=agent, reviewer=reviewer, model=model, effort=effort,
+                       reviewer_model=reviewer_model if reviewer else None,
+                       reviewer_effort=reviewer_effort if reviewer else None)
         return state
 
     record = ctx.store.update_task(task_id, mark, "launch")
@@ -470,8 +501,9 @@ def launch(
         raise
     _set_attempt(ctx, task_id, {"operation_id": launched["operation_id"], "terminal": launched["terminal"]},
                  "launched")
-    warnings = orca.update_card(workspace_id, task_id, task["title"], "in_progress", f"lead agent {agent} working")
-    data = {"task": task_id, "agent": agent, "reviewer": reviewer, "model": model,
+    warnings += orca.update_card(workspace_id, task_id, task["title"], "in_progress", f"lead agent {agent} working")
+    data = {"task": task_id, "agent": agent, "reviewer": reviewer, "model": model, "effort": effort,
+            "reviewer_model": reviewer_model if reviewer else None,
             "operation_id": launched["operation_id"], "terminal": launched["terminal"],
             "message": f"{task_id} launched; open it from the Orca sidebar"}
     return data, warnings
@@ -747,9 +779,11 @@ def submit(task_id: str, ctx: Context) -> tuple[dict[str, Any], list[str]]:
     return data, _card(task, record, ctx)
 
 
-def review(task_id: str, kind: str, agent: str | None, ctx: Context) -> tuple[dict[str, Any], list[str]]:
-    """Launch a reviewer: conformance is an Orca agent in the same workspace; quality
-    is a read-only subagent of the lead unless an agent is named (client without subagents)."""
+def review(task_id: str, kind: str, agent: str | None, ctx: Context, model: str | None = None,
+           effort: str | None = None) -> tuple[dict[str, Any], list[str]]:
+    """Launch a reviewer: conformance is an Orca agent in the same workspace, with the model chosen
+    at launch for the reviewer; quality is a read-only subagent of the lead unless an agent is named
+    (client without subagents)."""
     task, record = _started(task_id, ctx)
     if record["state"] != "in_review":
         _reject(record, "review", f"it is {record['state']}; submit it first")
@@ -758,10 +792,14 @@ def review(task_id: str, kind: str, agent: str | None, ctx: Context) -> tuple[di
         message = (f"the quality review runs as a read-only subagent of the lead; record its JSON with "
                    f"swfactory task review {task_id} --record <file>")
         return {"task": task_id, "type": kind, "launched": False, "message": message}, []
+    if agent is None or agent == attempt.get("reviewer"):
+        model = model or attempt.get("reviewer_model")
+        effort = effort or attempt.get("reviewer_effort")
     agent = agent or attempt.get("reviewer")
     if not agent:
         message = "name the reviewer with --agent (it was not given at launch with --reviewer)"
         raise FactoryError("review_agent_missing", message, EXIT_USAGE)
+    model, warnings = models.resolve(agent, model, effort, Path.home())
     orca.check(_min_version(ctx))
     base = orca.base_branch(ctx.main_checkout)
     role = resources.files("swfactory").joinpath(f"templates/roles/{kind}_reviewer.md").read_text(encoding="utf-8")
@@ -773,9 +811,9 @@ def review(task_id: str, kind: str, agent: str | None, ctx: Context) -> tuple[di
         f"- The change to review: git diff {base}...HEAD\n"
         "Do not edit files. End with the JSON; the lead agent records it."
     )
-    launched = orca.launch_agent(record["workspace"]["orca_id"], agent, prompt, None, None)
-    data = {"task": task_id, "type": kind, "agent": agent, "launched": True, **launched}
-    return data, []
+    launched = orca.launch_agent(record["workspace"]["orca_id"], agent, prompt, model, effort)
+    data = {"task": task_id, "type": kind, "agent": agent, "model": model, "launched": True, **launched}
+    return data, warnings
 
 
 def record_review(task_id: str, path: Path, agent: str | None, ctx: Context) -> tuple[dict[str, Any], list[str]]:
@@ -1096,7 +1134,9 @@ def task_row(task: dict[str, Any], record: State | None, liveness: str | None, b
     acceptance = (record or {}).get("acceptance") or {}
     row.update(
         agent=attempt.get("agent"),
+        model=attempt.get("model"),
         reviewer=attempt.get("reviewer"),
+        reviewer_model=attempt.get("reviewer_model"),
         liveness=liveness,
         last_checkpoint=checkpoint,
         minutes_since_checkpoint=_minutes_since((checkpoint or {}).get("at") or attempt.get("started_at")),

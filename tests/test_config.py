@@ -11,6 +11,8 @@ DEFAULTS = {
     "git": {"pr_on_done": "offer", "integrate": "pr", "cleanup": "ask"},
     "language": {"artifacts": "en"},
     "board": {"port": 8765, "idle_minutes": 30},
+    "agents": {"lead": "", "lead_model": "", "lead_effort": "", "reviewer": "", "reviewer_model": "",
+               "reviewer_effort": ""},
 }
 
 
@@ -74,6 +76,8 @@ artifacts = "es"
         "git": {"pr_on_done": "never", "integrate": "pr", "cleanup": "ask"},
         "language": {"artifacts": "es"},
         "board": {"port": 8765, "idle_minutes": 30},
+        "agents": {"lead": "", "lead_model": "", "lead_effort": "", "reviewer": "", "reviewer_model": "",
+                   "reviewer_effort": ""},
     }
 
 
@@ -152,3 +156,10 @@ def test_board_values_are_validated(tmp_path, text):
 @pytest.mark.parametrize(("key", "value"), [("integrate", "squash"), ("cleanup", "sometimes")])
 def test_invalid_integration_and_cleanup(tmp_path, key, value):
     assert f"git.{key}" in invalid(write(tmp_path, f'[git]\n{key} = "{value}"\n'))
+
+
+def test_default_agents(tmp_path):
+    cfg = load_config(write(tmp_path, '[agents]\nlead = "codex"\nlead_model = "sol 6.1"\n'))
+    assert (cfg["agents"]["lead"], cfg["agents"]["lead_model"], cfg["agents"]["reviewer"]) == ("codex", "sol 6.1", "")
+    assert "agents.reviewer" in invalid(write(tmp_path, '[agents]\nreviewer = "gemini"\n'))
+    assert "agents.lead_model" in invalid(write(tmp_path, '[agents]\nlead_model = 5\n'))

@@ -23,7 +23,13 @@ DEFAULTS: dict[str, Any] = {
     "git": {"pr_on_done": "offer", "integrate": "pr", "cleanup": "ask"},
     "language": {"artifacts": "en"},
     "board": {"port": 8765, "idle_minutes": 30},
+    # Default agents for /factory-implement; empty means "ask". Models are named as the person
+    # says them ("opus 5.5") or by id, and only apply to the agent next to them.
+    "agents": {"lead": "", "lead_model": "", "lead_effort": "",
+               "reviewer": "", "reviewer_model": "", "reviewer_effort": ""},
 }
+
+AGENTS = ("", "claude", "codex")
 
 REVIEW_MODES = ("auto", "always", "never")
 PR_MODES = ("offer", "always", "never")
@@ -70,6 +76,11 @@ def _validate(config: dict[str, Any]) -> None:
     _choice("git.pr_on_done", config["git"]["pr_on_done"], PR_MODES)
     _choice("git.integrate", config["git"]["integrate"], INTEGRATE_MODES)
     _choice("git.cleanup", config["git"]["cleanup"], CLEANUP_MODES)
+    for role in ("lead", "reviewer"):
+        _choice(f"agents.{role}", config["agents"][role], AGENTS)
+        for key in (f"{role}_model", f"{role}_effort"):
+            if not isinstance(config["agents"][key], str):
+                raise _invalid(f"agents.{key} must be a string, got {config['agents'][key]!r}")
     port, idle = config["board"]["port"], config["board"]["idle_minutes"]
     if type(port) is not int or not 1 <= port <= 65535:
         raise _invalid(f"board.port must be a TCP port number, got {port!r}")

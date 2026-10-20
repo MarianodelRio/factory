@@ -8,7 +8,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any, NoReturn
 
-from swfactory import __version__, board, config, design, init, memory, paths, tasks
+from swfactory import __version__, board, config, design, init, memory, models, paths, tasks
 from swfactory.output import (
     EXIT_ERROR,
     EXIT_OK,
@@ -89,7 +89,8 @@ def task_claim(args: argparse.Namespace) -> Result:
 
 
 def task_launch(args: argparse.Namespace) -> Result:
-    return tasks.launch(args.task, args.agent, args.reviewer, args.model, args.effort, task_context())
+    return tasks.launch(args.task, args.agent, args.reviewer, args.model, args.effort, task_context(),
+                        args.reviewer_model, args.reviewer_effort)
 
 
 def task_checkpoint(args: argparse.Namespace) -> Result:
@@ -115,7 +116,7 @@ def task_submit(args: argparse.Namespace) -> Result:
 def task_review(args: argparse.Namespace) -> Result:
     if args.record:
         return tasks.record_review(args.task, Path(args.record).resolve(), args.agent, task_context())
-    return tasks.review(args.task, args.type, args.agent, task_context())
+    return tasks.review(args.task, args.type, args.agent, task_context(), args.model, args.effort)
 
 
 def task_publish(args: argparse.Namespace) -> Result:
@@ -165,6 +166,10 @@ def board_command(args: argparse.Namespace) -> Result:
 
 def install_skill(args: argparse.Namespace) -> Result:
     return init.install_skill(Path.home()), []
+
+
+def models_command(args: argparse.Namespace) -> Result:
+    return models.list_models(Path.home(), args.agent), []
 
 
 def doctor(args: argparse.Namespace) -> Result:
@@ -219,6 +224,7 @@ HANDLERS: dict[str, Handler] = {
     "sync": sync_command,
     "memory check": memory_check,
     "doctor": doctor,
+    "models": models_command,
     "init": init_command,
     "install-skill": install_skill,
     **{f"board {action}": board_command for action in ("start", "open", "status", "stop", "serve", "snapshot")},
@@ -243,6 +249,8 @@ def build_parser() -> Parser:
 
     command(groups, "install-skill", "install-skill", "install /factory-init for this user (once per machine)")
     command(groups, "doctor", "doctor", "analyze the repository without changing it")
+    command(groups, "models", "models", "models Orca knows for each agent").add_argument(
+        "--agent", choices=["claude", "codex"])
 
     init_cmd = command(groups, "init", "init", "prepare the repository for the Factory")
     mode = init_cmd.add_mutually_exclusive_group(required=True)
@@ -280,10 +288,12 @@ def build_parser() -> Parser:
 
     launch = command(task_cmds, "launch", "task launch", "launch the lead agent in the task workspace")
     launch.add_argument("task")
-    launch.add_argument("--agent", required=True, choices=["claude", "codex"])
+    launch.add_argument("--agent", choices=["claude", "codex"], help="default: agents.lead in the config")
     launch.add_argument("--reviewer", choices=["claude", "codex"], help="agent for the conformance review")
-    launch.add_argument("--model")
+    launch.add_argument("--model", help='model id or name as said ("opus 5.5")')
     launch.add_argument("--effort")
+    launch.add_argument("--reviewer-model", help="model of the conformance reviewer")
+    launch.add_argument("--reviewer-effort")
 
     checkpoint = command(task_cmds, "checkpoint", "task checkpoint", "record progress, read pending notes")
     checkpoint.add_argument("task")
@@ -310,6 +320,8 @@ def build_parser() -> Parser:
     review_mode.add_argument("--type", choices=["quality", "conformance"])
     review_mode.add_argument("--record", metavar="FILE", help="reviewer JSON to record")
     review.add_argument("--agent")
+    review.add_argument("--model", help="default: the reviewer model chosen at launch")
+    review.add_argument("--effort")
 
     finish = command(task_cmds, "finish", "task finish", "close a task when every gate passes")
     finish.add_argument("task")

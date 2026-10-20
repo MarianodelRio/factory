@@ -432,6 +432,7 @@ def _config_text(root: Path, report: dict[str, Any], tracked: dict[str, str]) ->
             "[git]", *[f"{k} = {json.dumps(v)}" for k, v in d["git"].items()], "",
             "[language]", f"artifacts = {json.dumps(d['language']['artifacts'])}", "",
             "[board]", *[f"{k} = {json.dumps(v)}" for k, v in d["board"].items()], "",
+            "[agents]", *[f"{k} = {json.dumps(v)}" for k, v in d["agents"].items()], "",
         ]
         current = "\n".join(lines)
     body = TEMPLATES_SECTION.sub("", current.replace("\r\n", "\n")).rstrip("\n")

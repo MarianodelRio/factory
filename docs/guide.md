@@ -214,8 +214,16 @@ From your main session (the repository's main checkout):
 ```
 
 "con" / "with" names the **lead agent** and "revisa" / "review" names the **conformance
-reviewer** (`claude` or `codex`). If you leave one out, it asks once and suggests your last choice.
-You can also ask for a specific model or effort.
+reviewer** (`claude` or `codex`). Each can have its model and effort, said the way you know them:
+
+```
+/factory-implement CHG-0001-01 con claude opus 5.5, revisa codex sol 6.1
+```
+
+The Factory turns "opus 5.5" into the model's id with Orca's model catalog (`swfactory models`
+lists them) and refuses a model or effort it doesn't know, showing the ones it does. What you leave
+out comes from `[agents]` in `.factory/config.toml`; if no lead is set there either, it asks once
+and suggests your last choice. The quality review runs as a subagent of the lead, with its model.
 
 **What happens:**
 
@@ -493,6 +501,9 @@ shared by every workspace of the clone, because it lives in the main checkout.
 | `git.pr_on_done` | `offer`, `always`, `never` | Whether the lead offers, always does, or never publishes a finished task |
 | `git.integrate` | `pr`, `merge` | Default integration of a task: a PR you merge, or a merge right away (a task's `integrate` wins) |
 | `git.cleanup` | `ask`, `always`, `never` | After a merge: offer, always do, or never remove the workspace and local branch |
+| `agents.lead`, `agents.reviewer` | `""`, `claude`, `codex` | Default lead agent and conformance reviewer; empty means it asks |
+| `agents.lead_model`, `agents.reviewer_model` | `""` or a model ("opus 5.5" or its id) | Default model, only used with the agent configured next to it |
+| `agents.lead_effort`, `agents.reviewer_effort` | `""` or an effort (`low`, `high`, …) | Default reasoning effort (needs a model) |
 | `board.port` | `8765` | Port of the local board (another free one is used if it is busy) |
 | `board.idle_minutes` | `30` | The board stops by itself after this long without visits |
 | `orca.min_version` | `1.4.229` | Oldest Orca the Factory accepts |
@@ -546,7 +557,8 @@ expect. Use double quotes in them (`python -c "print(1)"`) so they work everywhe
   which may change between versions. Codex subagents are shown only if Codex records them the way
   the Factory expects; this has not been checked.
 - **Orca doesn't report the model an agent used.** The Factory records the model it asked for, if
-  any.
+  any. Model names are resolved with Orca's model catalog, an internal file; when it can't be read,
+  the model is passed as you wrote it.
 - **macOS and Windows** pass every test in the CI but have not been used with a real Orca yet. On
   Windows the Factory looks for Orca's hook files under `%APPDATA%\orca`, which is an assumption.
   WSL works like Linux.

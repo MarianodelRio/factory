@@ -32,6 +32,11 @@ output, the files under `.factory/` (`schema_version`), and the skills' names an
   `--replace` confirms that a session whose terminal is still open is abandoned.
 - `swfactory design register` warns about independent tasks whose `scope` overlaps.
 
+- Models for the lead and the conformance reviewer, named as the person says them ("opus 5.5"):
+  `task launch --model/--effort/--reviewer-model/--reviewer-effort`, resolved with Orca's model
+  catalog (`swfactory models`), recorded in the attempt and used for the conformance review.
+  `[agents]` in the config sets the default agents, models and efforts.
+
 ### Changed
 - The designer and the design critic make every real dependency explicit in `depends_on`, and the
   lead blocks a task with `missing dependency: …` when the design missed one.
