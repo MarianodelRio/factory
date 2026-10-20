@@ -4,7 +4,7 @@
 [![CI](https://github.com/MarianodelRio/swfactory/actions/workflows/ci.yml/badge.svg)](https://github.com/MarianodelRio/swfactory/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](https://github.com/MarianodelRio/swfactory/blob/main/LICENSE)
 
-A method, five agent skills and a CLI to build software with coding agents (Claude Code and Codex)
+A method, seven agent skills and a CLI to build software with coding agents (Claude Code and Codex)
 on local Orca: design and approve a change, implement each task in its own Orca workspace, review
 it and publish it with evidence, follow everything on a live board, and keep what was learned in
 the project's memory.
@@ -43,15 +43,17 @@ once. To try it without installing: `uvx swfactory --version`.
 **Upgrade:** `uv tool upgrade swfactory` (or `pipx upgrade swfactory`), then
 `swfactory install-skill`, then `/factory-init` in each project to update its skills.
 
-## The five skills
+## The skills
 
 | Skill | What for |
 |---|---|
-| `/factory-init` | Prepare or update a repository: it analyzes it, proposes one plan (create, modify, delete with reason, respect, Orca actions) and applies it after a single confirmation, with backups. "solo el análisis" shows the plan only. |
+| `/factory-init` | Prepare or update a repository: it analyzes it, proposes one plan (create, modify, delete with reason, respect, migrate from another workflow, Orca actions) and applies it after a single confirmation, with backups. "solo el análisis" shows the plan only. |
 | `/factory-design` | Design a change: it shows a short outline first, writes the design with its acceptance criteria and tasks, and has it critiqued. You approve it by saying "apruebo CHG-N" (Claude asks for permission before the approval commit). |
-| `/factory-implement` | Implement an approved task: from the main checkout it claims the task, creates its Orca workspace and launches the lead agent there. The lead writes tests and code, checkpoints, verifies every criterion with evidence, runs the reviews, updates the memory and finishes. |
+| `/factory-build` | Build approved tasks, one or several at once: from the main checkout it claims each task, creates its Orca workspace and launches the lead agent there. The lead writes tests and code, checkpoints, verifies every criterion with evidence, runs the reviews, updates the memory, finishes and publishes (a PR you merge, or a merge right away). |
+| `/factory-quick` | A small change without design or workspace: it makes the change in your session, runs the checks, commits and pushes with a PR or a merge. |
 | `/factory-board` | The live kanban board: opens it in an Orca tab (or your browser), closes it, gives its URL or saves a snapshot. |
-| `/factory-status` | How everything is going, what needs you, notes and pauses for a running agent ("deja una nota en CHG-…", "pausa CHG-…"), recovering an interrupted task and memory maintenance. |
+| `/factory-status` | How everything is going, what needs you, notes and pauses for a running agent ("deja una nota en 1.1", "pausa 1.1"), recovering a task or handing it to another agent, merges, cleanup and memory maintenance. |
+| `/factory-help` | How the Factory works (skills, flow, states, phrases, configuration) and what to do next in this repository. |
 
 The skills call the `swfactory` CLI for everything that must be exact. You do not need to use it,
 but you can: `swfactory --help` lists every command.
@@ -65,7 +67,7 @@ In a Claude Code (or Codex) terminal in Orca, at the root of your repository:
    /factory-init
    ```
    Read the plan and confirm it. It registers the repo in Orca with its base branch, installs the
-   five skills in the repo, writes `AGENTS.md`, `docs/` and `.factory/config.toml` with your test, lint
+   skills in the repo, writes `AGENTS.md`, `docs/` and `.factory/config.toml` with your test, lint
    and typecheck commands, and leaves everything uncommitted. Review the diff and commit it on the
    base branch (or ask the agent to).
 
@@ -82,7 +84,7 @@ In a Claude Code (or Codex) terminal in Orca, at the root of your repository:
 
 3. **Implement a task.**
    ```
-   /factory-implement CHG-1.1 con claude opus 5.5, revisa claude
+   /factory-build CHG-1.1 con claude opus 5.5, revisa claude
    ```
    ("with claude opus 5.5, review claude": the lead agent with its model, and the conformance
    reviewer. Defaults can go in `[agents]` of `.factory/config.toml`.) A new workspace

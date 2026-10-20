@@ -23,7 +23,7 @@ DEFAULTS: dict[str, Any] = {
     "git": {"pr_on_done": "offer", "integrate": "pr", "cleanup": "ask"},
     "language": {"artifacts": "en"},
     "board": {"port": 8765, "idle_minutes": 30},
-    # Default agents for /factory-implement; empty means "ask". Models are named as the person
+    # Default agents for /factory-build; empty means "ask". Models are named as the person
     # says them ("opus 5.5") or by id, and only apply to the agent next to them.
     "agents": {"lead": "", "lead_model": "", "lead_effort": "",
                "reviewer": "", "reviewer_model": "", "reviewer_effort": ""},

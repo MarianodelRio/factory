@@ -100,7 +100,7 @@ def record_review(repo, capsys, task, kind, tmp_path):
 
 def test_full_flow_from_init_to_published_pr(initialized, fake_gh, capsys, tmp_path):
     repo = initialized
-    assert (repo.root / ".claude/skills/factory-implement/SKILL.md").exists()
+    assert (repo.root / ".claude/skills/factory-build/SKILL.md").exists()
     change = approved_change(repo, capsys)
     task = f"{change}-01"
 

@@ -42,12 +42,12 @@ def test_workspace_exists_other_errors_propagate(repo, fake_orca):
 
 
 def test_launch_agent(repo, fake_orca):
-    launched = orca.launch_agent("repo::/w", "claude", "/factory-implement CHG-0012-01", None, None)
+    launched = orca.launch_agent("repo::/w", "claude", "/factory-build CHG-0012-01", None, None)
     body = load_fixture("agent-launch")["result"]
     assert launched == {"operation_id": body["operationId"], "terminal": body["outcome"]["handle"],
                         "kind": "terminal"}
     assert fake_orca.calls()[-1] == ["agent", "launch", "--agent", "claude", "--worktree", "id:repo::/w",
-                                     "--prompt", "/factory-implement CHG-0012-01", "--json"]
+                                     "--prompt", "/factory-build CHG-0012-01", "--json"]
 
 
 def test_launch_agent_with_model_and_effort(repo, fake_orca):

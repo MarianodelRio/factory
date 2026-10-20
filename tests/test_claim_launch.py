@@ -124,7 +124,7 @@ def test_launch_records_the_attempt(project, store, fake_orca, capsys):
     assert attempt["operation_id"] == body["operationId"]
     assert attempt["terminal"] == body["outcome"]["handle"]
     launch = orca_calls(fake_orca, "agent launch")[0]
-    assert launch[launch.index("--prompt") + 1] == f"/factory-implement {TASK} --reviewer claude"
+    assert launch[launch.index("--prompt") + 1] == f"/factory-build {TASK} --reviewer claude"
     assert launch[launch.index("--worktree") + 1] == f"id:{store.read_task(TASK)['workspace']['orca_id']}"
     assert out["data"]["message"].startswith(f"{TASK} launched")
 
@@ -133,7 +133,7 @@ def test_launch_without_reviewer_and_model(project, store, fake_orca, capsys):
     cli(capsys, "task", "claim", TASK)
     cli(capsys, "task", "launch", TASK, "--agent", "claude")
     launch = orca_calls(fake_orca, "agent launch")[0]
-    assert launch[launch.index("--prompt") + 1] == f"/factory-implement {TASK}"
+    assert launch[launch.index("--prompt") + 1] == f"/factory-build {TASK}"
     assert "--model" not in launch
     assert store.read_task(TASK)["attempts"][0]["model"] is None
 

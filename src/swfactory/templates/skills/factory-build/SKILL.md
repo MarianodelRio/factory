@@ -1,10 +1,10 @@
 ---
-name: factory-implement
-description: Implement an approved Software Factory task (CHG-N.M). From the main checkout it claims the task, creates its Orca workspace and launches the lead agent there; inside the task's workspace it acts as the lead agent (plan, tests, code, checkpoints, verify, reviews, memory, finish, publish). Use for "/factory-implement CHG-12.1 con codex, revisa claude" ("with codex, review claude") or when launched with the brief "/factory-implement <task> [--reviewer <agent>]".
+name: factory-build
+description: Build approved Software Factory tasks (CHG-N.M), one or several at once. From the main checkout it claims each task, creates its Orca workspace and launches the lead agent there; inside the task's workspace it acts as the lead agent (plan, tests, code, checkpoints, verify, reviews, memory, finish, publish). Use for "/factory-build CHG-12.1 con codex, revisa claude", "/factory-build 12.1 12.2", "/factory-build CHG-12" (its ready tasks), "lanza todas las ready", or when launched with the brief "/factory-build <task> [--reviewer <agent>]".
 ---
-<!-- factory-template: skills/factory-implement@1 -->
+<!-- factory-template: skills/factory-build@1 -->
 
-# /factory-implement
+# /factory-build
 
 Reply in the person's language; code, comments, commits, docs and card comments are in English.
 Change Factory state only through the `swfactory` CLI with `--json`, and read each answer. File
@@ -31,8 +31,13 @@ main checkout), and `swfactory task show <task> --json`.
    The reviewer is only needed if the task has a conformance review (its `review` field, or the
    person asks for more: "revisa también conformidad" / "also review conformance").
    `swfactory models --json` lists the models Orca knows.
-2. Check the task: `swfactory task show <task> --json`. If it is not `ready`, explain the `reason`
-   (for example "waiting for CHG-12.1 to be merged into main") and stop.
+2. Which tasks: one id, several ("12.1 12.2"), a change (`CHG-12`: its ready tasks) or "all the
+   ready ones" ("todas las ready": every `ready` task in `swfactory task list --json`). Check each
+   one with `swfactory task show <task> --json`. For a single task that is not `ready`, explain the
+   `reason` (for example "waiting for CHG-12.1 to be merged into main") and stop. For several, show
+   the list (which will launch, which not and why, with the same agents and models unless the
+   person gave some per task) and ask for one confirmation; warn if two of them have overlapping
+   `scope` (they may conflict). Then do steps 3–4 for each, one after the other.
 3. Claim it: `swfactory task claim <task> --json`. It fetches `origin` first and Orca creates the
    workspace and its branch from the latest `origin/<base>` (`base` in the answer); if that fails
    the claim is undone. Mention any sync warning.
@@ -43,5 +48,6 @@ main checkout), and `swfactory task show <task> --json`.
    the `details` and ask. If Orca refuses the agent, report it and ask for another: never replace
    it silently. If the answer is `launch_unconfirmed`, do not launch again:
    tell the person to check the workspace in Orca and use `/factory-status` to recover.
-5. Report "<task> launched; open it from the Orca sidebar" and stop: the main session is free.
-   Uncommitted changes in the main checkout do not reach the workspace.
+5. Report "<task> launched; open it from the Orca sidebar" (for several, one line each, and any
+   that failed and why) and stop: the main session is free. Uncommitted changes in the main
+   checkout do not reach the workspaces.

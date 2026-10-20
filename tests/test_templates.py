@@ -34,7 +34,7 @@ def test_docs_templates_exist_with_mark(name):
 def test_agents_md_size_and_factory_section():
     text = template("docs/AGENTS.md")
     assert 60 <= len(text.splitlines()) <= 120
-    for needle in ("## Software Factory", "/factory-design", "/factory-implement", "/factory-status",
+    for needle in ("## Software Factory", "/factory-design", "/factory-build", "/factory-status",
                    "/factory-init", "only way to change Factory state", "orca skills get orca-cli",
                    "evidence"):
         assert needle in text

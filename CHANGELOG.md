@@ -42,7 +42,15 @@ output, the files under `.factory/` (`schema_version`), and the skills' names an
   A folder of another workflow can be deleted whole, with backup.
 - `/factory-init` creates a root `README.md` when there is none.
 
+- `/factory-quick`: a small change without design or workspace, with the project checks
+  (`swfactory check`, which records nothing), a commit and a push with a PR or a merge.
+- `/factory-help`: how the Factory works and the next step in this repository.
+- `/factory-build` launches several tasks at once: a list of ids, a change (its ready tasks) or
+  every ready task, after one confirmation.
+
 ### Changed
+- `/factory-implement` is now `/factory-build`. `/factory-init` installs it and removes the old
+  skill's files.
 - The index of `docs/` is `docs/index.md`, and the decisions index `docs/decisions/index.md` (a
   README is for people). `/factory-init` renames an existing `docs/decisions/README.md` and fixes
   the links to it in `AGENTS.md` and `docs/`.

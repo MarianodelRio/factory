@@ -7,7 +7,8 @@ from test_doctor import snapshot
 
 from swfactory.cli import main
 
-SKILLS = ["factory-init", "factory-design", "factory-implement", "factory-status", "factory-board"]
+SKILLS = ["factory-init", "factory-design", "factory-build", "factory-quick", "factory-status", "factory-board",
+          "factory-help"]
 
 
 @pytest.fixture
@@ -49,7 +50,7 @@ def test_plan_lists_everything_and_changes_nothing(project, capsys):
     for skill in SKILLS:
         assert f".claude/skills/{skill}/SKILL.md" in created
         assert f".agents/skills/{skill}/SKILL.md" in created
-    assert ".claude/skills/factory-implement/references/roles/lead.md" in created
+    assert ".claude/skills/factory-build/references/roles/lead.md" in created
     assert ".claude/skills/factory-design/references/design-template.md" in created
     assert "docs/product.md" not in created  # small repo: AGENTS.md and conventions.md only
     assert data["delete"] == []
@@ -77,7 +78,7 @@ def test_apply_installs_without_committing(project, capsys):
     for skill in SKILLS:
         claude, codex = root / f".claude/skills/{skill}/SKILL.md", root / f".agents/skills/{skill}/SKILL.md"
         assert codex.read_text() == claude.read_text()
-    assert (root / ".claude/skills/factory-implement/references/adr-template.md").exists()
+    assert (root / ".claude/skills/factory-build/references/adr-template.md").exists()
     assert result["orca"] == [{"id": "skills-update", "ok": True}]
 
 
@@ -357,3 +358,16 @@ def test_the_repos_own_docs_count_for_its_size(project, capsys):
     git("add", "-A", cwd=project.root)
     git("commit", "-q", "-m", "User docs", cwd=project.root)
     assert "docs/product.md" in paths(plan(capsys)["create"])
+
+
+def test_the_renamed_implement_skill_is_removed(project, capsys):
+    old = project.root / ".claude/skills/factory-implement"
+    (old / "references").mkdir(parents=True)
+    (old / "SKILL.md").write_text("<!-- factory-template: skills/factory-implement@1 -->\n# old\n")
+    (old / "references/lead.md").write_text("<!-- factory-template: skills/factory-implement@1 -->\n")
+    data = plan(capsys)
+    leftovers = {d["path"] for d in data["delete"] if d["reason"] == "leftover from an earlier Factory version"}
+    assert leftovers == {f".claude/skills/factory-implement/{f}" for f in ("SKILL.md", "references/lead.md")}
+    assert ".claude/skills/factory-build/SKILL.md" in paths(data["create"])
+    apply(capsys, data["plan_id"])
+    assert not old.exists()

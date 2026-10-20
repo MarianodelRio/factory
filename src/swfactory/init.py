@@ -210,7 +210,8 @@ def _permission_warnings(root: Path) -> list[str]:
 SKILL_BASES = (".claude/skills", ".agents/skills")
 # Roles each skill reads; the conformance reviewer's role goes in its launch prompt instead.
 SKILL_ROLES = {"factory-design": ("designer", "design_critic"),
-               "factory-implement": ("lead", "planner", "quality_reviewer")}
+               "factory-build": ("lead", "planner", "quality_reviewer"),
+               "factory-quick": ("quality_reviewer",)}
 ASK_RULES = ["Bash(swfactory design approve:*)", "Bash(swfactory design reject:*)"]
 CODEX_RULES = ".codex/rules/factory.rules"  # Codex's equivalent of ASK_RULES
 GITIGNORE_LINE = ".factory/state/"
@@ -259,7 +260,7 @@ def _skill_files() -> dict[str, str]:
         for role in roles:
             files[f"{skill}/references/roles/{role}.md"] = _template(f"roles/{role}.md")
     files["factory-design/references/design-template.md"] = _template("design/design.md")
-    files["factory-implement/references/adr-template.md"] = _template("docs/decisions/adr.md")
+    files["factory-build/references/adr-template.md"] = _template("docs/decisions/adr.md")
     return dict(sorted(files.items()))
 
 

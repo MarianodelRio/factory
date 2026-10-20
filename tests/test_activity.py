@@ -28,7 +28,7 @@ def hooks_home(tmp_path):
     write(folder / "spool/pane-leaf-old.jsonl", "\n".join([
         "",
         hook("SessionStart", 1_700_000_000_000),
-        hook("UserPromptSubmit", 1_700_000_001_000, prompt="/factory-implement CHG-0012-01"),
+        hook("UserPromptSubmit", 1_700_000_001_000, prompt="/factory-build CHG-0012-01"),
         hook("SubagentStart", 1_700_000_002_000, agent_id="a1", agent_type="Explore"),
         hook("SubagentStop", 1_700_000_003_000, agent_id="a1", agent_type="Explore", last_assistant_message="pass",
              background_tasks=[{"id": "a1", "description": "Quality review"}]),
@@ -46,7 +46,7 @@ def test_hooks_give_each_pane_its_agent_and_the_typed_subagents(tmp_path):
     assert hooks["panes"]["leaf-live"]["state"] == "working"
     assert "ghp_" not in hooks["panes"]["leaf-live"]["prompt"]
     old = hooks["panes"]["leaf-old"]  # ended session: only in the spool
-    assert (old["state"], old["prompt"]) == ("done", "/factory-implement CHG-0012-01")
+    assert (old["state"], old["prompt"]) == ("done", "/factory-build CHG-0012-01")
     assert [(e["event"], e["id"]) for e in hooks["subagents"]] == [("SubagentStart", "a1"), ("SubagentStop", "a1")]
 
 

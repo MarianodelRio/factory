@@ -134,3 +134,20 @@ def test_evidence_lives_in_the_main_checkout(claimed, store, capsys, monkeypatch
     cli(capsys, "task", "verify", TASK)
     assert (claimed.root / ".factory/state/evidence" / TASK).is_dir()
     assert not (workspace / ".factory/state").exists()
+
+
+def test_check_runs_the_project_checks_here(repo, fake_orca, monkeypatch, capsys):
+    monkeypatch.chdir(repo.root)
+    configure(repo, {"test": 'python -c "print(1)"', "lint": 'python -c "import sys; sys.exit(\'bad style\')"'})
+    assert main(["check", "--json"]) == 0
+    data = json.loads(capsys.readouterr().out)["data"]
+    assert data["passed"] is False
+    assert (data["checks"]["test"]["status"], data["checks"]["lint"]["status"]) == ("passed", "failed")
+    assert "bad style" in data["checks"]["lint"]["output"]
+    assert not (repo.root / ".factory/state").exists()  # nothing recorded
+
+
+def test_check_without_checks(repo, fake_orca, monkeypatch, capsys):
+    monkeypatch.chdir(repo.root)
+    assert main(["check", "--json"]) == 3
+    assert json.loads(capsys.readouterr().out)["error"]["code"] == "checks_missing"

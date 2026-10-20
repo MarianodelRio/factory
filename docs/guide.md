@@ -13,8 +13,9 @@ publish → remember what was learned**
 
 It is made of:
 
-- **Five skills** you call in plain language from an agent terminal: `/factory-init`,
-  `/factory-design`, `/factory-implement`, `/factory-status` and `/factory-board`.
+- **Seven skills** you call in plain language from an agent terminal: `/factory-init`,
+  `/factory-design`, `/factory-build`, `/factory-quick`, `/factory-status`, `/factory-board` and
+  `/factory-help`.
 - **A small CLI**, `swfactory`. The skills use it for everything that must be exact: approvals, task
   claims, state and evidence. You don't need to use it, but you can.
 - **Readable files** in your repository (`.factory/`, `AGENTS.md`, `docs/`) that hold the designs,
@@ -26,8 +27,8 @@ as a card in its sidebar. The Factory brings the method and keeps the record.
 
 ### What it is good for
 
-- Changes big enough to deserve a design: a feature, a refactor, an integration. Truly trivial
-  edits don't need the Factory; ask an agent directly.
+- Changes big enough to deserve a design: a feature, a refactor, an integration. Small edits don't
+  need a design: use `/factory-quick`.
 - Working on several tasks at once without them stepping on each other: each task has its own
   workspace and branch, and your main session stays free.
 - Knowing that "done" means proven: each acceptance criterion has recorded evidence, the checks
@@ -72,7 +73,7 @@ you first and keeping a backup.
       │  you: "apruebo CHG-1" / "approve CHG-1"  (+ the permission prompt)
       ▼
  approved: tasks CHG-1.1, CHG-1.2 …  ── ready (or pending, waiting for a dependency)
-      │  you: /factory-implement CHG-1.1 con claude, revisa claude
+      │  you: /factory-build CHG-1.1 con claude, revisa claude
       ▼
  Orca workspace + branch, lead agent launched ── in_progress
       │  tests first, code, commits, checkpoints, verify (checks + every AC)
@@ -214,25 +215,29 @@ You can ask for changes at any time. The agent warns you first, because the chan
 - `to_merge` and `done` tasks are not touched.
 - Re-approval keeps the task ids. New tasks get new numbers, and approved tasks cannot be removed.
 
-## 6. Implementing a task: `/factory-implement`
+## 6. Building a task: `/factory-build`
 
 From your main session (the repository's main checkout):
 
 ```
-/factory-implement CHG-1.1 con claude, revisa claude
+/factory-build CHG-1.1 con claude, revisa claude
 ```
 
 "con" / "with" names the **lead agent** and "revisa" / "review" names the **conformance
 reviewer** (`claude` or `codex`). Each can have its model and effort, said the way you know them:
 
 ```
-/factory-implement CHG-1.1 con claude opus 5.5, revisa codex sol 6.1
+/factory-build CHG-1.1 con claude opus 5.5, revisa codex sol 6.1
 ```
 
 The Factory turns "opus 5.5" into the model's id with Orca's model catalog (`swfactory models`
 lists them) and refuses a model or effort it doesn't know, showing the ones it does. What you leave
 out comes from `[agents]` in `.factory/config.toml`; if no lead is set there either, it asks once
 and suggests your last choice. The quality review runs as a subagent of the lead, with its model.
+
+**Several at once.** `/factory-build 1.1 1.2`, `/factory-build CHG-1` (its ready tasks) or "lanza
+todas las ready": it lists which tasks will start and which can't (and why), warns when two of
+them may touch the same files, asks once, and launches each in its own workspace.
 
 **What happens:**
 
@@ -338,6 +343,14 @@ Without a usable `gh`, the branch is pushed and the PR (and the merge) is left t
 When the task is merged it becomes `done`, its remote branch is deleted, and the Factory offers to
 remove its workspace and local branch (`git.cleanup`: `ask`, `always` or `never`). It never removes
 a workspace with uncommitted files.
+
+### Quick changes: `/factory-quick`
+
+For a fix, a rename or a small tweak that needs no design: `/factory-quick <what>` ("cambio rápido
+…"). The agent works in your session, on a new branch `quick/<slug>` (or on the base branch if you
+ask), makes the change, runs the project checks (`swfactory check`), commits, and asks whether to
+push with a PR or merge it right away. There is no design, approval or task state, and nothing
+appears on the board. If the change turns out not to be small, it proposes `/factory-design`.
 
 ## 7. Following and steering the work: `/factory-status`
 
@@ -451,12 +464,18 @@ for broken links, documents that cite superseded decisions, duplicated ADR numbe
 agent adds its own reading (contradictions, outdated docs) and proposes changes as a diff for you
 to commit.
 
+### Help: `/factory-help`
+
+"¿cómo funciona la factory?", "¿qué significa to_merge?", "/factory-help reviews": it explains the
+skills, the flow, the states, what to say and the configuration, and tells you the next step in
+this repository with the exact phrase to use.
+
 ## 8. Task states
 
 | State | Meaning | What to do |
 |---|---|---|
 | `pending` | Approved, but a dependency is not `done` yet | Finish and merge the dependency |
-| `ready` | Can start | `/factory-implement <task>` |
+| `ready` | Can start | `/factory-build <task>` |
 | `in_progress` | The lead agent is working | Watch, leave notes, or wait |
 | `in_review` | Implemented; reviews running | Wait for the reviews and `finish` |
 | `blocked` | Paused, design changed, review not converging, or a decision is needed | Resolve the reason, then unblock |
@@ -483,9 +502,9 @@ your-repo/
 ├── AGENTS.md                      # short index for agents: commands, critical rules, where things are
 ├── CLAUDE.md                      # just "@AGENTS.md"
 ├── .claude/
-│   ├── skills/factory-*/          # the five skills for Claude Code
+│   ├── skills/factory-*/          # the skills for Claude Code
 │   └── settings.json              # asks before approve/reject
-├── .agents/skills/factory-*/      # the same five skills for Codex
+├── .agents/skills/factory-*/      # the same skills for Codex
 ├── .codex/rules/factory.rules     # asks before approve/reject in Codex
 ├── docs/
 │   ├── index.md                   # the index of docs/
@@ -574,6 +593,7 @@ expect. Use double quotes in them (`python -c "print(1)"`) so they work everywhe
 - **macOS and Windows** pass every test in the CI but have not been used with a real Orca yet. On
   Windows the Factory looks for Orca's hook files under `%APPDATA%\orca`, which is an assumption.
   WSL works like Linux.
-- **One task per workspace and one lead per task.** There is no orchestrator running several tasks
-  for you; you launch each one.
+- **One task per workspace and one lead per task.** `/factory-build` launches several tasks at once,
+  but nothing chains them: a task that depends on another starts when you launch it, once the
+  other is merged.
 - **Local Orca only**, and Orca is the only supported environment.

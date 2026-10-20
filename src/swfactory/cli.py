@@ -189,6 +189,10 @@ def status(args: argparse.Namespace) -> Result:
     return tasks.status(task_context())
 
 
+def check_command(args: argparse.Namespace) -> Result:
+    return tasks.run_checks(paths.repo_root(), task_context())
+
+
 def sync_command(args: argparse.Namespace) -> Result:
     return tasks.sync_command(task_context())
 
@@ -227,6 +231,7 @@ HANDLERS: dict[str, Handler] = {
     "task recover": task_recover,
     "status": status,
     "sync": sync_command,
+    "check": check_command,
     "memory check": memory_check,
     "doctor": doctor,
     "models": models_command,
@@ -349,6 +354,7 @@ def build_parser() -> Parser:
 
     command(groups, "status", "status", "summary of changes and tasks")
     command(groups, "sync", "sync", "fetch origin and bring the base branch up to date")
+    command(groups, "check", "check", "run the project checks here (for a quick change; nothing is recorded)")
 
     board_group = groups.add_parser("board", help="local kanban board of the tasks (read-only)")
     board_cmds = board_group.add_subparsers(dest="action", required=True, metavar="<action>")

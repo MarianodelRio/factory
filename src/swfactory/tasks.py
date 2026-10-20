@@ -18,6 +18,7 @@ Raises FactoryError with these codes:
 - review_agent_missing (EXIT_USAGE): a conformance review without `--agent` or a recorded reviewer.
 - gates_not_met (EXIT_PRECONDITION): `finish` with closing criteria unmet; `details` lists them.
 - workspace_not_clean (EXIT_PRECONDITION): `task cleanup` of a workspace with uncommitted files.
+- checks_missing (EXIT_PRECONDITION): `swfactory check` without any check configured.
 - not_merged (EXIT_PRECONDITION): `task merged` for a task that is not waiting to be merged.
 - session_alive (EXIT_PRECONDITION): `recover --confirm` while Orca says the agent is alive.
 - workspace_missing (EXIT_PRECONDITION): `recover --confirm` when the workspace no longer exists.
@@ -455,7 +456,7 @@ def launch(
     task_id: str, agent: str | None, reviewer: str | None, model: str | None, effort: str | None, ctx: Context,
     reviewer_model: str | None = None, reviewer_effort: str | None = None,
 ) -> tuple[dict[str, Any], list[str]]:
-    """Open the lead agent in the task's workspace with the brief `/factory-implement <id>`. Agents,
+    """Open the lead agent in the task's workspace with the brief `/factory-build <id>`. Agents,
     models and efforts not given come from `[agents]` in the config; a model may be named as the
     person says it ("opus 5.5"): Orca's model catalog gives its id."""
     task = _task(task_id, ctx)
@@ -487,7 +488,7 @@ def launch(
         return state
 
     record = ctx.store.update_task(task_id, mark, "launch")
-    prompt = f"/factory-implement {task_id}" + (f" --reviewer {reviewer}" if reviewer else "")
+    prompt = f"/factory-build {task_id}" + (f" --reviewer {reviewer}" if reviewer else "")
     workspace_id = record["workspace"]["orca_id"]
     try:
         launched = orca.launch_agent(workspace_id, agent, prompt, model, effort)
@@ -714,6 +715,26 @@ def _run_evidence(command: str, cwd: Path, output: Path, ctx: Context) -> tuple[
         encoding="utf-8",
     )
     return ("passed" if done.returncode == 0 else "failed"), output.relative_to(ctx.store.root).as_posix()
+
+
+def run_checks(cwd: Path, ctx: Context) -> tuple[dict[str, Any], list[str]]:
+    """`swfactory check`: run the project checks in `cwd`, for a quick change outside any task.
+    Nothing is recorded; a failed check's output (its end) is returned."""
+    checks = _config(ctx)["checks"]
+    if not checks:
+        raise FactoryError("checks_missing", "no checks are configured in .factory/config.toml", EXIT_PRECONDITION)
+    results: dict[str, dict[str, str]] = {}
+    for name, command in checks.items():
+        try:
+            done = subprocess.run(system.command_line(command), cwd=cwd, capture_output=True, text=True,
+                                  encoding="utf-8", errors="replace")
+        except (ValueError, OSError) as exc:
+            results[name] = {"command": command, "status": "not_run", "output": str(exc)}
+            continue
+        failed = done.returncode != 0
+        results[name] = {"command": command, "status": "failed" if failed else "passed",
+                         "output": mask_secrets((done.stdout + done.stderr)[-3000:]) if failed else ""}
+    return {"passed": all(r["status"] == "passed" for r in results.values()), "checks": results}, []
 
 
 def verify_manual(task_id: str, ac: str, evidence: Path, ctx: Context) -> tuple[dict[str, Any], list[str]]:
@@ -1190,7 +1211,7 @@ def _next_step(
 ) -> str:
     state = row["state"]
     if state == "ready":
-        return f"/factory-implement {task['id']}"
+        return f"/factory-build {task['id']}"
     if state == "pending":
         return str(row["reason"])
     if state == "in_progress":
