@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Factory board</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%2230%22%20height%3D%2230%22%20rx%3D%228%22%20fill%3D%22%23161a1f%22%20stroke%3D%22%232a313a%22/%3E%3Crect%20x%3D%227%22%20y%3D%227%22%20width%3D%225%22%20height%3D%2218%22%20rx%3D%222.5%22%20fill%3D%22%235aa9f0%22/%3E%3Crect%20x%3D%2213.5%22%20y%3D%227%22%20width%3D%225%22%20height%3D%2213%22%20rx%3D%222.5%22%20fill%3D%22%23a98bf5%22/%3E%3Crect%20x%3D%2220%22%20y%3D%227%22%20width%3D%225%22%20height%3D%228%22%20rx%3D%222.5%22%20fill%3D%22%234cc38a%22/%3E%3C/svg%3E">
 <style>
   :root {
     color-scheme: dark;
@@ -39,7 +40,8 @@
     padding: 14px 20px; background: rgba(11, 13, 16, .92); backdrop-filter: blur(8px);
     border-bottom: 1px solid var(--line-soft);
   }
-  .brand { display: flex; align-items: baseline; gap: 10px; }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand svg { width: 24px; height: 24px; flex: none; }
   .brand b { font-size: 15px; letter-spacing: .2px; }
   .brand .mono { color: var(--muted); }
   .counts { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -107,21 +109,9 @@
   .pip.working { background: var(--progress); animation: pulse 2s infinite; }
   .pip.closed { background: var(--bad); }
   .pip.done { background: transparent; border: 1px solid var(--faint); }
-  .next { margin-top: 7px; padding-top: 7px; border-top: 1px solid var(--line-soft); color: var(--muted); font-size: 12px;
-          display: flex; gap: 6px; }
-  .next b { color: var(--faint); font-weight: 500; }
   .badge { font-size: 10.5px; padding: 0 6px; border-radius: 999px; background: rgba(240,180,76,.15); color: var(--needs); }
   .more { width: 100%; padding: 6px; background: transparent; border: 1px dashed var(--line); border-radius: 8px;
           color: var(--muted); cursor: pointer; }
-
-  .activity { margin-top: 22px; border: 1px solid var(--line-soft); border-radius: 12px; background: var(--panel); }
-  .activity h2 { margin: 0; padding: 11px 14px; font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
-                 color: var(--muted); border-bottom: 1px solid var(--line-soft); }
-  .feed { list-style: none; margin: 0; padding: 6px 0; max-height: 280px; overflow-y: auto; }
-  .feed li { display: grid; grid-template-columns: 70px 110px 1fr; gap: 10px; padding: 4px 14px; }
-  .feed li:hover { background: var(--card); }
-  .feed .when { color: var(--faint); }
-  .feed .task { color: var(--muted); }
 
   .scrim { position: fixed; inset: 0; background: rgba(0,0,0,.45); opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 9; }
   .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(520px, 100%); background: var(--panel);
@@ -146,14 +136,12 @@
     header { padding: 12px 16px; }
     main { padding: 14px 16px 24px; }
     .board { grid-template-columns: 1fr; }
-    .feed li { grid-template-columns: 60px 1fr; }
-    .feed .task { display: none; }
   }
 </style>
 </head>
 <body>
 <header>
-  <div class="brand"><b>Factory</b><span class="mono" id="repo">…</span><span class="mono faint" id="base"></span></div>
+  <div class="brand"><svg viewBox="0 0 32 32" aria-hidden="true"><rect x="1" y="1" width="30" height="30" rx="8" fill="#161a1f" stroke="#2a313a"/><rect x="7" y="7" width="5" height="18" rx="2.5" fill="#5aa9f0"/><rect x="13.5" y="7" width="5" height="13" rx="2.5" fill="#a98bf5"/><rect x="20" y="7" width="5" height="8" rx="2.5" fill="#4cc38a"/></svg><b>Factory</b><span class="mono" id="repo">…</span><span class="mono faint" id="base"></span></div>
   <div class="counts" id="counts"></div>
   <div class="spacer"></div>
   <select id="filter" aria-label="Filter by change"><option value="">All changes</option></select>
@@ -163,7 +151,6 @@
 <div class="banner" id="banner"></div>
 <main>
   <section class="board" id="board"></section>
-  <section class="activity"><h2>Activity</h2><ul class="feed" id="feed"></ul></section>
 </main>
 <div id="layer"><div class="scrim" id="scrim"></div><aside class="drawer" id="drawer" aria-label="Task details"></aside></div>
 
@@ -240,16 +227,13 @@ function agentLines(task) {
   const terminals = (agents.length ? agents : runs.filter((r) => r.kind === "terminal"))
     .filter((r) => task.state !== "done" || r.state !== "closed");
   const subs = runs.filter((r) => r.kind === "subagent");
-  const lines = terminals.slice(0, 3).map((run) => h("div", { class: "agent" },
+  const lines = terminals.slice(0, 2).map((run) => h("div", { class: "agent" },
     h("span", { class: pipClass(run) }), h("span", { class: "name" }, runName(run)),
     h("span", { class: "ell faint" }, run.state === "closed" ? "terminal closed" : (run.last_activity ? ago(run.last_activity) : run.state))));
   const running = subs.filter((s) => s.state === "running");
-  for (const sub of running.slice(0, 2)) {
-    lines.push(h("div", { class: "agent sub" }, "↳ ", h("span", { class: pipClass(sub) }),
-      h("span", { class: "ell" }, sub.label || runName(sub))));
-  }
-  const rest = subs.length - Math.min(running.length, 2);
-  if (rest > 0) lines.push(h("div", { class: "agent sub" }, `↳ ${rest} subagent${rest > 1 ? "s" : ""} ${running.length > 2 ? "" : "done"}`.trim()));
+  if (running.length) lines.push(h("div", { class: "agent sub" }, "↳ ", h("span", { class: "pip working" }),
+    h("span", { class: "ell" }, running.length === 1 ? (running[0].label || runName(running[0]))
+      : `${running.length} subagents running`)));
   if (!lines.length && task.agent) lines.push(h("div", { class: "agent" }, h("span", { class: "pip" }),
     h("span", { class: "name" }, task.agent), h("span", { class: "faint" }, task.liveness === "unknown" ? "Orca can't say" : "")));
   return lines.length ? h("div", { class: "agents" }, lines) : null;
@@ -264,7 +248,7 @@ function taskCard(task) {
     : (task.state === "pending" ? task.reason : null);
   const pr = task.pull_request ? h("span", { class: "tag" }, `PR #${task.pull_request.number}`) : null;
   return h("article", { class: "card", style: accent(task.column), onclick: () => openDrawer(task.id) },
-    h("div", { class: "top" }, h("span", { class: "mono" }, task.id),
+    h("div", { class: "top" }, h("span", { class: "mono" }, shortId(task.id)),
       h("span", { class: "chip" }, STATE_LABEL[task.state] || task.state)),
     h("div", { class: "title" }, task.title),
     reason ? h("div", { class: "reason" }, reason) : null,
@@ -272,18 +256,16 @@ function taskCard(task) {
       h("div", { class: "fill", style: `width:${Math.round(100 * verified / total)}%` })),
       h("span", { class: "mono" }, `${verified}/${total} AC`)) : null,
     h("div", { class: "row" }, reviewTags(task),
-      task.checks ? h("span", { class: "tag " + (task.checks === "passed" ? "pass" : "fail") }, `checks ${task.checks}`) : null,
+      task.checks === "failed" ? h("span", { class: "tag fail" }, "checks failed") : null,
       pr, task.unread_notes ? h("span", { class: "badge" }, `${task.unread_notes} note${task.unread_notes > 1 ? "s" : ""}`) : null),
-    task.state !== "done" ? agentLines(task) : null,
-    task.next_step && task.state !== "done" && task.next_step !== reason
-      ? h("div", { class: "next" }, h("b", {}, "next"), h("span", {}, task.next_step)) : null);
+    ["in_progress", "in_review", "blocked", "interrupted"].includes(task.state) ? agentLines(task) : null);
 }
 function changeCard(change) {
-  return h("article", { class: "card", style: accent("needs_you") },
+  return h("article", { class: "card", style: accent("needs_you"), title: `review the design, then “apruebo ${change.id}”` },
     h("div", { class: "top" }, h("span", { class: "mono" }, change.id), h("span", { class: "chip" }, "awaiting approval")),
-    h("div", { class: "title" }, change.title),
-    h("div", { class: "next" }, h("b", {}, "next"), h("span", {}, `review the design, then “apruebo ${change.id}”`)));
+    h("div", { class: "title" }, change.title));
 }
+const shortId = (id) => id.includes(".") ? id.replace(/^CHG-/, "") : id;
 
 function render() {
   if (!data) return;
@@ -303,22 +285,18 @@ function render() {
   const columns = COLUMNS.map(([key, label, color]) => {
     let cards = tasks.filter((t) => t.column === key).map(taskCard);
     if (key === "needs_you") {
-      cards = data.changes.filter((c) => c.state === "awaiting_approval" && (!filter || c.id === filter)).map(changeCard).concat(cards);
+      cards = cards.concat(data.changes.filter((c) => c.state === "awaiting_approval" && (!filter || c.id === filter)).map(changeCard));
     }
     let extra = null;
     if (key === "done" && cards.length > 5 && !showAllDone) {
       extra = h("button", { class: "more", onclick: () => { showAllDone = true; render(); } }, `show ${cards.length - 5} more`);
-      cards = cards.slice(-5);
+      cards = cards.slice(0, 5);  // the server sends done tasks merged most recently first
     }
     return h("div", { class: "column", style: `--accent: var(${color})` },
       h("h2", {}, label, h("span", {}, cards.length + (extra ? "+" : ""))),
       h("div", { class: "stack" }, cards.length ? cards : h("div", { class: "empty" }, "nothing here"), extra));
   });
   $("board").replaceChildren(...columns);
-  const feed = data.activity.filter((a) => !filter || a.task.startsWith(filter));
-  $("feed").replaceChildren(...(feed.length ? feed.map((a) => h("li", {},
-    h("span", { class: "when mono", title: a.at }, clock(a.at)), h("span", { class: "task mono" }, a.task),
-    h("span", {}, a.text))) : [h("li", {}, h("span", { class: "faint" }, "no activity yet"))]));
   let wanted = "";
   try { wanted = decodeURIComponent(location.hash.slice(1)); } catch (error) { wanted = ""; }
   if (selected) openDrawer(selected, true);

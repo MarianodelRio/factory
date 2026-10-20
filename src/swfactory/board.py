@@ -6,8 +6,10 @@ runs in the background and stops by itself when nobody looks at it."""
 from __future__ import annotations
 
 import collections
+import datetime
 import json
 import os
+import re
 import secrets
 import signal
 import socket
@@ -28,7 +30,6 @@ from swfactory.output import EXIT_CONFLICT, EXIT_ERROR, EXIT_UNAVAILABLE, Factor
 from swfactory.state import TaskStore, now
 
 CACHE_SECONDS = 2.0
-ACTIVITY_LIMIT = 40
 START_TIMEOUT = 10.0
 IDLE_CHECK_SECONDS = 15.0
 DONE_STEP_SECONDS = 60.0  # a finished task's next step (pushed? PR?) costs git calls: reuse it this long
@@ -66,9 +67,13 @@ def collect(ctx: tasks.Context, home: Path) -> dict[str, Any]:
             _remember_done_step(ctx, task["id"], row["next_step"])
         row.update(_details(task, record))
         row["design_changed"] = active and not task["approved"]
-        row["runs"] = activity.runs(tasks.workspace_path(record), record, view, hooks, home) if record else []
+        row["runs"] = (activity.runs(tasks.workspace_path(record), record, view, hooks, home)
+                       if record and record.get("workspace") else [])
         row["column"] = _column(row)
+        row["updated_at"] = _iso(_state_mtime(ctx, task["id"])) if record else None
+        row["merged_at"] = record.get("merged_at") if record else None
         rows.append(row)
+    rows.sort(key=_order)
 
     changes = _changes(ctx, rows)
     counts = collections.Counter(row["column"] for row in rows)
@@ -86,7 +91,6 @@ def collect(ctx: tasks.Context, home: Path) -> dict[str, Any]:
         "counts": {column: counts.get(column, 0) for column in COLUMNS},
         "changes": changes,
         "tasks": rows,
-        "activity": _activity(ctx.store, rows, hooks),
     }
 
 
@@ -108,6 +112,32 @@ def _cached_done_step(ctx: tasks.Context, task_id: str) -> str | None:
 
 def _remember_done_step(ctx: tasks.Context, task_id: str, step: str) -> None:
     _done_steps[task_id] = (_state_mtime(ctx, task_id), time.monotonic(), step)
+
+
+def _iso(timestamp: float) -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(timestamp))
+
+
+def _number(task_id: str) -> tuple[int, ...]:
+    return tuple(int(n) for n in re.findall(r"\d+", task_id))
+
+
+def _order(row: dict[str, Any]) -> tuple[Any, ...]:
+    """Cards in each column: what can start first in the backlog (ready, then pending, by id), the
+    most recent first everywhere else (merged most recently, for done)."""
+    if row["column"] == "backlog":
+        return (row["column"], row["state"] != "ready", 0.0, _number(row["id"]))
+    recent = (row.get("merged_at") if row["column"] == "done" else None) or row.get("updated_at")
+    return (row["column"], False, -_epoch(recent), _number(row["id"]))
+
+
+def _epoch(timestamp: str | None) -> float:
+    """Seconds of an ISO timestamp; 0 (oldest) when there is none."""
+    try:
+        return datetime.datetime.strptime(str(timestamp), "%Y-%m-%dT%H:%M:%SZ").replace(
+            tzinfo=datetime.UTC).timestamp()
+    except ValueError:
+        return 0.0
 
 
 def _column(row: dict[str, Any]) -> str:
@@ -168,79 +198,6 @@ def _changes(ctx: tasks.Context, rows: list[dict[str, Any]]) -> list[dict[str, A
         found.append({"id": change_id, "title": match.group(1).strip() if match else change_id,
                       "state": state, "tasks": len(own)})
     return found
-
-
-def _event_text(name: str, state: dict[str, Any]) -> str | None:
-    attempt = state["attempts"][-1] if state.get("attempts") else {}
-    checkpoint = state.get("last_checkpoint") or {}
-    notes = state.get("notes") or []
-    reviews = state.get("reviews") or []
-    acceptance = state.get("acceptance") or {}
-    texts = {
-        "claim": "claimed; Orca workspace created",
-        "launched": f"lead {attempt.get('agent')} launched"
-                    + (f", reviewer {attempt['reviewer']}" if attempt.get("reviewer") else ""),
-        "checkpoint": (checkpoint.get("done") or [""])[0],
-        "note": (("pause: " if notes and notes[-1].get("pause") else "note: ") + notes[-1]["text"]) if notes else None,
-        "verify": f"verified {sum(1 for a in acceptance.values() if a.get('status') == 'verified')}"
-                  f"/{len(acceptance)} AC, checks {(state.get('checks') or {}).get('status')}",
-        "verify_manual": "manual evidence recorded",
-        "submit": "submitted for review",
-        "review": (f"{reviews[-1]['type']} review round {reviews[-1]['round']}: {reviews[-1]['verdict']}"
-                   if reviews else None),
-        "finish": "finished: to merge",
-        "merged": "merged",
-        "publish": "branch pushed" + (f", PR #{state['pull_request']['number']}" if state.get("pull_request") else ""),
-        "interrupted": "interrupted: the lead's terminal is closed",
-        "recover": f"recovered: attempt {attempt.get('id')}",
-        "design_changed": "blocked: the design changed",
-        "unblock": "unblocked",
-        "launch_failed": "launch failed",
-    }
-    return texts.get(name)
-
-
-_events_cache: dict[Path, tuple[float, int, list[dict[str, Any]]]] = {}
-
-
-def _task_events(path: Path) -> list[dict[str, Any]]:
-    """The last events of one task as feed items, cached while its log does not change."""
-    try:
-        stat = path.stat()
-        cached = _events_cache.get(path)
-        if cached and cached[:2] == (stat.st_mtime, stat.st_size):
-            return cached[2]
-        with path.open(encoding="utf-8") as handle:
-            lines = collections.deque(handle, maxlen=ACTIVITY_LIMIT)
-    except OSError:
-        return []
-    task, items = path.name.removesuffix(".events.jsonl"), []
-    for line in lines:
-        try:
-            event = json.loads(line)
-            at, text = event["at"], _event_text(event["event"], event["state"])
-        except (ValueError, KeyError, TypeError, IndexError, AttributeError):
-            continue
-        if text and isinstance(at, str):
-            items.append({"at": at, "task": task, "event": event["event"], "text": mask_secrets(text)})
-    _events_cache[path] = (stat.st_mtime, stat.st_size, items)
-    return items
-
-
-def _activity(store: TaskStore, rows: list[dict[str, Any]], hooks: dict[str, Any]) -> list[dict[str, Any]]:
-    items: list[dict[str, Any]] = []
-    for path in sorted(store.root.glob("*.events.jsonl")):
-        items += _task_events(path)
-    by_workspace = {system.path_key(r["workspace"].split("::", 1)[1]): r["id"] for r in rows if r.get("workspace")}
-    for event in hooks["subagents"]:
-        owner = by_workspace.get(system.path_key(event["cwd"] or ""))
-        if owner and event["at"]:
-            verb = "started" if event["event"] == "SubagentStart" else "finished"
-            items.append({"at": event["at"], "task": owner, "event": "subagent",
-                          "text": f"{event['provider'] or 'agent'} subagent {event['type'] or ''} {verb}".strip()})
-    # Newest first; events of the same second keep the order they were written in.
-    order = {id(item): n for n, item in enumerate(items)}
-    return sorted(items, key=lambda i: (i["at"], order[id(i)]), reverse=True)[:ACTIVITY_LIMIT]
 
 
 def page(data: dict[str, Any] | None = None) -> str:

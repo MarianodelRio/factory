@@ -47,7 +47,7 @@ def state_files(repo):
     return {p.name: p.read_bytes() for p in folder.glob("*") if p.is_file()}
 
 
-def test_board_shows_columns_agents_and_activity(working, home):
+def test_board_shows_columns_and_agents(working, home):
     data = collect(working, home)
     task = task_in(data)
     assert (task["state"], task["column"], task["liveness"]) == ("in_progress", "in_progress", "alive")
@@ -58,8 +58,7 @@ def test_board_shows_columns_agents_and_activity(working, home):
     assert (lead["kind"], lead["role"], lead["state"]) == ("terminal", "lead", "active")
     assert data["counts"]["in_progress"] == 1 and data["counts"]["backlog"] == 1
     assert data["changes"][0]["state"] == "approved"
-    assert [a["event"] for a in data["activity"]][:3] == ["checkpoint", "launched", "claim"]
-    assert data["activity"][0]["text"] == "tests for AC-01"
+    assert "activity" not in data
     assert data["sources"]["orca"] == "ok"
 
 
@@ -85,11 +84,21 @@ def test_a_task_whose_design_changed_needs_you(working, home):
     assert (task["state"], task["design_changed"], task["column"]) == ("in_progress", True, "needs_you")
 
 
-def test_a_broken_event_line_is_skipped(working, home):
-    events = working.root / ".factory/state" / f"{TASK}.events.jsonl"
-    with events.open("a") as handle:
-        handle.write('{"event": "note", "state": {}}\n{"at": 5, "event": "claim", "state": {}}\nnot json\n')
-    assert collect(working, home)["activity"][0]["event"] == "checkpoint"
+def test_cards_are_ordered(working, home):
+    store = TaskStore(working.root / ".factory" / "state")
+    data = collect(working, home)
+    assert [t["id"] for t in data["tasks"] if t["column"] == "backlog"] == ["CHG-0012-02"]
+    # two merged tasks: the one merged last comes first
+    for task, when in (("CHG-0012-01", "2026-10-01T10:00:00Z"), ("CHG-0012-02", "2026-10-02T10:00:00Z")):
+        store.update_task(task, lambda s, when=when: {**s, "state": "done", "merged_at": when}, "x")
+    data = collect(working, home)
+    assert [t["id"] for t in data["tasks"] if t["column"] == "done"] == ["CHG-0012-02", "CHG-0012-01"]
+
+
+def test_backlog_shows_what_can_start_first():
+    rows = [{"id": i, "column": "backlog", "state": s} for i, s in
+            (("CHG-12.10", "ready"), ("CHG-12.2", "pending"), ("CHG-12.9", "ready"))]
+    assert [r["id"] for r in sorted(rows, key=board._order)] == ["CHG-12.9", "CHG-12.10", "CHG-12.2"]
 
 
 def test_awaiting_approval_needs_you(working, home):
@@ -111,7 +120,9 @@ def test_board_without_orca_still_shows_the_tasks(working, home, fake_orca):
 def test_page_is_self_contained_and_snapshot_embeds_the_data(working, home, tmp_path, capsys):
     page = board.page()
     assert "const EMBEDDED = null;" in page
-    assert "http://" not in page and "https://" not in page and "<link" not in page
+    assert "http://" not in page and "https://" not in page
+    assert all(link.split('href="')[1].startswith("data:") for link in page.split("<link")[1:])
+    assert "Activity" not in page
     out = tmp_path / "board.html"
     code, result = cli(capsys, "board", "snapshot", str(out))
     assert code == 0, result

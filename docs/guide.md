@@ -351,18 +351,18 @@ live kanban of the repository in an Orca browser tab. The same address works in 
 machine: it is `http://127.0.0.1:8765/` by default (another port if that one is busy; `swfactory board
 status` prints it).
 
-- **Columns:** *Needs you* (designs awaiting approval, blocked or interrupted tasks, a closed lead
-  terminal, tasks whose design changed), *Backlog* (pending and ready), *In progress*, *In review*
-  and *Done*.
-- **Each card** shows the criteria verified, the checks, the reviews (✓ passed, ✗ failed, ⟳ in
-  progress, with the round), unread notes, the PR, the next step and **what is running**: each
-  agent in the task's workspace (green when it wrote recently, blue while working, red when its
-  terminal is closed) and, under it, its subagents.
-- **Click a card** for the details: last checkpoint, every criterion with how it is verified,
-  review findings, notes, and every terminal, agent and subagent seen in that workspace. The
-  address with `#CHG-1.1` opens that task directly.
-- **Activity** at the bottom: the latest events of every task (claims, checkpoints, notes,
-  verifications, reviews, subagents starting and finishing).
+- **Columns:** *Needs you* (blocked or interrupted tasks, a closed lead terminal, tasks whose
+  design changed, a PR closed without merging, then designs awaiting approval), *Backlog* (ready
+  tasks first, then pending ones), *In progress*, *In review*, *To merge* and *Done* (merged most
+  recently first; the latest five, with a button for the rest). The other columns show the most
+  recently updated first.
+- **Each card** is short: id, title, the criteria verified, the reviews (✓ passed, ✗ failed, ⟳ in
+  progress, with the round), failed checks, unread notes, the PR and, while it is being worked on,
+  **what is running**: the lead agent (green when it wrote recently, blue while working, red when
+  its terminal is closed) and its running subagents.
+- **Click a card** for the details: next step, agents and models, last checkpoint, every criterion
+  with how it is verified, review findings, notes, and every terminal, agent and subagent seen in
+  that workspace. The address with `#CHG-1.1` opens that task directly.
 
 The board refreshes itself every 5 seconds while it is visible. It is a small local server
 (`127.0.0.1` only) that runs in the background. It does nothing while nobody is looking, and it
@@ -370,8 +370,10 @@ stops by itself after 30 minutes without visits. Close it with **"cierra el tabl
 (`/factory-board`) or `swfactory board stop`, and check it with `swfactory board status`. `swfactory board
 snapshot board.html` writes a single file with the current board, to keep or share.
 
-**The board only looks: it never changes anything.** If a lead's terminal is closed, the card says
-so, but marking the task interrupted and recovering it is still done with `/factory-status`.
+**The board only looks.** Its one exception is a fact, not a decision: once a minute it fetches
+`origin` and records the tasks whose work was merged (`to_merge` → `done`). If a lead's terminal is
+closed, the card says so, but marking the task interrupted and recovering it is still done with
+`/factory-status`.
 
 **Where the information comes from:**
 - the Factory's own state;

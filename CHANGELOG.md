@@ -38,6 +38,10 @@ output, the files under `.factory/` (`schema_version`), and the skills' names an
   `[agents]` in the config sets the default agents, models and efforts.
 
 ### Changed
+- The board is simpler: a logo, no *Activity* feed, and shorter cards (the next step moved to the
+  card's details; checks show only when they fail; one line for the running subagents). The backlog
+  shows ready tasks first, *Done* the tasks merged most recently first, and the other columns the
+  most recently updated first.
 - Shorter, more descriptive ids: changes are `CHG-12` (in a `CHG-12-<slug>` folder, from
   `design register --slug`), tasks `CHG-12.1`, and every command takes them typed short (`12`,
   `12.1`). Orca workspaces and branches are named after the task and its title
