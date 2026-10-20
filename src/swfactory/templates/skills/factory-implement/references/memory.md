@@ -16,7 +16,7 @@ Rules:
 2. Minimal change with the why: each entry has its reason and origin.
 3. One destination per entry; if none fits, do not write it.
 4. ADRs use the template in `adr-template.md`, take the next number and get a line in the
-   decisions README. An accepted ADR is immutable except its `Status` line: a changed decision is
+   decisions index (`docs/decisions/index.md`). An accepted ADR is immutable except its `Status` line: a changed decision is
    a new ADR that supersedes it (the old one only changes to `superseded by NNNN`). ADRs are for
    technologies, architecture patterns, public contracts, data models and security or performance
    trade-offs, not local details.

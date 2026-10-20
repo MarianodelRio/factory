@@ -138,10 +138,52 @@ def test_existing_agents_md_gets_the_factory_section_and_can_be_restored(project
     assert (project.root / "AGENTS.md").read_text() == "# Our agents\n\nRun `make test`.\n"
 
 
-def test_other_instruction_files_are_respected_for_review(project, capsys):
+def test_other_workflows_are_offered_for_migration(project, capsys):
     (project.root / "GEMINI.md").write_text("Use tabs.\n")
-    respect = {r["path"]: r["reason"] for r in plan(capsys)["respect"]}
-    assert "review" in respect["GEMINI.md"]
+    for path in (".claude/skills/deploy/SKILL.md", ".claude/agents/reviewer.md", ".claude/commands/ship.md",
+                 "ROADMAP.md", "tasks/0001-login.md", "docs/README.md", ".claude/skills/factory-design/SKILL.md"):
+        (project.root / path).parent.mkdir(parents=True, exist_ok=True)
+        (project.root / path).write_text("x\n")
+    migrate = {m["path"]: m["kind"] for m in plan(capsys)["migrate"]}
+    assert migrate == {"GEMINI.md": "instructions", ".claude/skills/deploy": "skill",
+                       ".claude/agents/reviewer.md": "agent", ".claude/commands/ship.md": "command",
+                       "ROADMAP.md": "tracker", "tasks/0001-login.md": "tracker", "docs/README.md": "docs-index"}
+
+
+def test_another_workflow_is_deleted_whole_with_backup(project, capsys):
+    for path in (".claude/skills/deploy/SKILL.md", ".claude/skills/deploy/run.sh", "ROADMAP.md"):
+        (project.root / path).parent.mkdir(parents=True, exist_ok=True)
+        (project.root / path).write_text("x\n")
+    options = ["--delete", ".claude/skills/deploy", "--reason", "old workflow", "--delete", "ROADMAP.md",
+               "--reason", "moved to designs"]
+    data = plan(capsys, *options)
+    assert {d["path"] for d in data["delete"]} == {".claude/skills/deploy/SKILL.md", ".claude/skills/deploy/run.sh",
+                                                    "ROADMAP.md"}
+    apply(capsys, data["plan_id"], *options)
+    assert not (project.root / ".claude/skills/deploy").exists()
+    assert not (project.root / "ROADMAP.md").exists()
+
+
+def test_the_factorys_own_skills_are_never_deleted_on_request(project, capsys):
+    (project.root / ".claude/skills/factory-design").mkdir(parents=True)
+    (project.root / ".claude/skills/factory-design/SKILL.md").write_text("mine\n")
+    code, out = cli(capsys, "init", "--plan", "--delete", ".claude/skills/factory-design/SKILL.md", "--reason", "x")
+    assert (code, out["error"]["code"]) == (3, "delete_not_allowed")
+
+
+def test_the_old_decisions_index_is_renamed(project, capsys):
+    (project.root / "docs/decisions").mkdir(parents=True)
+    (project.root / "docs/decisions/README.md").write_text("# Decisions\n- [0001 — X](0001-x.md)\n")
+    (project.root / "AGENTS.md").write_text("See docs/decisions/README.md.\n\n## Software Factory\nx\n")
+    data = plan(capsys)
+    assert "docs/decisions/index.md" in paths(data["create"])
+    assert {"path": "docs/decisions/README.md", "reason": "renamed to docs/decisions/index.md"} in data["delete"]
+    assert "decisions/index.md" in next(m["diff"] for m in data["modify"] if m["path"] == "AGENTS.md")
+
+
+def test_a_missing_readme_is_created(project, capsys):
+    (project.root / "README.md").unlink()
+    assert "README.md" in paths(plan(capsys)["create"])
 
 
 def test_skill_proposed_deletion_is_applied_with_backup_and_restorable(project, capsys):
@@ -201,8 +243,8 @@ def test_normal_repo_gets_the_full_docs(project, capsys):
     for n in range(30):
         project.commit(f"src/m{n}.py", "x = 1\n", f"m{n}")
     created = paths(plan(capsys)["create"])
-    for doc in ("docs/product.md", "docs/architecture.md", "docs/conventions.md", "docs/working-agreements.md",
-                "docs/decisions/README.md"):
+    for doc in ("docs/index.md", "docs/product.md", "docs/architecture.md", "docs/conventions.md",
+                "docs/working-agreements.md", "docs/decisions/index.md"):
         assert doc in created
 
 

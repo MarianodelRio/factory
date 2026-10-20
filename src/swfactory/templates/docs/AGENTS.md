@@ -41,7 +41,7 @@ Read what applies before working:
 - `docs/architecture.md` — modules, flows, stack and integrations.
 - `docs/conventions.md` — how we write code and tests, and known pitfalls.
 - `docs/working-agreements.md` — how we want agents to work.
-- `docs/decisions/` — why the system is the way it is (ADRs; index in its README).
+- `docs/decisions/` — why the system is the way it is (ADRs; index in `docs/decisions/index.md`).
 
 ## Software Factory
 

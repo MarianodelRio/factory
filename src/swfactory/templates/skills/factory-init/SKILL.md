@@ -1,6 +1,6 @@
 ---
 name: factory-init
-description: Prepare or update a repository for the Software Factory on local Orca. Analyzes the repo, proposes one plan (files to create, modify, delete with reason, and respect, plus Orca actions) and applies it after a single confirmation, with backups. Use when the person says /factory-init, asks to prepare, install or update the Factory in a repo, or asks for "only the analysis" ("solo el análisis").
+description: Prepare or update a repository for the Software Factory on local Orca. Analyzes the repo, proposes one plan (files to create, modify, delete with reason, respect and migrate from another workflow, plus Orca actions) and applies it after a single confirmation, with backups. Use when the person says /factory-init, asks to prepare, install or update the Factory in a repo, or asks for "only the analysis" ("solo el análisis").
 ---
 <!-- factory-template: skills/factory-init@1 -->
 
@@ -19,15 +19,20 @@ first: `orca skills get orca-cli`.
 2. **Check commands**: the analysis lists the test, lint, typecheck and build commands it found
    (they go to `[checks]` in `.factory/config.toml`). If one is marked "ask", ask the person for
    it: a task cannot be finished until at least one check is configured.
-3. **Plan**: `swfactory init --plan --json`. Present the four lists and the Orca actions:
+3. **Plan**: `swfactory init --plan --json`. Present the lists and the Orca actions:
    - **Create**, **Modify** (with the diff), **Delete** (each with its reason), **Respect**;
+   - **Migrate**: what another workflow left (`migrate`: instruction files, skills, agents and
+     commands of other setups, task or progress trackers, a `docs/README.md` index). Read each one
+     and propose, item by item: keep it (it complements the Factory); move what is worth keeping
+     into `AGENTS.md` or `docs/` and delete it; or delete it (a tool or flow no longer used). For a
+     tracker, summarize its pending work and offer to turn each item into a `/factory-design`
+     later. For `docs/README.md`, its content becomes `docs/index.md`;
    - Orca: register the repo, set its base branch, install or update the Orca skills (global).
-   The CLI proposes only safe deletions (Factory leftovers, empty docs) and lists other instruction
-   files (`.cursorrules`, `GEMINI.md`, ...) under "respect: review". Read them: if one duplicates or
-   contradicts `AGENTS.md` (move what is worth keeping into `AGENTS.md` first) or belongs to a tool
-   no longer used, plan again adding `--delete <path> --reason "<why>"` for each. Never code, tests,
-   CI, secrets, decisions, working agreements or anything whose purpose is unclear (the CLI refuses
-   them). If the person asked for only the analysis, stop here.
+   The CLI proposes only safe deletions by itself (Factory leftovers, empty docs, the old
+   `docs/decisions/README.md`, now `docs/decisions/index.md`). For each deletion the person accepts, plan again
+   adding `--delete <path> --reason "<why>"` (a skill, agents or tracker folder can be given
+   whole). Never code, tests, CI, secrets, decisions, working agreements or anything whose purpose
+   is unclear (the CLI refuses them). If the person asked for only the analysis, stop here.
 4. **Confirm once**: ask for one confirmation. The person may exclude items ("everything except
    deleting X", "todo menos borrar X").
 5. **Apply**: `swfactory init --apply <plan-id> --json` with the plan's id, the same `--delete`/`--reason`
@@ -37,12 +42,17 @@ first: `orca skills get orca-cli`.
    asking.
 6. **Write the initial documentation** from evidence: read the real code, manifests and CI, and
    fill `AGENTS.md` and `docs/` following their template comments, adapted to the repo size
-   (small: `AGENTS.md` + `docs/conventions.md`; normal: the full structure; monorepo: a root index
-   and a short `AGENTS.md` per package, without repeating what is common). Write only what is not
+   (small: `AGENTS.md` + `docs/conventions.md`; normal: the full structure with `docs/index.md`;
+   monorepo: `docs/index.md` as the root index and a short `AGENTS.md` per package, without
+   repeating what is common). The index of `docs/` is always `docs/index.md`, never
+   `docs/README.md`; the root `README.md` is for people (fill it if it was just created). Move into
+   `AGENTS.md` and `docs/` what the person chose to migrate (a deleted file's content is in the
+   backup, `.factory/state/backups/<timestamp>/files/`). Write only what is not
    easily deduced from the code, with real paths and principles. Link existing documentation
    instead of copying it. Mark what you could not confirm. Keep `AGENTS.md` within 60–120 lines.
 7. **Validate**: run `swfactory doctor --json` again and check that it reports no problem.
-8. **Summarize**: what was done, what remains to complete in `docs/`, and how to start
+8. **Summarize**: what was done, what was migrated, the pending work found in trackers (each one a
+   candidate for `/factory-design`), what remains to complete in `docs/`, and how to start
    (`/factory-design`). Nothing is committed: the person reviews the diff and commits (or asks
    you to). That commit goes on the base branch itself (Orca's base branch, usually `main`), not on
    a new branch: approvals are committed there and task workspaces start from it.

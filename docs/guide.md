@@ -106,6 +106,12 @@ also run `swfactory install-skill`, so `/factory-init` exists before the repo ha
      duplicated or contradictory instruction files, or files of tools no longer used. Never code,
      tests, CI, secrets, decisions or working agreements.
    - **Respect**: what stays untouched, and why.
+   - **Migrate**: what another workflow left in the repo: instruction files of other tools
+     (`.cursorrules`, `GEMINI.md`…), skills, agents and commands that are not the Factory's, task or
+     progress trackers (`TODO.md`, `ROADMAP.md`, `tasks/`…) and a `docs/README.md` index. The agent
+     reads each one and proposes keeping it, moving what is worth keeping into `AGENTS.md` or
+     `docs/` and deleting it, or deleting it. From a tracker it lists the pending work, so you can
+     turn each item into a design.
 
    Plus the Orca actions: register the repo, set its base branch, install or update Orca's skills.
 3. **You confirm once.** You can leave items out ("todo menos borrar X", "everything except
@@ -117,8 +123,11 @@ also run `swfactory install-skill`, so `/factory-init` exists before the repo ha
    or ask the agent to. Approvals and task workspaces start from that branch.
 
 **Size-adapted docs.** A small repository gets `AGENTS.md` and `docs/conventions.md`. A normal
-one also gets `docs/product.md`, `docs/architecture.md`, `docs/working-agreements.md` and
-`docs/decisions/`.
+one also gets `docs/index.md` (the index of the docs), `docs/product.md`, `docs/architecture.md`,
+`docs/working-agreements.md` and `docs/decisions/` (with its own `index.md`). The root `README.md` is
+for people: if the repository has none, a short one is created and filled from the code. Indexes
+are never called `README.md` inside `docs/`; running `/factory-init` again renames the old
+`docs/decisions/README.md` and fixes the links to it.
 
 **Running it again is safe.** It duplicates nothing. Files you customized since the last install
 are shown as a diff and never overwritten without asking.
@@ -479,11 +488,12 @@ your-repo/
 ├── .agents/skills/factory-*/      # the same five skills for Codex
 ├── .codex/rules/factory.rules     # asks before approve/reject in Codex
 ├── docs/
+│   ├── index.md                   # the index of docs/
 │   ├── product.md                 # what the product is and does
 │   ├── architecture.md            # structure, flows, integrations
 │   ├── conventions.md             # how code is written here, plus "Known pitfalls"
 │   ├── working-agreements.md      # rules you accepted, one line each with date and origin
-│   └── decisions/                 # ADRs (README index + NNNN-title.md)
+│   └── decisions/                 # ADRs (index.md + NNNN-title.md)
 └── .factory/
     ├── config.toml                # checks, reviews, PR policy (committed)
     ├── changes/CHG-1-<slug>/   # design.md, approval.json, tasks.yaml (committed)

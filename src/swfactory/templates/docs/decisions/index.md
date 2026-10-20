@@ -1,4 +1,4 @@
-<!-- factory-template: docs/decisions/README.md@1 -->
+<!-- factory-template: docs/decisions/index.md@1 -->
 # Decisions
 
 <!-- One line per decision record (ADR), in number order: `- [NNNN — Title](NNNN-title.md) — status`.

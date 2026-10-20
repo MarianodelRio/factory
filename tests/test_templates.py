@@ -19,7 +19,7 @@ def test_reviewers_carry_the_json_contract(name):
 
 
 DOCS = ["AGENTS.md", "CLAUDE.md", "product.md", "architecture.md", "conventions.md", "working-agreements.md",
-        "decisions/README.md", "decisions/adr.md"]
+        "decisions/index.md", "decisions/adr.md", "index.md", "README.md"]
 
 
 def template(path):

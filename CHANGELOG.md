@@ -37,7 +37,15 @@ output, the files under `.factory/` (`schema_version`), and the skills' names an
   catalog (`swfactory models`), recorded in the attempt and used for the conformance review.
   `[agents]` in the config sets the default agents, models and efforts.
 
+- `/factory-init` proposes migrating what another workflow left: instruction files, skills,
+  agents and commands of other setups, and task or progress trackers (`migrate` in the plan).
+  A folder of another workflow can be deleted whole, with backup.
+- `/factory-init` creates a root `README.md` when there is none.
+
 ### Changed
+- The index of `docs/` is `docs/index.md`, and the decisions index `docs/decisions/index.md` (a
+  README is for people). `/factory-init` renames an existing `docs/decisions/README.md` and fixes
+  the links to it in `AGENTS.md` and `docs/`.
 - The board is simpler: a logo, no *Activity* feed, and shorter cards (the next step moved to the
   card's details; checks show only when they fail; one line for the running subagents). The backlog
   shows ready tasks first, *Done* the tasks merged most recently first, and the other columns the

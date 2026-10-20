@@ -158,7 +158,37 @@ def _instructions(root: Path) -> dict[str, Any]:
         "docs": _doc_files(root),
         "skills": skills,
         "other": [name for name in OTHER_INSTRUCTIONS if (root / name).exists()],
+        "migrate": _migration(root),
     }
+
+
+def _migration(root: Path) -> list[dict[str, str]]:
+    """What another workflow left in the repository: instruction files, skills, agents and commands
+    of other setups, task or progress trackers, and a docs index under another name. The agent reads
+    each one and proposes keeping it, moving what is worth keeping into AGENTS.md or docs/ and
+    deleting it, or turning pending work into designs."""
+    found: list[dict[str, str]] = []
+    for path in OTHER_INSTRUCTIONS:
+        if (root / path).is_file():
+            found.append({"path": path, "kind": "instructions"})
+    for base in SKILL_BASES:
+        if (root / base).is_dir():
+            found += [{"path": p.relative_to(root).as_posix(), "kind": "skill"} for p in sorted((root / base).iterdir())
+                      if p.is_dir() and not p.name.startswith("factory-")]
+    for base in TOOL_DIRS:
+        folder = root / base
+        if folder.is_dir():
+            kind = "agent" if base.endswith("agents") else "command" if "rules" not in base else "instructions"
+            found += [{"path": p.relative_to(root).as_posix(), "kind": kind} for p in sorted(folder.rglob("*"))
+                      if p.is_file()]
+    found += [{"path": name, "kind": "tracker"} for name in TRACKERS if (root / name).is_file()]
+    for base in TRACKER_DIRS:
+        if (root / base).is_dir():
+            found += [{"path": p.relative_to(root).as_posix(), "kind": "tracker"}
+                      for p in sorted((root / base).rglob("*.md"))]
+    if (root / "docs/README.md").is_file():
+        found.append({"path": "docs/README.md", "kind": "docs-index"})
+    return found
 
 
 def _permission_warnings(root: Path) -> list[str]:
@@ -186,8 +216,21 @@ CODEX_RULES = ".codex/rules/factory.rules"  # Codex's equivalent of ASK_RULES
 GITIGNORE_LINE = ".factory/state/"
 SMALL_REPO_FILES = 30
 DOCS_SMALL = ("conventions.md",)
-DOCS_NORMAL = ("product.md", "architecture.md", "conventions.md", "working-agreements.md", "decisions/README.md")
+DOCS_NORMAL = ("index.md", "product.md", "architecture.md", "conventions.md", "working-agreements.md",
+               "decisions/index.md")
+# Renamed in 1.2: the index of decisions is docs/decisions/index.md (a README is for people).
+OLD_DECISIONS_INDEX = "docs/decisions/README.md"
+# Other workflows a repository may have, offered for migration: instruction files, skills, agents
+# and commands of other setups, and task or progress trackers.
+TRACKERS = ("TODO.md", "TODO", "ROADMAP.md", "PLAN.md", "PLANS.md", "STATUS.md", "PROGRESS.md", "BACKLOG.md",
+            "TASKS.md", "NOTES.md")
+TRACKER_DIRS = ("tasks", "plans", "todo", ".tasks", "docs/plans", "docs/tasks", "docs/roadmap")
+TOOL_DIRS = (".claude/agents", ".claude/commands", ".codex/prompts", ".cursor/rules")
 DELETABLE_SUFFIXES = (".md", ".mdc", ".rst")
+# Folders of other workflows whose files (any kind) /factory-init may delete when the person agrees;
+# never the Factory's own skills.
+MIGRATION_ROOTS = tuple(f"{base}/" for base in (*TOOL_DIRS, *TRACKER_DIRS)) + tuple(
+    f"{base}/" for base in SKILL_BASES)
 # Never deleted or modified by init: approved designs, decisions, working agreements.
 PROTECTED = (".factory/", "docs/decisions/", "docs/working-agreements.md")
 # The [templates] header (maybe with a comment) and its `"path" = "hash"` lines.
@@ -241,6 +284,7 @@ class Plan:
         self.modify: list[dict[str, str]] = []
         self.delete: list[dict[str, str]] = []
         self.respect: list[dict[str, str]] = []
+        self.migrate: list[dict[str, str]] = []
         self.customized: list[dict[str, str]] = []
         self.orca: list[dict[str, Any]] = []
         self.warnings: list[str] = []
@@ -262,7 +306,7 @@ class Plan:
 
     def data(self) -> dict[str, Any]:
         body = {"create": self.create, "modify": self.modify, "delete": self.delete, "respect": self.respect,
-                "customized": self.customized, "orca": self.orca, "warnings": self.warnings}
+                "migrate": self.migrate, "customized": self.customized, "orca": self.orca, "warnings": self.warnings}
         fingerprint = json.dumps([body, self.writes, self.tracked, self.deleted_content], sort_keys=True)
         return {"plan_id": hashlib.sha256(fingerprint.encode("utf-8")).hexdigest()[:12], **body}
 
@@ -274,6 +318,7 @@ def build_plan(root: Path, main_checkout: Path, deletes: list[tuple[str, str]]) 
     recorded: dict[str, str] = dict((configured or {}).get("templates", {}))
     plan = Plan()
     plan.report, plan.recorded = report, recorded
+    plan.migrate = report["instructions"]["migrate"]
     plan.warnings = report["warnings"] + [
         f"Codex asks before approve/reject through {CODEX_RULES} (a prompt rule; not verified on a real Codex): "
         "it loads only if this project is trusted in Codex"
@@ -315,7 +360,7 @@ def _docs(root: Path, plan: Plan) -> None:
     elif "@AGENTS.md" not in claude.splitlines():
         plan.write(root, "CLAUDE.md", claude.rstrip("\n") + "\n\n@AGENTS.md\n", "import AGENTS.md")
     # The repo's own size: files the Factory installs (skills, config, docs) do not count.
-    installed = {"AGENTS.md", "CLAUDE.md", CODEX_RULES, *(f"docs/{doc}" for doc in DOCS_NORMAL)}
+    installed = {"AGENTS.md", "CLAUDE.md", "README.md", CODEX_RULES, *(f"docs/{doc}" for doc in DOCS_NORMAL)}
     factory_dirs = (".factory/", "docs/decisions/", *(f"{base}/factory-" for base in SKILL_BASES))
     own = [f for f in git.run(["ls-files"], root).splitlines()
            if f not in installed and not f.startswith(factory_dirs)]
@@ -326,9 +371,17 @@ def _docs(root: Path, plan: Plan) -> None:
     for path in _existing_docs(root):
         if path not in plan.writes:
             plan.respect.append({"path": path, "reason": "existing documentation is kept and linked"})
-    for path in OTHER_INSTRUCTIONS:
-        if (root / path).is_file():
-            plan.respect.append({"path": path, "reason": "review: may duplicate or contradict AGENTS.md"})
+    if _read(root, "README.md") is None and not (root / "README.rst").exists() and not (root / "README").exists():
+        plan.write(root, "README.md", _template("docs/README.md"), "")
+    old_index = _read(root, OLD_DECISIONS_INDEX)
+    if old_index is not None and _read(root, "docs/decisions/index.md") is None:
+        plan.write(root, "docs/decisions/index.md", old_index.replace("docs/decisions/README.md@1",
+                                                                     "docs/decisions/index.md@1"), "")
+        for path in ["AGENTS.md", *(p for p in _doc_files(root) if "/" not in p.removeprefix("docs/"))]:
+            text = plan.writes.get(path, _read(root, path))
+            if text and "decisions/README.md" in text:
+                plan.write(root, path, text.replace("decisions/README.md", "decisions/index.md"),
+                           "the decisions index is now docs/decisions/index.md")
 
 
 def _doc_files(root: Path) -> list[str]:
@@ -358,9 +411,12 @@ def _deletions(root: Path, plan: Plan, deletes: list[tuple[str, str]]) -> None:
         for file in sorted((root / "docs").rglob("*.md")):
             if not file.read_text(encoding="utf-8").strip():
                 proposed[file.relative_to(root).as_posix()] = "empty document"
+    if (root / OLD_DECISIONS_INDEX).is_file() and (plan.writes.get("docs/decisions/index.md")
+                                                   or (root / "docs/decisions/index.md").is_file()):
+        proposed[OLD_DECISIONS_INDEX] = "renamed to docs/decisions/index.md"
     for path, reason in deletes:
-        path = _check_deletable(root, path)
-        proposed[path] = reason
+        for name in _deletable_files(root, path):
+            proposed[name] = reason
     plan.delete = [{"path": p, "reason": r} for p, r in sorted(proposed.items())]
     plan.deleted_content = {p: _sha((root / p).read_text(encoding="utf-8", errors="replace")) for p in proposed}
 
@@ -379,6 +435,18 @@ def safe_path(root: Path, path: str) -> str:
     return relative.as_posix()
 
 
+def _deletable_files(root: Path, path: str) -> list[str]:
+    """`path`, or every file of a folder of another workflow (a skill, agents, commands, trackers)."""
+    try:
+        clean = safe_path(root, path)
+    except FactoryError as exc:
+        raise FactoryError("delete_not_allowed", exc.message, EXIT_PRECONDITION) from exc
+    if (root / clean).is_dir() and clean.startswith(MIGRATION_ROOTS):
+        return [_check_deletable(root, p.relative_to(root).as_posix())
+                for p in sorted((root / clean).rglob("*")) if p.is_file()]
+    return [_check_deletable(root, clean)]
+
+
 def _check_deletable(root: Path, path: str) -> str:
     """Only documentation and instruction files may be deleted; never code, tests, CI, secrets,
     approved designs, decisions or working agreements."""
@@ -392,8 +460,10 @@ def _check_deletable(root: Path, path: str) -> str:
         file.is_file()
         and not is_secret_file(path)
         and not ({"tests", "test"} & set(parts))
-        and not path.startswith((".github/workflows/", ".gitlab-ci", ".circleci/", *PROTECTED))
-        and (file.suffix in DELETABLE_SUFFIXES or path in OTHER_INSTRUCTIONS)
+        and not path.startswith((".github/workflows/", ".gitlab-ci", ".circleci/", *PROTECTED,
+                                 *(f"{base}/factory-" for base in SKILL_BASES)))
+        and (file.suffix in DELETABLE_SUFFIXES or path in OTHER_INSTRUCTIONS or path in TRACKERS
+             or path.startswith(MIGRATION_ROOTS))
     )
     if not allowed:
         message = f"{path} cannot be deleted by /factory-init (missing, code, tests, CI, a secret or protected)"
@@ -504,6 +574,7 @@ def apply_init(
         (root / path).write_text(plan.writes[path], encoding="utf-8", newline="\n")  # LF on every OS
     for path in deleted:
         (root / path).unlink()
+        _remove_empty_parents(root, Path(path).parent)
 
     results = []
     warnings = list(plan.warnings)
@@ -520,6 +591,13 @@ def apply_init(
     data = {"backup": backup.name, "created": created, "modified": modified, "deleted": deleted,
             "customized": [c["path"] for c in plan.customized], "orca": results}
     return data, warnings
+
+
+def _remove_empty_parents(root: Path, folder: Path) -> None:
+    """Remove the folders a deletion left empty (a deleted skill's folder), up to the repository."""
+    while folder.parts and (root / folder).is_dir() and not any((root / folder).iterdir()):
+        (root / folder).rmdir()
+        folder = folder.parent
 
 
 def _backup_dir(state_dir: Path) -> Path:

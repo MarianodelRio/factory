@@ -63,7 +63,7 @@ def test_empty_repo(project, capsys):
     assert report["git"]["pending_changes"] == 0
     assert report["factory"]["installed"] is False
     assert report["instructions"] == {"agents_md": False, "claude_md": False, "readme": True, "docs": [],
-                                      "skills": [], "other": []}
+                                      "skills": [], "other": [], "migrate": []}
 
 
 def test_orca_gh_and_agents(project, capsys):
