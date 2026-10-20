@@ -38,7 +38,8 @@ changes do not need the Factory: the person can ask an agent directly.
 7. **Self-review** with a subagent playing `references/roles/design_critic.md`: could another
    agent implement this correctly without this conversation? Fix what it finds.
 8. **Validate**: `swfactory design register <id> --json`. Fix every problem in `error.details`
-   and run it again after each edit.
+   and run it again after each edit. Its `warnings` name independent tasks that may touch the same
+   files: add the missing `depends_on`, or split their `scope`.
 9. **Present** a summary (goal, decisions, risks, AC, tasks), open the design in Orca
    (`orca file open <path>`) and say how to approve: "approve <id>" ("apruebo <id>").
 10. If the person asks for changes, edit and validate again: the digest changes with every edit.

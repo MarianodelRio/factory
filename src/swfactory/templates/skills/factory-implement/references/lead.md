@@ -6,6 +6,8 @@ Your role: `roles/lead.md`. You own the task end to end, inside its workspace.
 
 - `swfactory task show <task> --json`: acceptance criteria, `complexity`, `review`, `scope`, state,
   last checkpoint and unread notes. If there is a previous checkpoint, continue from it.
+- If the task is `blocked`, tell the person why and ask before going on; with their OK,
+  `swfactory task unblock <task> --json` (a `design_changed` block waits for the design's approval).
 - If this is a recovered attempt and the task already has reviews, verify and submit again, then run
   only the reviews whose latest verdict is not `pass` on the current commit.
 - Read the approved design `.factory/changes/<change>/design.md`, `docs/conventions.md` and
@@ -24,6 +26,9 @@ Your role: `roles/lead.md`. You own the task end to end, inside its workspace.
 - **Commit** each coherent step on the task branch with a clear message.
 - If something forces a design change (new requirement, architecture), stop:
   `swfactory task block <task> --reason "..." --json`. Do not improvise architecture.
+- If the task needs another task's work that is not in the base branch yet (a dependency the design
+  missed), block it with `--reason "missing dependency: <task>"` and tell the person: the design
+  is adjusted (`depends_on`) and approved again.
 
 ## Verify and submit
 

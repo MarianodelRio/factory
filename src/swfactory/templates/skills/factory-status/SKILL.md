@@ -64,7 +64,10 @@ where it was. Unblocking needs the change's approval to be valid: a `design_chan
 by itself when the design is approved again. After a review that did not converge, the findings
 are in `swfactory task show <task> --json`.
 
-## Recovering an interrupted task
+To hand a blocked task to another agent or provider (the lead ran out of quota, for example),
+follow `references/recover.md`: it works for blocked tasks too.
+
+## Recovering an interrupted task (or changing its agent)
 
 Follow `references/recover.md`. Never relaunch anything without the person's confirmation.
 

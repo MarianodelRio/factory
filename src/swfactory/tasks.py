@@ -64,6 +64,7 @@ TRANSITIONS: dict[tuple[str, str], str] = {
     ("interrupted", "recover"): "in_progress",  # swfactory task recover --confirm
     ("in_progress", "recover"): "in_progress",  # only when liveness is unknown
     ("in_review", "recover"): "in_progress",  # also only when unknown; the new lead submits again
+    ("blocked", "recover"): "in_progress",  # a new agent takes over (not for design_changed)
     ("in_progress", "submit"): "in_review",  # swfactory task submit
     ("in_progress", "finish"): "to_merge",  # swfactory task finish (closing gates)
     ("in_review", "finish"): "to_merge",
@@ -95,6 +96,10 @@ def transition(task: State, action: str, current: str | None = None, reason: str
     target = TRANSITIONS.get((state, action))
     if target is None:
         _reject(task, action, f"not allowed from '{state}'")
+    if state == "blocked" and action == "recover":
+        if task["blocked_reason"] == DESIGN_CHANGED:
+            _reject(task, action, "it is blocked by a design change: approve the design again first")
+        result.update(blocked_reason=None, blocked_from=None)
     if action == "block":
         if not reason:
             _reject(task, action, "a reason is required")
@@ -105,6 +110,9 @@ def transition(task: State, action: str, current: str | None = None, reason: str
 
 def _reject(task: State, action: str, why: str) -> NoReturn:
     message = f"cannot {action} {task['task']}: {why}"
+    if task.get("state") == "blocked" and action not in ("unblock", "reapprove", "recover", "block"):
+        message += (f" (blocked: {task.get('blocked_reason')}). If the person resumed the work, they unblock it "
+                    f"first: swfactory task unblock {task['task']}")
     raise FactoryError("invalid_transition", message, EXIT_PRECONDITION)
 
 
@@ -1174,25 +1182,33 @@ def _after_finish(record: State, task: dict[str, Any], ctx: Context) -> str:
     return f"swfactory task publish {task['id']}"
 
 
-def recover(task_id: str, confirm: bool, ctx: Context) -> tuple[dict[str, Any], list[str]]:
-    """Gather what an interrupted task left. With `confirm` (after the person
-    agrees), close the previous attempt as interrupted, open a new one and reassign the claim.
-    Files are never touched and nothing is launched."""
+RECOVERABLE = (*WORKING, "interrupted", "blocked")
+
+
+def recover(task_id: str, confirm: bool, ctx: Context, replace: bool = False) -> tuple[dict[str, Any], list[str]]:
+    """Gather what an interrupted or blocked task left. With `confirm` (after the person agrees),
+    close the previous attempt, open a new one and reassign the claim, so another agent (or
+    provider) takes over. `replace` is the person saying the previous session is abandoned even if
+    its terminal is still open (an agent out of quota, for example). Files are never touched and
+    nothing is launched."""
     task, _ = _started(task_id, ctx)
     liveness, current = _liveness_and_interrupt(task, ctx)
     assert current is not None
     record = current
-    if record["state"] not in (*WORKING, "interrupted"):
+    if record["state"] not in RECOVERABLE:
         _reject(record, "recover", f"it is {record['state']}")
-    if record["state"] == "interrupted":
+    if record["state"] == "blocked" and record["blocked_reason"] == DESIGN_CHANGED:
+        _reject(record, "recover", "it is blocked by a design change: approve the design again first")
+    if record["state"] in ("interrupted", "blocked"):
         liveness = orca.session_liveness(record["attempts"][-1].get("terminal"))
     broken = _broken_link(record)
 
     if not confirm:
         return _recovery_report(task, record, liveness, broken, ctx), []
-    if liveness == "alive":
-        raise FactoryError("session_alive", f"the lead agent of {task_id} is still alive: continue in it",
-                           EXIT_PRECONDITION)
+    if liveness == "alive" and not replace:
+        message = (f"the lead agent of {task_id} is still alive: continue in it, or, if the person says it is "
+                   f"abandoned (out of quota, stuck), confirm with --replace and close its terminal in Orca")
+        raise FactoryError("session_alive", message, EXIT_PRECONDITION)
     if broken:
         raise FactoryError("workspace_missing", f"the workspace of {task_id} no longer exists in Orca",
                            EXIT_PRECONDITION)
@@ -1201,9 +1217,10 @@ def recover(task_id: str, confirm: bool, ctx: Context) -> tuple[dict[str, Any], 
         raise FactoryError("not_claimed", f"{task_id} has no claim to reassign", EXIT_PRECONDITION)
 
     def apply(state: State) -> State:
-        if state["state"] not in (*WORKING, "interrupted"):
+        if state["state"] not in RECOVERABLE:
             _reject(state, "recover", f"it is {state['state']}")
-        state["attempts"][-1].update(ended_at=now(), result="interrupted")
+        state["attempts"][-1].update(ended_at=now(), result="replaced" if state["state"] == "blocked" or replace
+                                     else "interrupted")
         state["attempts"].append(new_attempt(len(state["attempts"]) + 1))
         return transition(state, "recover")
 
@@ -1223,6 +1240,8 @@ def _recovery_report(
     report: dict[str, Any] = {
         "task": task["id"],
         "state": record["state"],
+        "blocked_reason": record.get("blocked_reason"),
+        "previous_agent": {k: record["attempts"][-1].get(k) for k in ("agent", "model", "reviewer")},
         "liveness": liveness,
         "broken_link": broken,
         "workspace": record["workspace"]["orca_id"],
@@ -1242,7 +1261,8 @@ def _recovery_report(
         if base:
             report["commits"] = git.run(["log", "--oneline", f"{base}..HEAD"], cwd).splitlines()
     if liveness == "alive":
-        report["proposal"] = "the previous session is alive: continue in it from the Orca sidebar"
+        report["proposal"] = ("the previous session is alive: continue in it from the Orca sidebar, or, if the "
+                              "person says it is abandoned, confirm with --replace to launch another agent")
     elif liveness == "unknown":
         report["proposal"] = ("Orca cannot say whether the previous session is alive; if it is gone, confirm to "
                               "launch a new agent in the same workspace")

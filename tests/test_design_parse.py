@@ -1,6 +1,6 @@
 import pytest
 
-from swfactory.design import digest, next_change_id, parse_design
+from swfactory.design import digest, next_change_id, parse_design, scope_overlaps
 from swfactory.output import EXIT_PRECONDITION, FactoryError
 
 VALID = """# CHG-0012 — Recurring bookings
@@ -191,3 +191,25 @@ def test_a_task_may_choose_how_it_integrates():
     assert parse_design(merge, "CHG-0012", KNOWN)["tasks"][0]["integrate"] == "merge"
     errors = errors_of(merge.replace("integrate: merge", "integrate: squash"))
     assert any("integrate 'squash' must be one of pr, merge" in e for e in errors)
+
+
+def tasks_with(scopes, depends=None):
+    depends = depends or {}
+    return [{"id": f"CHG-0012-0{n}", "scope": scope, "depends_on": depends.get(n, [])}
+            for n, scope in enumerate(scopes, start=1)]
+
+
+def test_overlapping_scopes_without_a_dependency_are_flagged():
+    warnings = scope_overlaps(tasks_with([["src/bookings/**"], ["src/bookings/sync.py", "docs/**"]]))
+    assert len(warnings) == 1
+    assert "CHG-0012-01 and CHG-0012-02 may touch the same files" in warnings[0]
+
+
+@pytest.mark.parametrize(("scopes", "depends"), [
+    ([["src/bookings/**"], ["src/bookings/**"]], {2: ["CHG-0012-01"]}),  # ordered: fine
+    ([["src/a/**"], ["src/b/**"]], {}),  # disjoint
+    ([["src/**"], ["src/x.py"], ["src/y.py"]], {2: ["CHG-0012-01"], 3: ["CHG-0012-02"]}),  # transitive
+])
+def test_no_warning_when_ordered_or_disjoint(scopes, depends):
+    assert scope_overlaps(tasks_with(scopes, {k: [f"CHG-0012-0{d[-1]}" for d in v] for k, v in depends.items()})) \
+        == []

@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 from conftest import load_fixture
+from test_approve import FOLDER
 from test_claim_launch import TASK, orca_calls
 from test_claim_launch import project as project  # noqa: F401
 
@@ -169,10 +170,50 @@ def test_recover_with_unknown_liveness_needs_the_person(working, store, fake_orc
     assert [a["result"] for a in store.read_task(TASK)["attempts"]] == ["interrupted", None]
 
 
-def test_recover_a_task_that_is_not_interrupted(working, capsys):
-    cli(capsys, "task", "block", TASK, "--reason", "needs a decision")
+def test_recover_a_finished_task(working, store, capsys):
+    store.update_task(TASK, lambda s: {**s, "state": "to_merge"}, "x")
     code, out = cli(capsys, "task", "recover", TASK, "--confirm")
     assert (code, out["error"]["code"]) == (3, "invalid_transition")
+
+
+def test_a_blocked_task_can_change_agent(working, store, fake_orca, capsys):
+    """The lead ran out of quota and its terminal is still open: the person hands it to another one."""
+    cli(capsys, "task", "block", TASK, "--reason", "codex is out of quota")
+    _, out = cli(capsys, "task", "recover", TASK)
+    assert (out["data"]["state"], out["data"]["blocked_reason"]) == ("blocked", "codex is out of quota")
+    assert out["data"]["previous_agent"]["agent"] == "claude"
+    assert "--replace" in out["data"]["proposal"]
+    code, out = cli(capsys, "task", "recover", TASK, "--confirm")
+    assert (code, out["error"]["code"]) == (3, "session_alive")
+    assert "--replace" in out["error"]["message"]
+    code, out = cli(capsys, "task", "recover", TASK, "--confirm", "--replace")
+    assert code == 0, out
+    record = store.read_task(TASK)
+    assert (record["state"], record["blocked_reason"]) == ("in_progress", None)
+    assert [a["result"] for a in record["attempts"]] == ["replaced", None]
+    code, out = cli(capsys, "task", "launch", TASK, "--agent", "codex")
+    assert code == 0, out
+
+
+def test_a_blocked_task_with_a_closed_terminal_needs_no_replace(working, store, fake_orca, capsys):
+    cli(capsys, "task", "block", TASK, "--reason", "stuck")
+    fake_orca.respond_fixture("terminal show", "terminal-show-closed", target=TERMINAL)
+    assert cli(capsys, "task", "recover", TASK, "--confirm")[0] == 0
+
+
+def test_a_design_change_block_is_not_recovered(working, store, capsys):
+    design = working.root / FOLDER / "design.md"
+    design.write_text(design.read_text() + "\nOne more note.\n")
+    code, out = cli(capsys, "task", "recover", TASK, "--confirm", "--replace")
+    assert (code, out["error"]["code"]) == (3, "invalid_transition")
+    assert "approve the design again" in out["error"]["message"]
+
+
+def test_working_on_a_blocked_task_says_how_to_unblock(working, capsys):
+    cli(capsys, "task", "block", TASK, "--reason", "paused by hand")
+    code, out = cli(capsys, "task", "checkpoint", TASK, "--done", "x", "--next", "y")
+    assert (code, out["error"]["code"]) == (3, "invalid_transition")
+    assert f"swfactory task unblock {TASK}" in out["error"]["message"]
 
 
 def test_recover_with_a_broken_link(working, fake_orca, capsys):

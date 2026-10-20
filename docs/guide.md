@@ -159,7 +159,7 @@ The **Tasks** section is a YAML block. Each task has:
 |---|---|
 | `id` | `CHG-0001-01`, `-02`, … |
 | `title` | What the task delivers |
-| `depends_on` | Tasks that must be **done** (merged into the base branch) before this one can start |
+| `depends_on` | Tasks that must be **done** (merged into the base branch) before this one can start. Without it, tasks are independent and can run in parallel: the design must say every real dependency here, not only in the text |
 | `complexity` | `trivial`, `normal` or `complex`: decides how the lead works (section 6) |
 | `review` | `[]`, `[quality]` or `[quality, conformance]` |
 | `scope` | Optional globs of the files the task should touch; changes outside it are flagged at finish |
@@ -398,8 +398,17 @@ moved too, it only warns: pull it yourself.
 ### Blocked tasks
 
 A task is blocked for a reason: `paused`, `design_changed`, `review_not_converging`, or a reason
-the lead gave. Once you have resolved it, unblocking returns the task to where it was. A
-`design_changed` task returns by itself when you approve the design again.
+the lead gave (for example `missing dependency: …` when the design missed one). Once you have
+resolved it, unblocking returns the task to where it was. A `design_changed` task returns by itself
+when you approve the design again.
+
+**Changing the agent of a blocked task.** If the lead can't go on (it ran out of quota, it got
+stuck) and you want another agent or provider to take over, say "relanza CHG-0001-01 con claude".
+The Factory shows what the task left, and if the previous terminal is still open it asks you to
+confirm that session is abandoned (`swfactory task recover <task> --confirm --replace`). The task
+goes back to `in_progress` with a new attempt and the new agent continues from the last
+checkpoint. Don't just open a new agent in the workspace by hand: while the task is blocked its
+commands are refused (the message says how to unblock it).
 
 ### Interrupted tasks and recovery
 

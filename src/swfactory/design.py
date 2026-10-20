@@ -219,6 +219,40 @@ def _find_cycle(tasks: list[dict[str, Any]], own: set[str]) -> list[str] | None:
     return None
 
 
+def scope_overlaps(tasks: list[dict[str, Any]]) -> list[str]:
+    """Pairs of tasks that may touch the same files (their `scope` globs overlap) although neither
+    depends on the other: they could run in parallel and conflict, or one may really need the
+    other. A warning for the designer, not an error."""
+    own = {str(t.get("id")) for t in tasks}
+    graph = {str(t.get("id")): {str(d) for d in t.get("depends_on") or [] if str(d) in own} for t in tasks}
+
+    def reaches(start: str, goal: str) -> bool:
+        seen, stack = set(), [start]
+        while stack:
+            node = stack.pop()
+            if node == goal:
+                return True
+            if node not in seen:
+                seen.add(node)
+                stack.extend(graph.get(node, ()))
+        return False
+
+    def prefix(glob: str) -> str:
+        return re.split(r"[*?\[]", glob, maxsplit=1)[0]
+
+    scoped = [(str(t.get("id")), [prefix(g) for g in t.get("scope") or [] if isinstance(g, str)]) for t in tasks]
+    warnings = []
+    for n, (first, first_scope) in enumerate(scoped):
+        for second, second_scope in scoped[n + 1:]:
+            if reaches(first, second) or reaches(second, first):
+                continue
+            shared = [a for a in first_scope for b in second_scope if a.startswith(b) or b.startswith(a)]
+            if shared:
+                warnings.append(f"{first} and {second} may touch the same files ({shared[0] or '**'}) but neither "
+                                "depends on the other: add depends_on if one needs the other, or split the scope")
+    return warnings
+
+
 def reserve_change(changes_dir: Path) -> dict[str, Any]:
     """Create the folder of the next free change id; two sessions never get the same one."""
     changes_dir.mkdir(parents=True, exist_ok=True)
@@ -231,13 +265,13 @@ def reserve_change(changes_dir: Path) -> dict[str, Any]:
         return {"change": change_id, "design": str(changes_dir / change_id / "design.md")}
 
 
-def register(change_id: str, changes_dir: Path) -> dict[str, Any]:
-    """Validate the `design.md` of a reserved change."""
+def register(change_id: str, changes_dir: Path) -> tuple[dict[str, Any], list[str]]:
+    """Validate the `design.md` of a reserved change; warn about tasks that may collide."""
     folder = _folder(change_id, changes_dir)
     _refuse_rejected(change_id, folder)
     text = _design_text(folder)
     parsed = parse_design(text, change_id, known_tasks(changes_dir, exclude=change_id))
-    return {"change": change_id, "digest": digest(text), **parsed}
+    return {"change": change_id, "digest": digest(text), **parsed}, scope_overlaps(parsed["tasks"])
 
 
 def show(change_id: str, changes_dir: Path, store: TaskStore, main_changes_dir: Path) -> dict[str, Any]:

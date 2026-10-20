@@ -43,7 +43,7 @@ def change_id(value: str) -> str:
 def design_register(args: argparse.Namespace) -> Result:
     if args.change is None:
         return design.reserve_change(paths.changes_dir()), []
-    return design.register(args.change, paths.changes_dir()), []
+    return design.register(args.change, paths.changes_dir())
 
 
 def design_show(args: argparse.Namespace) -> Result:
@@ -131,7 +131,7 @@ def task_merged(args: argparse.Namespace) -> Result:
 
 
 def task_recover(args: argparse.Namespace) -> Result:
-    return tasks.recover(args.task, args.confirm, task_context())
+    return tasks.recover(args.task, args.confirm, task_context(), args.replace)
 
 
 def init_command(args: argparse.Namespace) -> Result:
@@ -319,9 +319,11 @@ def build_parser() -> Parser:
     cleanup.add_argument("task")
     cleanup.add_argument("--keep", action="store_true", help="keep them, and stop offering it")
 
-    recover = command(task_cmds, "recover", "task recover", "inspect an interrupted task")
+    recover = command(task_cmds, "recover", "task recover", "inspect an interrupted or blocked task")
     recover.add_argument("task")
     recover.add_argument("--confirm", action="store_true", help="start a new attempt")
+    recover.add_argument("--replace", action="store_true",
+                         help="the previous session is abandoned even if its terminal is open")
 
     memory = groups.add_parser("memory", help="project memory maintenance")
     memory_cmds = memory.add_subparsers(dest="action", required=True, metavar="<action>")

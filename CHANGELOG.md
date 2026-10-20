@@ -28,7 +28,14 @@ output, the files under `.factory/` (`schema_version`), and the skills' names an
   whether the workspace and the local branch are removed. `swfactory task cleanup <task>` removes
   them (never with uncommitted files), `--keep` keeps them.
 
+- `swfactory task recover` also hands a `blocked` task (not `design_changed`) to another agent;
+  `--replace` confirms that a session whose terminal is still open is abandoned.
+- `swfactory design register` warns about independent tasks whose `scope` overlaps.
+
 ### Changed
+- The designer and the design critic make every real dependency explicit in `depends_on`, and the
+  lead blocks a task with `missing dependency: …` when the design missed one.
+- A command refused because the task is blocked says how to unblock it.
 - `done` now means merged: dependencies only wait for their tasks to be `done`, without git checks.
   Tasks finished with an earlier version are checked once and go back to `to_merge` if they are
   not merged.
